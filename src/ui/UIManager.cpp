@@ -1,5 +1,6 @@
 #include "UIManager.hpp"
 #include "../io/TextureExporter.hpp"
+#include "../../third_party/imgui/imgui_internal.h"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -7,14 +8,67 @@
 
 namespace REMoAINTER {
 
+void UIManager::setupDefaultDockLayout(ImGuiID dockspaceId, const ImVec2& workSize) {
+    ImGui::DockBuilderRemoveNode(dockspaceId);
+    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderSetNodeSize(dockspaceId, workSize);
+
+    ImGuiID dockMain = dockspaceId;
+    ImGuiID dockTop = 0;
+    ImGuiID dockLeftToolbar = 0;
+    ImGuiID dockLeftShelf = 0;
+    ImGuiID dockRight = 0;
+    ImGuiID dockRightTop = 0;
+    ImGuiID dockRightMid = 0;
+    ImGuiID dockRightBottom = 0;
+
+    // 1. Top Bar: split top 38px
+    float topBarRatio = 38.0f / std::max(1.0f, workSize.y);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Up, topBarRatio, &dockTop, &dockMain);
+
+    // 2. Far-left narrow toolbar strip (48px)
+    float leftToolbarRatio = 48.0f / std::max(1.0f, workSize.x);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, leftToolbarRatio, &dockLeftToolbar, &dockMain);
+
+    // 3. Asset Shelf (280px)
+    float shelfRatio = 280.0f / std::max(1.0f, workSize.x - 48.0f);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, shelfRatio, &dockLeftShelf, &dockMain);
+
+    // 4. Right side panel stack (330px)
+    float rightRatio = 330.0f / std::max(1.0f, workSize.x - 48.0f - 280.0f);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, rightRatio, &dockRight, &dockMain);
+
+    // 5. Split right side vertically:
+    // Top: TEXTURE SET LIST (22%)
+    // Mid: LAYERS (44%)
+    // Bottom: PROPERTIES - PAINT (34%)
+    ImGuiID dockRightRest = 0;
+    ImGui::DockBuilderSplitNode(dockRight, ImGuiDir_Up, 0.22f, &dockRightTop, &dockRightRest);
+    ImGui::DockBuilderSplitNode(dockRightRest, ImGuiDir_Up, 0.52f, &dockRightMid, &dockRightBottom);
+
+    // 6. Dock windows into designated nodes:
+    ImGui::DockBuilderDockWindow("TopBar##ControlBar", dockTop);
+    ImGui::DockBuilderDockWindow("Tools##LeftToolbar", dockLeftToolbar);
+    ImGui::DockBuilderDockWindow("ASSETS", dockLeftShelf);
+    ImGui::DockBuilderDockWindow("TEXTURE SET LIST", dockRightTop);
+    ImGui::DockBuilderDockWindow("LAYERS", dockRightMid);
+    ImGui::DockBuilderDockWindow("PROPERTIES - PAINT", dockRightBottom);
+
+    ImGui::DockBuilderFinish(dockspaceId);
+}
+
 void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, Camera& camera,
                        bool isMeshHovered, const glm::vec2& hoveredUV,
+                       ImTextureID logoTexture,
                        std::function<void()> onTriggerComposite) {
 
-    // Setup Main DockSpace Window across entire application
+    logoTextureID = logoTexture;
+
+    // Setup Main DockSpace Window across entire application (leaving 24px for bottom status bar)
     ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImVec2 dockspaceSize(viewport->WorkSize.x, viewport->WorkSize.y - 24.0f);
     ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowSize(dockspaceSize);
     ImGui::SetNextWindowViewport(viewport->ID);
 
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
@@ -30,6 +84,14 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
     ImGui::PopStyleVar(3);
 
     ImGuiID dockspaceId = ImGui::GetID("REMoAINTER_Dockspace");
+
+    // Initialize or reset dock layout programmatically
+    ImGuiDockNode* node = ImGui::DockBuilderGetNode(dockspaceId);
+    if (node == nullptr || node->IsEmpty() || requestLayoutReset) {
+        setupDefaultDockLayout(dockspaceId, dockspaceSize);
+        requestLayoutReset = false;
+    }
+
     ImGui::DockSpace(dockspaceId, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
     renderMainMenuBar(layerStack);
@@ -41,19 +103,25 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
     renderPropertiesPanel(layerStack, brush, onTriggerComposite);
     renderStatusBar();
     renderExportDialog(layerStack);
+    renderAboutDialog();
 
     ImGui::End();
 }
 
 void UIManager::renderMainMenuBar(LayerStack& layerStack) {
     if (ImGui::BeginMenuBar()) {
-        // Authentic Adobe Substance 3D Painter [Pt] Brand Badge
-        ImDrawList* menuDraw = ImGui::GetWindowDrawList();
-        ImVec2 p = ImGui::GetCursorScreenPos();
-        menuDraw->AddRectFilled(ImVec2(p.x, p.y + 2), ImVec2(p.x + 20, p.y + 20), IM_COL32(235, 115, 20, 255), 3.0f);
-        menuDraw->AddText(ImVec2(p.x + 4, p.y + 3), IM_COL32(255, 255, 255, 255), "Pt");
-        ImGui::Dummy(ImVec2(24, 20));
-        ImGui::SameLine();
+        // Authentic REMoAINTER Brand Badge with Logo
+        if (logoTextureID) {
+            ImGui::Image(logoTextureID, ImVec2(20, 20));
+            ImGui::SameLine();
+        } else {
+            ImDrawList* menuDraw = ImGui::GetWindowDrawList();
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            menuDraw->AddRectFilled(ImVec2(p.x, p.y + 2), ImVec2(p.x + 20, p.y + 20), IM_COL32(235, 115, 20, 255), 3.0f);
+            menuDraw->AddText(ImVec2(p.x + 4, p.y + 3), IM_COL32(255, 255, 255, 255), "Pt");
+            ImGui::Dummy(ImVec2(24, 20));
+            ImGui::SameLine();
+        }
 
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Project...", "Ctrl+N")) {
@@ -97,7 +165,10 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
         }
 
         if (ImGui::BeginMenu("Window")) {
-            ImGui::MenuItem("Reset Layout to Default");
+            if (ImGui::MenuItem("Reset Layout to Default", "Shift+Alt+R")) {
+                requestLayoutReset = true;
+                statusMessage = "Layout reset to default";
+            }
             ImGui::EndMenu();
         }
 
@@ -147,7 +218,9 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
         }
 
         if (ImGui::BeginMenu("Help")) {
-            ImGui::MenuItem("About REMoAINTER 1.0.0");
+            if (ImGui::MenuItem("About REMoAINTER...")) {
+                showAboutModal = true;
+            }
             ImGui::EndMenu();
         }
 
@@ -162,6 +235,10 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
 }
 
 void UIManager::renderTopControlBar(Brush& brush) {
+    ImGuiWindowClass window_class;
+    window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoCloseButton;
+    ImGui::SetNextWindowClass(&window_class);
+
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
     ImGui::Begin("TopBar##ControlBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
 
@@ -238,15 +315,21 @@ void UIManager::renderTopControlBar(Brush& brush) {
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Smooth Stroke / Lazy Mouse Interpolation");
 
     // Right side: Lighting Preset & Viewport Mode dropdown
-    ImGui::SameLine(ImGui::GetWindowWidth() - 360);
+    float rightWidth = 330.0f;
+    float targetX = ImGui::GetWindowWidth() - rightWidth;
+    if (ImGui::GetCursorPosX() < targetX) {
+        ImGui::SameLine(targetX);
+    } else {
+        ImGui::SameLine();
+    }
     ImGui::Text("Lighting:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(120);
+    ImGui::SetNextItemWidth(115);
     const char* envs[] = { "Studio Neutral", "Warm & Cool", "Cyberpunk", "Forest", "Desert" };
     ImGui::Combo("##topEnv", &environmentPreset, envs, IM_ARRAYSIZE(envs));
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(110);
+    ImGui::SetNextItemWidth(105);
     const char* channels[] = { "Material", "Base Color", "Roughness", "Metallic", "Normal", "Lighting Only" };
     ImGui::Combo("##topChannel", &displayChannel, channels, IM_ARRAYSIZE(channels));
 
@@ -254,71 +337,197 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::PopStyleVar();
 }
 
-void UIManager::renderLeftToolbar(Brush& brush) {
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-    ImGui::Begin("Tools##LeftToolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+void UIManager::drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, ToolMode mode, bool active) {
+    float cx = (pMin.x + pMax.x) * 0.5f;
+    float cy = (pMin.y + pMax.y) * 0.5f;
 
-    ImVec2 btnSize(34, 34);
+    ImU32 iconColor = active ? IM_COL32(255, 255, 255, 255) : IM_COL32(210, 215, 225, 255);
+    ImU32 accentColor = active ? IM_COL32(255, 220, 100, 255) : IM_COL32(235, 120, 30, 255);
+
+    switch (mode) {
+        case ToolMode::Brush: {
+            // Paint Brush: wooden handle, metal ferrule, bristle tip
+            drawList->AddLine(ImVec2(cx + 9, cy - 9), ImVec2(cx - 1, cy + 1), IM_COL32(215, 175, 120, 255), 3.0f);
+            drawList->AddLine(ImVec2(cx - 1, cy + 1), ImVec2(cx - 4, cy + 4), IM_COL32(190, 195, 205, 255), 3.5f);
+            drawList->AddTriangleFilled(ImVec2(cx - 3, cy + 6), ImVec2(cx - 6, cy + 3), ImVec2(cx - 10, cy + 10), accentColor);
+            break;
+        }
+        case ToolMode::Eraser: {
+            // Eraser: angled two-tone rubber block
+            ImVec2 pts[4] = {
+                ImVec2(cx - 7, cy - 4),
+                ImVec2(cx + 3, cy - 9),
+                ImVec2(cx + 8, cy + 3),
+                ImVec2(cx - 2, cy + 8)
+            };
+            drawList->AddConvexPolyFilled(pts, 4, IM_COL32(230, 140, 160, 255));
+            drawList->AddLine(ImVec2(cx, cy - 1), ImVec2(cx + 3, cy + 5), IM_COL32(255, 255, 255, 200), 1.5f);
+            drawList->AddPolyline(pts, 4, iconColor, ImDrawFlags_Closed, 1.2f);
+            break;
+        }
+        case ToolMode::Projection: {
+            // Camera projector icon with projection frustum
+            drawList->AddRectFilled(ImVec2(cx - 8, cy - 5), ImVec2(cx + 2, cy + 5), iconColor, 2.0f);
+            drawList->AddCircleFilled(ImVec2(cx - 3, cy), 2.5f, IM_COL32(40, 44, 52, 255));
+            drawList->AddTriangleFilled(ImVec2(cx + 2, cy - 2), ImVec2(cx + 8, cy - 7), ImVec2(cx + 8, cy + 7), accentColor);
+            break;
+        }
+        case ToolMode::PolygonFill: {
+            // Paint bucket with falling paint drop
+            ImVec2 bPts[4] = {
+                ImVec2(cx - 6, cy - 6),
+                ImVec2(cx + 2, cy - 8),
+                ImVec2(cx + 7, cy + 4),
+                ImVec2(cx - 1, cy + 6)
+            };
+            drawList->AddConvexPolyFilled(bPts, 4, iconColor);
+            drawList->AddLine(ImVec2(cx - 5, cy - 5), ImVec2(cx + 2, cy - 7), accentColor, 2.5f);
+            drawList->AddCircleFilled(ImVec2(cx + 5, cy + 7), 2.5f, accentColor);
+            break;
+        }
+        case ToolMode::Smudge: {
+            // Fluid smudge swirl
+            drawList->AddBezierCubic(ImVec2(cx - 8, cy + 7), ImVec2(cx - 4, cy - 8),
+                                     ImVec2(cx + 4, cy + 8), ImVec2(cx + 8, cy - 6),
+                                     accentColor, 2.8f);
+            drawList->AddCircleFilled(ImVec2(cx + 8, cy - 6), 2.0f, iconColor);
+            break;
+        }
+        case ToolMode::Clone: {
+            // Rubber Stamp: handle knob and base pad
+            drawList->AddCircleFilled(ImVec2(cx, cy - 6), 3.5f, iconColor);
+            drawList->AddLine(ImVec2(cx, cy - 3), ImVec2(cx, cy + 3), iconColor, 2.5f);
+            drawList->AddRectFilled(ImVec2(cx - 8, cy + 3), ImVec2(cx + 8, cy + 8), accentColor, 1.5f);
+            break;
+        }
+        case ToolMode::Eyedropper: {
+            // Pipette with rubber bulb
+            drawList->AddCircleFilled(ImVec2(cx + 6, cy - 6), 3.5f, accentColor);
+            drawList->AddLine(ImVec2(cx + 4, cy - 4), ImVec2(cx - 6, cy + 6), iconColor, 2.2f);
+            drawList->AddLine(ImVec2(cx - 6, cy + 6), ImVec2(cx - 9, cy + 9), accentColor, 1.5f);
+            break;
+        }
+    }
+}
+
+void UIManager::drawToolButton(ToolMode mode, const char* id, const char* label, const char* tooltip, const char* shortcut, bool active, std::function<void()> onClick) {
+    ImVec2 btnSize(38, 38);
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    if (active) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.52f, 0.92f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.31f, 0.36f, 1.0f));
+    }
+
+    ImVec2 pMin = ImGui::GetCursorScreenPos();
+    ImVec2 pMax = ImVec2(pMin.x + btnSize.x, pMin.y + btnSize.y);
+
+    if (ImGui::Button(id, btnSize)) {
+        if (onClick) onClick();
+    }
+
+    ImGui::PopStyleColor(2);
+
+    // Draw vector icon centered inside the button
+    drawToolIcon(drawList, pMin, pMax, mode, active);
+
+    if (ImGui::IsItemHovered()) {
+        if (shortcut && strlen(shortcut) > 0) {
+            ImGui::SetTooltip("%s (%s)", tooltip, shortcut);
+        } else {
+            ImGui::SetTooltip("%s", tooltip);
+        }
+    }
+}
+
+void UIManager::renderLeftToolbar(Brush& brush) {
+    ImGuiWindowClass window_class;
+    window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoCloseButton;
+    ImGui::SetNextWindowClass(&window_class);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 6));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 6));
+    ImGui::Begin("Tools##LeftToolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse);
 
     // 1. Paint Tool
     bool isPaint = (activeTool == ToolMode::Brush && !brush.isEraser);
-    if (isPaint) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
-    if (ImGui::Button("Paint", btnSize)) {
+    drawToolButton(ToolMode::Brush, "##btnPaint", "Paint", "Paint Brush Tool", "1", isPaint, [&]() {
         activeTool = ToolMode::Brush;
         brush.isEraser = false;
         statusMessage = "Paint Tool Active (1)";
-    }
-    if (isPaint) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Paint Tool (1)");
+    });
 
     // 2. Eraser Tool
     bool isEraser = (activeTool == ToolMode::Eraser || brush.isEraser);
-    if (isEraser) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
-    if (ImGui::Button("Erase", btnSize)) {
+    drawToolButton(ToolMode::Eraser, "##btnEraser", "Eraser", "Eraser Tool", "2", isEraser, [&]() {
         activeTool = ToolMode::Eraser;
         brush.isEraser = true;
         statusMessage = "Eraser Tool Active (2)";
-    }
-    if (isEraser) ImGui::PopStyleColor();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Eraser Tool (2)");
+    });
 
     // 3. Projection Tool
-    if (ImGui::Button("Proj", btnSize)) {
+    drawToolButton(ToolMode::Projection, "##btnProj", "Projection", "Projection Painting Tool", "3", activeTool == ToolMode::Projection, [&]() {
         activeTool = ToolMode::Projection;
-        statusMessage = "Projection Tool (3)";
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Projection Tool (3)");
+        statusMessage = "Projection Tool Active (3)";
+    });
 
     // 4. Polygon Fill Tool
-    if (ImGui::Button("Fill", btnSize)) {
+    drawToolButton(ToolMode::PolygonFill, "##btnFill", "Fill", "Polygon Fill Tool", "4 / F", activeTool == ToolMode::PolygonFill, [&]() {
         activeTool = ToolMode::PolygonFill;
-        statusMessage = "Polygon Fill Tool (4 / F)";
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Polygon Fill Tool (4 / F)");
+        statusMessage = "Polygon Fill Tool Active (4 / F)";
+    });
 
     // 5. Smudge Tool
-    if (ImGui::Button("Smudge", btnSize)) {
+    drawToolButton(ToolMode::Smudge, "##btnSmudge", "Smudge", "Smudge Blending Tool", "5", activeTool == ToolMode::Smudge, [&]() {
         activeTool = ToolMode::Smudge;
-        statusMessage = "Smudge Tool (5)";
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Smudge Tool (5)");
+        statusMessage = "Smudge Tool Active (5)";
+    });
 
     // 6. Clone Stamp Tool
-    if (ImGui::Button("Clone", btnSize)) {
+    drawToolButton(ToolMode::Clone, "##btnClone", "Clone", "Clone Stamp Tool", "6", activeTool == ToolMode::Clone, [&]() {
         activeTool = ToolMode::Clone;
-        statusMessage = "Clone Tool (6)";
-    }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Clone Tool (6)");
+        statusMessage = "Clone Tool Active (6)";
+    });
 
     // 7. Eyedropper Tool
-    if (ImGui::Button("Pick", btnSize)) {
+    drawToolButton(ToolMode::Eyedropper, "##btnPick", "Pick", "Material & Color Eyedropper", "I", activeTool == ToolMode::Eyedropper, [&]() {
         activeTool = ToolMode::Eyedropper;
-        statusMessage = "Eyedropper Tool (I)";
+        statusMessage = "Eyedropper Tool Active (I)";
+    });
+
+    ImGui::Separator();
+
+    // Symmetry Button
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImVec2 pMin = ImGui::GetCursorScreenPos();
+    ImVec2 pMax = ImVec2(pMin.x + 38, pMin.y + 38);
+
+    if (symmetryX) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Eyedropper Tool (I)");
+    if (ImGui::Button("##btnSymmetry", ImVec2(38, 38))) {
+        symmetryX = !symmetryX;
+        statusMessage = symmetryX ? "Symmetry Enabled" : "Symmetry Disabled";
+    }
+    ImGui::PopStyleColor();
+
+    float scx = (pMin.x + pMax.x) * 0.5f;
+    float scy = (pMin.y + pMax.y) * 0.5f;
+    drawList->AddLine(ImVec2(scx, scy - 8), ImVec2(scx, scy + 8), IM_COL32(255, 255, 255, 255), 1.5f);
+    drawList->AddTriangleFilled(ImVec2(scx - 2, scy), ImVec2(scx - 7, scy - 4), ImVec2(scx - 7, scy + 4), IM_COL32(235, 120, 30, 255));
+    drawList->AddTriangleFilled(ImVec2(scx + 2, scy), ImVec2(scx + 7, scy - 4), ImVec2(scx + 7, scy + 4), IM_COL32(235, 120, 30, 255));
+
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("X-Axis Symmetry (%s)", symmetryX ? "ON" : "OFF");
+    }
 
     ImGui::End();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleVar(2);
 }
 
 void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite) {
@@ -969,6 +1178,58 @@ void UIManager::drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& c
 
     // 6. Crisp Outer Edge Ring
     drawList->AddCircle(center, radius, IM_COL32(50, 54, 60, 255), 32, 1.2f);
+}
+
+void UIManager::renderAboutDialog() {
+    if (showAboutModal) {
+        ImGui::OpenPopup("About REMoAINTER##Modal");
+        showAboutModal = false;
+    }
+
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(480, 420));
+
+    if (ImGui::BeginPopupModal("About REMoAINTER##Modal", nullptr, ImGuiWindowFlags_NoResize)) {
+        if (logoTextureID) {
+            float imgSize = 140.0f;
+            ImGui::SetCursorPosX((480 - imgSize) * 0.5f);
+            ImGui::Image(logoTextureID, ImVec2(imgSize, imgSize));
+            ImGui::Spacing();
+        }
+
+        const char* title = "REMoAINTER 1.1.0";
+        float titleW = ImGui::CalcTextSize(title).x;
+        ImGui::SetCursorPosX((480 - titleW) * 0.5f);
+        ImGui::TextColored(ImVec4(0.96f, 0.55f, 0.15f, 1.0f), "%s", title);
+
+        const char* sub = "Next-Gen 3D PBR Texture Painting Suite";
+        float subW = ImGui::CalcTextSize(sub).x;
+        ImGui::SetCursorPosX((480 - subW) * 0.5f);
+        ImGui::TextDisabled("%s", sub);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::BulletText("Vulkan 1.3 High-Performance Viewport Engine");
+        ImGui::BulletText("5-Light Studio PBR Rig with Dual Softbox Reflections & ACES Tonemapping");
+        ImGui::BulletText("Substance 3D Painter Workflow & 40+ Pre-Configured PBR Smart Materials");
+        ImGui::BulletText("Continuous Anti-Aliased Stroke Interpolation & Toroidal UV Seam Wrapping");
+        ImGui::BulletText("Zero-Stutter Persistent GPU Staging & Dirty-Rect Streaming");
+        ImGui::BulletText("Linux & Windows High-Performance Native Support");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::SetCursorPosX((480 - 110) * 0.5f);
+        if (ImGui::Button("Close", ImVec2(110, 30))) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 } // namespace REMoAINTER

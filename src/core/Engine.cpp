@@ -4,6 +4,9 @@
 #include "../../third_party/imgui/backends/imgui_impl_glfw.h"
 #include "../../third_party/imgui/backends/imgui_impl_vulkan.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb/stb_image.h"
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -68,6 +71,7 @@ Engine::Engine(int width, int height, const char* title)
     initWindow();
     initVulkan();
     initImGui();
+    initTextures();
 
     // Default mesh: PBR Sphere
     switchMesh(0);
@@ -82,12 +86,33 @@ void Engine::initWindow() {
         throw std::runtime_error("Failed to initialize GLFW!");
     }
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    if (getenv("REMOAINTER_TOP")) {
+        glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+        glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
+    }
     window = glfwCreateWindow(windowWidth, windowHeight, windowTitle, nullptr, nullptr);
     if (!window) {
         throw std::runtime_error("Failed to create GLFW window!");
     }
+    glfwShowWindow(window);
+    glfwFocusWindow(window);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+    // Set application window icon using REMoAINTER logo
+    int iconW = 0, iconH = 0, iconCh = 0;
+    unsigned char* iconPixels = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &iconW, &iconH, &iconCh, 4);
+    if (!iconPixels) {
+        iconPixels = stbi_load("assets/logo.png", &iconW, &iconH, &iconCh, 4);
+    }
+    if (iconPixels) {
+        GLFWimage icon;
+        icon.width = iconW;
+        icon.height = iconH;
+        icon.pixels = iconPixels;
+        glfwSetWindowIcon(window, 1, &icon);
+        stbi_image_free(iconPixels);
+    }
 }
 
 void Engine::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -111,8 +136,6 @@ void Engine::initVulkan() {
     createPbrPipeline();
     createCommandBuffers();
     createSyncObjects();
-
-    initTextures();
 }
 
 void Engine::createInstance() {
@@ -641,13 +664,69 @@ void Engine::createPbrPipeline() {
     vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
+static void createPersistentStagingBuffer(VkDevice dev, VkPhysicalDevice physDev, VkDeviceSize size,
+                                          VkBuffer& buffer, VkDeviceMemory& memory, void*& mappedPtr) {
+    VkBufferCreateInfo bufInfo{};
+    bufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufInfo.size = size;
+    bufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(dev, &bufInfo, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create staging buffer!");
+    }
+
+    VkMemoryRequirements memReqs;
+    vkGetBufferMemoryRequirements(dev, buffer, &memReqs);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memReqs.size;
+    allocInfo.memoryTypeIndex = findMemoryType(physDev, memReqs.memoryTypeBits,
+                                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (vkAllocateMemory(dev, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate staging buffer memory!");
+    }
+
+    vkBindBufferMemory(dev, buffer, memory, 0);
+    vkMapMemory(dev, memory, 0, size, 0, &mappedPtr);
+}
+
 void Engine::initTextures() {
     uint32_t w = layerStack.width;
     uint32_t h = layerStack.height;
+    VkDeviceSize size = (VkDeviceSize)w * h * 4;
 
     baseColorTexture.create(device, physicalDevice, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
     metallicRoughnessTexture.create(device, physicalDevice, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
     normalTexture.create(device, physicalDevice, w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    // Preallocate zero-allocation persistent staging buffers
+    createPersistentStagingBuffer(device, physicalDevice, size, stagingBufferBaseColor, stagingBufferBaseColorMemory, mappedBaseColor);
+    createPersistentStagingBuffer(device, physicalDevice, size, stagingBufferMR, stagingBufferMRMemory, mappedMR);
+    createPersistentStagingBuffer(device, physicalDevice, size, stagingBufferNormal, stagingBufferNormalMemory, mappedNormal);
+
+    // Preallocate reusable texture transfer command buffer
+    VkCommandBufferAllocateInfo cmdAllocInfo{};
+    cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdAllocInfo.commandPool = commandPool;
+    cmdAllocInfo.commandBufferCount = 1;
+    if (vkAllocateCommandBuffers(device, &cmdAllocInfo, &textureTransferCmd) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate texture transfer command buffer!");
+    }
+
+    // Load REMoAINTER logo for title bar, badge & About dialog
+    int logoW = 0, logoH = 0, logoCh = 0;
+    unsigned char* logoData = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &logoW, &logoH, &logoCh, 4);
+    if (!logoData) {
+        logoData = stbi_load("assets/logo.png", &logoW, &logoH, &logoCh, 4);
+    }
+    if (logoData) {
+        logoTexture.create(device, physicalDevice, logoW, logoH, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+        logoTexture.updateData(device, physicalDevice, commandPool, graphicsQueue, logoData, (VkDeviceSize)logoW * logoH * 4);
+        logoDescriptorSet = ImGui_ImplVulkan_AddTexture(logoTexture.sampler, logoTexture.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        stbi_image_free(logoData);
+    }
 
     updatePbrTexturesFromLayerStack();
     updateDescriptorSets();
@@ -655,12 +734,69 @@ void Engine::initTextures() {
 
 void Engine::updatePbrTexturesFromLayerStack() {
     VkDeviceSize size = (VkDeviceSize)layerStack.width * layerStack.height * 4;
-    baseColorTexture.updateData(device, physicalDevice, commandPool, graphicsQueue,
-                               layerStack.compositedBaseColor.data(), size);
-    metallicRoughnessTexture.updateData(device, physicalDevice, commandPool, graphicsQueue,
-                                        layerStack.compositedMetallicRoughness.data(), size);
-    normalTexture.updateData(device, physicalDevice, commandPool, graphicsQueue,
-                            layerStack.compositedNormal.data(), size);
+    memcpy(mappedBaseColor, layerStack.compositedBaseColor.data(), size);
+    memcpy(mappedMR, layerStack.compositedMetallicRoughness.data(), size);
+    memcpy(mappedNormal, layerStack.compositedNormal.data(), size);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(textureTransferCmd, &beginInfo);
+
+    // 1. Transition images: UNDEFINED / SHADER_READ_ONLY_OPTIMAL -> TRANSFER_DST_OPTIMAL
+    std::array<VkImageMemoryBarrier, 3> barriersToDst{};
+    for (int i = 0; i < 3; ++i) {
+        barriersToDst[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barriersToDst[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barriersToDst[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barriersToDst[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barriersToDst[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barriersToDst[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barriersToDst[i].subresourceRange.baseMipLevel = 0;
+        barriersToDst[i].subresourceRange.levelCount = 1;
+        barriersToDst[i].subresourceRange.baseArrayLayer = 0;
+        barriersToDst[i].subresourceRange.layerCount = 1;
+        barriersToDst[i].srcAccessMask = 0;
+        barriersToDst[i].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    }
+    barriersToDst[0].image = baseColorTexture.image;
+    barriersToDst[1].image = metallicRoughnessTexture.image;
+    barriersToDst[2].image = normalTexture.image;
+
+    vkCmdPipelineBarrier(textureTransferCmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                         0, nullptr, 0, nullptr, (uint32_t)barriersToDst.size(), barriersToDst.data());
+
+    // 2. Copy from persistent staging buffers
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent = { layerStack.width, layerStack.height, 1 };
+
+    vkCmdCopyBufferToImage(textureTransferCmd, stagingBufferBaseColor, baseColorTexture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(textureTransferCmd, stagingBufferMR, metallicRoughnessTexture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(textureTransferCmd, stagingBufferNormal, normalTexture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    // 3. Transition images: TRANSFER_DST_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL
+    std::array<VkImageMemoryBarrier, 3> barriersToShader = barriersToDst;
+    for (int i = 0; i < 3; ++i) {
+        barriersToShader[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barriersToShader[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barriersToShader[i].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barriersToShader[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    }
+    vkCmdPipelineBarrier(textureTransferCmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                         0, nullptr, 0, nullptr, (uint32_t)barriersToShader.size(), barriersToShader.data());
+
+    vkEndCommandBuffer(textureTransferCmd);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &textureTransferCmd;
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
 }
 
 void Engine::updateDescriptorSets() {
@@ -800,20 +936,58 @@ void Engine::processInput() {
     bool middleDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
     bool rightDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
 
-    // Shift + Right Mouse Button Drag rotates environment lighting (Substance Painter standard)
-    if (shiftHeld && rightDown) {
-        uiManager.environmentRotation += deltaX * 0.015f;
-    } else if (altHeld) {
-        // Camera Navigation: Alt + Left (Orbit), Alt + Middle (Pan), Alt + Right (Zoom)
-        if (leftDown) {
-            camera.orbit(deltaX * 0.4f, -deltaY * 0.4f);
-        } else if (middleDown) {
-            camera.pan(deltaX, deltaY);
-        } else if (rightDown) {
-            camera.zoom((deltaX - deltaY) * 0.05f);
+    // 1. Mouse Wheel Zoom (Immediate, works anywhere in viewport)
+    if (io.MouseWheel != 0.0f && !io.WantCaptureMouse) {
+        camera.zoom(io.MouseWheel * 1.5f);
+    }
+
+    // 2. Navigation State Machine
+    if (navMode == NavMode::None) {
+        if (!io.WantCaptureMouse) {
+            if (shiftHeld && rightDown) {
+                navMode = NavMode::EnvRotate;
+            } else if (altHeld && leftDown) {
+                navMode = NavMode::Orbit;
+            } else if ((altHeld && middleDown) || middleDown) {
+                navMode = NavMode::Pan;
+            } else if (altHeld && rightDown) {
+                navMode = NavMode::Zoom;
+            } else if (rightDown && !altHeld && !shiftHeld) {
+                // Secondary navigation: Right Click Drag in viewport to orbit
+                navMode = NavMode::Orbit;
+            }
+        }
+    }
+
+    // While dragging in active navigation mode, maintain navigation smoothly across full screen
+    if (navMode != NavMode::None) {
+        if (navMode == NavMode::EnvRotate) {
+            if (rightDown) {
+                uiManager.environmentRotation += deltaX * 0.015f;
+            } else {
+                navMode = NavMode::None;
+            }
+        } else if (navMode == NavMode::Orbit) {
+            if ((altHeld && leftDown) || rightDown) {
+                camera.orbit(deltaX * 0.4f, -deltaY * 0.4f);
+            } else {
+                navMode = NavMode::None;
+            }
+        } else if (navMode == NavMode::Pan) {
+            if ((altHeld && middleDown) || middleDown) {
+                camera.pan(deltaX, deltaY);
+            } else {
+                navMode = NavMode::None;
+            }
+        } else if (navMode == NavMode::Zoom) {
+            if (altHeld && rightDown) {
+                camera.zoom((deltaX - deltaY) * 0.05f);
+            } else {
+                navMode = NavMode::None;
+            }
         }
     } else if (!io.WantCaptureMouse) {
-        // Paint interaction on 3D mesh
+        // Paint interaction on 3D mesh (when not navigating)
         glm::vec3 rayOrigin, rayDir;
         camera.screenPointToRay((float)mouseX, (float)mouseY, (float)swapchainExtent.width, (float)swapchainExtent.height,
                                 rayOrigin, rayDir);
@@ -832,16 +1006,22 @@ void Engine::processInput() {
         if (isMeshHovered) {
             hoveredUV = hit.uv;
 
-            if (leftDown) {
+            if (leftDown && !altHeld) {
                 auto activeLayer = layerStack.getActiveLayer();
                 if (activeLayer && activeLayer->type == LayerType::Paint) {
+                    int sMinX = (int)layerStack.width, sMinY = (int)layerStack.height, sMaxX = -1, sMaxY = -1;
+
                     if (!s_StrokeActive) {
                         s_StrokeActive = true;
                         s_LastStrokeUV = hoveredUV;
                         s_SmoothedUV = hoveredUV;
-                        activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush);
+                        activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush, &sMinX, &sMinY, &sMaxX, &sMaxY);
+                        if (sMinX <= sMaxX && sMinY <= sMaxY) layerStack.markDirtyRect(sMinX, sMinY, sMaxX, sMaxY);
+
                         if (uiManager.symmetryX) {
-                            activeLayer->paintStamp(1.0f - hoveredUV.x, hoveredUV.y, brush);
+                            int symMinX = (int)layerStack.width, symMinY = (int)layerStack.height, symMaxX = -1, symMaxY = -1;
+                            activeLayer->paintStamp(1.0f - hoveredUV.x, hoveredUV.y, brush, &symMinX, &symMinY, &symMaxX, &symMaxY);
+                            if (symMinX <= symMaxX && symMinY <= symMaxY) layerStack.markDirtyRect(symMinX, symMinY, symMaxX, symMaxY);
                         }
                     } else {
                         glm::vec2 targetUV = hoveredUV;
@@ -851,16 +1031,17 @@ void Engine::processInput() {
                             s_SmoothedUV = targetUV;
                         }
 
-                        activeLayer->paintLine(s_LastStrokeUV, s_SmoothedUV, brush);
+                        activeLayer->paintLine(s_LastStrokeUV, s_SmoothedUV, brush, &sMinX, &sMinY, &sMaxX, &sMaxY);
+                        if (sMinX <= sMaxX && sMinY <= sMaxY) layerStack.markDirtyRect(sMinX, sMinY, sMaxX, sMaxY);
+
                         if (uiManager.symmetryX) {
+                            int symMinX = (int)layerStack.width, symMinY = (int)layerStack.height, symMaxX = -1, symMaxY = -1;
                             activeLayer->paintLine(glm::vec2(1.0f - s_LastStrokeUV.x, s_LastStrokeUV.y),
-                                                   glm::vec2(1.0f - s_SmoothedUV.x, s_SmoothedUV.y), brush);
+                                                   glm::vec2(1.0f - s_SmoothedUV.x, s_SmoothedUV.y), brush, &symMinX, &symMinY, &symMaxX, &symMaxY);
+                            if (symMinX <= symMaxX && symMinY <= symMaxY) layerStack.markDirtyRect(symMinX, symMinY, symMaxX, symMaxY);
                         }
                         s_LastStrokeUV = s_SmoothedUV;
                     }
-
-                    layerStack.composite();
-                    updatePbrTexturesFromLayerStack();
                 }
             }
         }
@@ -868,15 +1049,41 @@ void Engine::processInput() {
 
     // Substance Painter Standard Keyboard Shortcuts
     if (!io.WantCaptureKeyboard) {
+        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+            camera.resetToFocus();
+            uiManager.statusMessage = "Framed 3D Mesh (F)";
+        }
         if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) uiManager.displayChannel = 0; // Material view
         if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) uiManager.displayChannel = 1; // Base Color solo view
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
             uiManager.activeTool = ToolMode::Brush;
             brush.isEraser = false;
+            uiManager.statusMessage = "Paint Tool (1)";
         }
         if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
             uiManager.activeTool = ToolMode::Eraser;
             brush.isEraser = true;
+            uiManager.statusMessage = "Eraser Tool (2)";
+        }
+        if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Projection;
+            uiManager.statusMessage = "Projection Tool (3)";
+        }
+        if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::PolygonFill;
+            uiManager.statusMessage = "Polygon Fill Tool (4 / F)";
+        }
+        if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Smudge;
+            uiManager.statusMessage = "Smudge Tool (5)";
+        }
+        if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Clone;
+            uiManager.statusMessage = "Clone Tool (6)";
+        }
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Eyedropper;
+            uiManager.statusMessage = "Eyedropper Tool (I)";
         }
         if (glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS) brush.size = std::max(1.0f, brush.size - 0.5f);
         if (glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS) brush.size = std::min(256.0f, brush.size + 0.5f);
@@ -980,6 +1187,18 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
 void Engine::drawFrame() {
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
+    // If textures were dirtied by painting or preset loading, composite and stream to GPU
+    if (layerStack.isDirty) {
+        if (layerStack.fullDirty) {
+            layerStack.composite();
+            layerStack.fullDirty = false;
+        } else {
+            layerStack.compositeRect(layerStack.dirtyMinX, layerStack.dirtyMinY, layerStack.dirtyMaxX, layerStack.dirtyMaxY);
+        }
+        layerStack.isDirty = false;
+        updatePbrTexturesFromLayerStack();
+    }
+
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
                                             imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -1079,10 +1298,10 @@ void Engine::mainLoop() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Render UI
-        uiManager.render(layerStack, brush, currentMesh, camera, isMeshHovered, hoveredUV, [this]() {
-            layerStack.composite();
-            updatePbrTexturesFromLayerStack();
+        // Render UI with REMoAINTER logo
+        uiManager.render(layerStack, brush, currentMesh, camera, isMeshHovered, hoveredUV,
+                         (ImTextureID)logoDescriptorSet, [this]() {
+            layerStack.markFullDirty();
         });
 
         ImGui::Render();
@@ -1097,6 +1316,30 @@ void Engine::cleanup() {
     vkDeviceWaitIdle(device);
 
     currentMesh.destroyGPUResources(device);
+
+    if (mappedBaseColor) {
+        vkUnmapMemory(device, stagingBufferBaseColorMemory);
+        vkDestroyBuffer(device, stagingBufferBaseColor, nullptr);
+        vkFreeMemory(device, stagingBufferBaseColorMemory, nullptr);
+        mappedBaseColor = nullptr;
+    }
+    if (mappedMR) {
+        vkUnmapMemory(device, stagingBufferMRMemory);
+        vkDestroyBuffer(device, stagingBufferMR, nullptr);
+        vkFreeMemory(device, stagingBufferMRMemory, nullptr);
+        mappedMR = nullptr;
+    }
+    if (mappedNormal) {
+        vkUnmapMemory(device, stagingBufferNormalMemory);
+        vkDestroyBuffer(device, stagingBufferNormal, nullptr);
+        vkFreeMemory(device, stagingBufferNormalMemory, nullptr);
+        mappedNormal = nullptr;
+    }
+    if (textureTransferCmd != VK_NULL_HANDLE) {
+        vkFreeCommandBuffers(device, commandPool, 1, &textureTransferCmd);
+        textureTransferCmd = VK_NULL_HANDLE;
+    }
+    logoTexture.destroy(device);
 
     baseColorTexture.destroy(device);
     metallicRoughnessTexture.destroy(device);

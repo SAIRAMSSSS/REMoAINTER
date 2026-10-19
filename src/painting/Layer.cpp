@@ -79,8 +79,14 @@ static inline float hash2D(float x, float y) {
     return n - std::floor(n);
 }
 
-void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
+void Layer::paintStamp(float uvX, float uvY, const Brush& brush,
+                       int* outMinX, int* outMinY, int* outMaxX, int* outMaxY) {
     if (type != LayerType::Paint) return;
+
+    int totalMinX = (int)width;
+    int totalMinY = (int)height;
+    int totalMaxX = -1;
+    int totalMaxY = -1;
 
     // Normalize and wrap UV
     uvX = uvX - std::floor(uvX);
@@ -89,7 +95,7 @@ void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
     float px = uvX * (float)width;
     float py = uvY * (float)height;
 
-    auto applyStampAt = [this, &brush](float cx, float cy) {
+    auto applyStampAt = [this, &brush, &totalMinX, &totalMinY, &totalMaxX, &totalMaxY](float cx, float cy) {
         float r = brush.size;
         int minX = std::max(0, (int)std::floor(cx - r));
         int maxX = std::min((int)width - 1, (int)std::ceil(cx + r));
@@ -97,6 +103,11 @@ void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
         int maxY = std::min((int)height - 1, (int)std::ceil(cy + r));
 
         if (minX > maxX || minY > maxY) return;
+
+        totalMinX = std::min(totalMinX, minX);
+        totalMinY = std::min(totalMinY, minY);
+        totalMaxX = std::max(totalMaxX, maxX);
+        totalMaxY = std::max(totalMaxY, maxY);
 
         float hardness = std::clamp(brush.hardness, 0.01f, 0.999f);
 
@@ -254,10 +265,30 @@ void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
     if (px + brush.size >= (float)width) {
         applyStampAt(px - (float)width, py);
     }
+
+    if (outMinX && totalMinX <= totalMaxX) *outMinX = totalMinX;
+    if (outMinY && totalMinY <= totalMaxY) *outMinY = totalMinY;
+    if (outMaxX && totalMinX <= totalMaxX) *outMaxX = totalMaxX;
+    if (outMaxY && totalMinY <= totalMaxY) *outMaxY = totalMaxY;
 }
 
-void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush) {
+void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush,
+                      int* outMinX, int* outMinY, int* outMaxX, int* outMaxY) {
     if (type != LayerType::Paint) return;
+
+    int lineMinX = (int)width;
+    int lineMinY = (int)height;
+    int lineMaxX = -1;
+    int lineMaxY = -1;
+
+    auto updateBounds = [&](int sMinX, int sMinY, int sMaxX, int sMaxY) {
+        if (sMinX <= sMaxX && sMinY <= sMaxY) {
+            lineMinX = std::min(lineMinX, sMinX);
+            lineMinY = std::min(lineMinY, sMinY);
+            lineMaxX = std::max(lineMaxX, sMaxX);
+            lineMaxY = std::max(lineMaxY, sMaxY);
+        }
+    };
 
     glm::vec2 startPx(p0.x * (float)width, p0.y * (float)height);
     glm::vec2 endPx(p1.x * (float)width, p1.y * (float)height);
@@ -271,17 +302,25 @@ void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& bru
         currentBrush.angle = std::atan2(dir.y, dir.x);
     }
 
+    int sMinX = (int)width, sMinY = (int)height, sMaxX = -1, sMaxY = -1;
+
     if (distPx < stepPx) {
-        paintStamp(p1.x, p1.y, currentBrush);
-        return;
+        paintStamp(p1.x, p1.y, currentBrush, &sMinX, &sMinY, &sMaxX, &sMaxY);
+        updateBounds(sMinX, sMinY, sMaxX, sMaxY);
+    } else {
+        int steps = static_cast<int>(std::ceil(distPx / stepPx));
+        for (int i = 1; i <= steps; ++i) {
+            float t = static_cast<float>(i) / static_cast<float>(steps);
+            glm::vec2 pt = glm::mix(p0, p1, t);
+            paintStamp(pt.x, pt.y, currentBrush, &sMinX, &sMinY, &sMaxX, &sMaxY);
+            updateBounds(sMinX, sMinY, sMaxX, sMaxY);
+        }
     }
 
-    int steps = static_cast<int>(std::ceil(distPx / stepPx));
-    for (int i = 1; i <= steps; ++i) {
-        float t = static_cast<float>(i) / static_cast<float>(steps);
-        glm::vec2 pt = glm::mix(p0, p1, t);
-        paintStamp(pt.x, pt.y, currentBrush);
-    }
+    if (outMinX && lineMinX <= lineMaxX) *outMinX = lineMinX;
+    if (outMinY && lineMinY <= lineMaxY) *outMinY = lineMinY;
+    if (outMaxX && lineMinX <= lineMaxX) *outMaxX = lineMaxX;
+    if (outMaxY && lineMinY <= lineMaxY) *outMaxY = lineMaxY;
 }
 
 } // namespace REMoAINTER

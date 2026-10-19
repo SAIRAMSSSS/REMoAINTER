@@ -20,6 +20,14 @@ public:
     std::vector<uint8_t> compositedNormal;
 
     bool isDirty = true;
+    bool fullDirty = true;
+    int dirtyMinX = 0;
+    int dirtyMinY = 0;
+    int dirtyMaxX = 0;
+    int dirtyMaxY = 0;
+
+    void markDirtyRect(int minX, int minY, int maxX, int maxY);
+    void markFullDirty();
 
     LayerStack(uint32_t w = 1024, uint32_t h = 1024);
 
@@ -33,6 +41,7 @@ public:
 
     void resize(uint32_t w, uint32_t h);
     void composite();
+    void compositeRect(int minX, int minY, int maxX, int maxY);
 };
 
 } // namespace REMoAINTER

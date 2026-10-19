@@ -54,8 +54,10 @@ public:
     void resize(uint32_t w, uint32_t h);
     void clear();
 
-    void paintStamp(float uvX, float uvY, const Brush& brush);
-    void paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush);
+    void paintStamp(float uvX, float uvY, const Brush& brush,
+                    int* outMinX = nullptr, int* outMinY = nullptr, int* outMaxX = nullptr, int* outMaxY = nullptr);
+    void paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush,
+                   int* outMinX = nullptr, int* outMinY = nullptr, int* outMaxX = nullptr, int* outMaxY = nullptr);
 };
 
 } // namespace REMoAINTER

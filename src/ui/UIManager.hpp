@@ -61,11 +61,18 @@ public:
     int textureResolution = 2048; // Default 2048 matches screenshot
     std::string textureSetName = "Head (Main shader)";
 
+    // UI & Layout state
+    bool requestLayoutReset = false;
+    bool showAboutModal = false;
+    ImTextureID logoTextureID = 0;
+
     void render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, Camera& camera,
                 bool isMeshHovered, const glm::vec2& hoveredUV,
+                ImTextureID logoTexture,
                 std::function<void()> onTriggerComposite);
 
 private:
+    void setupDefaultDockLayout(ImGuiID dockspaceId, const ImVec2& workSize);
     void renderMainMenuBar(LayerStack& layerStack);
     void renderTopControlBar(Brush& brush);
     void renderLeftToolbar(Brush& brush);
@@ -75,8 +82,11 @@ private:
     void renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
     void renderStatusBar();
     void renderExportDialog(const LayerStack& layerStack);
+    void renderAboutDialog();
 
-    // Dynamic Preview Helpers
+    // Tool Icon & Dynamic Preview Helpers
+    void drawToolButton(ToolMode mode, const char* id, const char* label, const char* tooltip, const char* shortcut, bool active, std::function<void()> onClick);
+    void drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, ToolMode mode, bool active);
     void drawStrokePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const Brush& brush);
     void drawMaterialSpherePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const glm::vec4& color, float metallic, float roughness);
     void drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness);

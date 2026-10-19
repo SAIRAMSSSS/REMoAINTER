@@ -24,6 +24,13 @@ void Camera::zoom(float deltaDistance) {
     distance = std::clamp(distance, minDistance, maxDistance);
 }
 
+void Camera::resetToFocus(float dist) {
+    target = glm::vec3(0.0f);
+    distance = std::clamp(dist, minDistance, maxDistance);
+    yaw = 45.0f;
+    pitch = 20.0f;
+}
+
 glm::vec3 Camera::getPosition() const {
     float radYaw = glm::radians(yaw);
     float radPitch = glm::radians(pitch);

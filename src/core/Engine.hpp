@@ -92,7 +92,35 @@ private:
     Texture metallicRoughnessTexture;
     Texture normalTexture;
 
-    // Mouse / Interaction tracking
+    // Logo & branding texture for ImGui
+    Texture logoTexture;
+    VkDescriptorSet logoDescriptorSet = VK_NULL_HANDLE;
+
+    // Persistent Zero-Allocation Staging Buffers
+    VkBuffer stagingBufferBaseColor = VK_NULL_HANDLE;
+    VkDeviceMemory stagingBufferBaseColorMemory = VK_NULL_HANDLE;
+    void* mappedBaseColor = nullptr;
+
+    VkBuffer stagingBufferMR = VK_NULL_HANDLE;
+    VkDeviceMemory stagingBufferMRMemory = VK_NULL_HANDLE;
+    void* mappedMR = nullptr;
+
+    VkBuffer stagingBufferNormal = VK_NULL_HANDLE;
+    VkDeviceMemory stagingBufferNormalMemory = VK_NULL_HANDLE;
+    void* mappedNormal = nullptr;
+
+    VkCommandBuffer textureTransferCmd = VK_NULL_HANDLE;
+
+    // Mouse & Camera Navigation State Machine
+    enum class NavMode {
+        None,
+        Orbit,
+        Pan,
+        Zoom,
+        EnvRotate
+    };
+    NavMode navMode = NavMode::None;
+
     double lastMouseX = 0.0;
     double lastMouseY = 0.0;
     bool isPainting = false;

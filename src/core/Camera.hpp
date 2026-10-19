@@ -21,6 +21,7 @@ public:
     void orbit(float deltaYaw, float deltaPitch);
     void pan(float deltaX, float deltaY);
     void zoom(float deltaDistance);
+    void resetToFocus(float dist = 3.5f);
 
     glm::vec3 getPosition() const;
     glm::mat4 getViewMatrix() const;
