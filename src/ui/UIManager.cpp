@@ -5,6 +5,8 @@
 #include <cmath>
 #include <algorithm>
 #include <cstring>
+#include <vector>
+#include <string>
 
 namespace REMoAINTER {
 
@@ -15,44 +17,50 @@ void UIManager::setupDefaultDockLayout(ImGuiID dockspaceId, const ImVec2& workSi
 
     ImGuiID dockMain = dockspaceId;
     ImGuiID dockTop = 0;
+    ImGuiID dockRightStrip = 0;
+    ImGuiID dockRight = 0;
     ImGuiID dockLeftToolbar = 0;
     ImGuiID dockLeftShelf = 0;
-    ImGuiID dockRight = 0;
     ImGuiID dockRightTop = 0;
     ImGuiID dockRightMid = 0;
     ImGuiID dockRightBottom = 0;
 
-    // 1. Top Bar: split top 38px
-    float topBarRatio = 38.0f / std::max(1.0f, workSize.y);
+    // 1. Top Context Control Bar: split top 36px
+    float topBarRatio = 36.0f / std::max(1.0f, workSize.y);
     ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Up, topBarRatio, &dockTop, &dockMain);
 
-    // 2. Far-left narrow toolbar strip (48px)
-    float leftToolbarRatio = 48.0f / std::max(1.0f, workSize.x);
-    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, leftToolbarRatio, &dockLeftToolbar, &dockMain);
+    // 2. Far-right narrow dock strip (32px)
+    float rightStripRatio = 32.0f / std::max(1.0f, workSize.x);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, rightStripRatio, &dockRightStrip, &dockMain);
 
-    // 3. Asset Shelf (280px)
-    float shelfRatio = 280.0f / std::max(1.0f, workSize.x - 48.0f);
-    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, shelfRatio, &dockLeftShelf, &dockMain);
-
-    // 4. Right side panel stack (330px)
-    float rightRatio = 330.0f / std::max(1.0f, workSize.x - 48.0f - 280.0f);
+    // 3. Right side panels (310px)
+    float rightRatio = 310.0f / std::max(1.0f, workSize.x - 32.0f);
     ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, rightRatio, &dockRight, &dockMain);
 
-    // 5. Split right side vertically:
-    // Top: TEXTURE SET LIST (22%)
-    // Mid: LAYERS (44%)
-    // Bottom: PROPERTIES - PAINT (34%)
-    ImGuiID dockRightRest = 0;
-    ImGui::DockBuilderSplitNode(dockRight, ImGuiDir_Up, 0.22f, &dockRightTop, &dockRightRest);
-    ImGui::DockBuilderSplitNode(dockRightRest, ImGuiDir_Up, 0.52f, &dockRightMid, &dockRightBottom);
+    // 4. Far-left narrow toolbar strip (36px)
+    float leftToolbarRatio = 36.0f / std::max(1.0f, workSize.x - 342.0f);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, leftToolbarRatio, &dockLeftToolbar, &dockMain);
 
-    // 6. Dock windows into designated nodes:
+    // 5. Asset Shelf (270px)
+    float shelfRatio = 270.0f / std::max(1.0f, workSize.x - 378.0f);
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, shelfRatio, &dockLeftShelf, &dockMain);
+
+    // 6. Split right side vertically:
+    // Top: TEXTURE SET LIST (18%)
+    // Mid: LAYERS (54%)
+    // Bottom: PROPERTIES - PAINT (28%)
+    ImGuiID dockRightRest = 0;
+    ImGui::DockBuilderSplitNode(dockRight, ImGuiDir_Up, 0.18f, &dockRightTop, &dockRightRest);
+    ImGui::DockBuilderSplitNode(dockRightRest, ImGuiDir_Up, 0.54f, &dockRightMid, &dockRightBottom);
+
+    // 7. Dock windows into designated nodes:
     ImGui::DockBuilderDockWindow("TopBar##ControlBar", dockTop);
     ImGui::DockBuilderDockWindow("Tools##LeftToolbar", dockLeftToolbar);
     ImGui::DockBuilderDockWindow("ASSETS", dockLeftShelf);
     ImGui::DockBuilderDockWindow("TEXTURE SET LIST", dockRightTop);
     ImGui::DockBuilderDockWindow("LAYERS", dockRightMid);
     ImGui::DockBuilderDockWindow("PROPERTIES - PAINT", dockRightBottom);
+    ImGui::DockBuilderDockWindow("RightStrip##DockStrip", dockRightStrip);
 
     ImGui::DockBuilderFinish(dockspaceId);
 }
@@ -64,9 +72,9 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
 
     logoTextureID = logoTexture;
 
-    // Setup Main DockSpace Window across entire application (leaving 24px for bottom status bar)
+    // Setup Main DockSpace Window across entire application (leaving 22px for bottom status bar)
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 dockspaceSize(viewport->WorkSize.x, viewport->WorkSize.y - 24.0f);
+    ImVec2 dockspaceSize(viewport->WorkSize.x, viewport->WorkSize.y - 22.0f);
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(dockspaceSize);
     ImGui::SetNextWindowViewport(viewport->ID);
@@ -101,6 +109,8 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
     renderTextureSetList(layerStack);
     renderLayerStack(layerStack, brush, onTriggerComposite);
     renderPropertiesPanel(layerStack, brush, onTriggerComposite);
+    renderRightDockStrip();
+    renderViewportOverlay(camera);
     renderStatusBar();
     renderExportDialog(layerStack);
     renderAboutDialog();
@@ -110,26 +120,37 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
 
 void UIManager::renderMainMenuBar(LayerStack& layerStack) {
     if (ImGui::BeginMenuBar()) {
-        // Authentic REMoAINTER Brand Badge with Logo
+        // Substance Brand Badge / Logo
         if (logoTextureID) {
-            ImGui::Image(logoTextureID, ImVec2(20, 20));
+            ImGui::Image(logoTextureID, ImVec2(18, 18));
             ImGui::SameLine();
         } else {
             ImDrawList* menuDraw = ImGui::GetWindowDrawList();
             ImVec2 p = ImGui::GetCursorScreenPos();
-            menuDraw->AddRectFilled(ImVec2(p.x, p.y + 2), ImVec2(p.x + 20, p.y + 20), IM_COL32(235, 115, 20, 255), 3.0f);
-            menuDraw->AddText(ImVec2(p.x + 4, p.y + 3), IM_COL32(255, 255, 255, 255), "Pt");
-            ImGui::Dummy(ImVec2(24, 20));
+            menuDraw->AddRectFilled(ImVec2(p.x, p.y + 2), ImVec2(p.x + 18, p.y + 20), IM_COL32(239, 126, 34, 255), 3.0f);
+            menuDraw->AddText(ImVec2(p.x + 3, p.y + 3), IM_COL32(255, 255, 255, 255), "Pt");
+            ImGui::Dummy(ImVec2(22, 18));
             ImGui::SameLine();
         }
 
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Project...", "Ctrl+N")) {
                 layerStack.layers.clear();
-                layerStack.addFillLayer("Base Material", glm::vec4(0.82f, 0.82f, 0.84f, 1.0f));
+                layerStack.addFillLayer("Base", glm::vec4(0.82f, 0.82f, 0.84f, 1.0f));
                 layerStack.addPaintLayer("Layer 1");
+                layerStack.addFolder("Scattering");
+                layerStack.addFolder("Color");
+                layerStack.addFolder("Roughness");
+                layerStack.addFolder("Final Touches");
+                layerStack.activeLayerIndex = 1;
                 layerStack.composite();
                 statusMessage = "Created New Project";
+            }
+            if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+                statusMessage = "Open project dialog";
+            }
+            if (ImGui::MenuItem("Save", "Ctrl+S")) {
+                statusMessage = "Project saved";
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Export Textures...", "Ctrl+Shift+E")) {
@@ -154,13 +175,21 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
                     statusMessage = "Cleared active layer";
                 }
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Settings...")) {
+                statusMessage = "Settings dialog";
+            }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Mode")) {
-            if (ImGui::MenuItem("Paint Mode", "1", activeTool == ToolMode::Brush)) activeTool = ToolMode::Brush;
-            if (ImGui::MenuItem("Eraser Mode", "2", activeTool == ToolMode::Eraser)) activeTool = ToolMode::Eraser;
-            if (ImGui::MenuItem("Fill Mode", "4", activeTool == ToolMode::PolygonFill)) activeTool = ToolMode::PolygonFill;
+            if (ImGui::MenuItem("Paint", "1", activeTool == ToolMode::Brush)) activeTool = ToolMode::Brush;
+            if (ImGui::MenuItem("Eraser", "2", activeTool == ToolMode::Eraser)) activeTool = ToolMode::Eraser;
+            if (ImGui::MenuItem("Projection", "3", activeTool == ToolMode::Projection)) activeTool = ToolMode::Projection;
+            if (ImGui::MenuItem("Polygon Fill", "4", activeTool == ToolMode::PolygonFill)) activeTool = ToolMode::PolygonFill;
+            if (ImGui::MenuItem("Smudge", "5", activeTool == ToolMode::Smudge)) activeTool = ToolMode::Smudge;
+            if (ImGui::MenuItem("Clone Stamp", "6", activeTool == ToolMode::Clone)) activeTool = ToolMode::Clone;
+            if (ImGui::MenuItem("Eyedropper", "I", activeTool == ToolMode::Eyedropper)) activeTool = ToolMode::Eyedropper;
             ImGui::EndMenu();
         }
 
@@ -169,16 +198,21 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
                 requestLayoutReset = true;
                 statusMessage = "Layout reset to default";
             }
+            ImGui::Separator();
+            ImGui::MenuItem("Views: Assets", nullptr, true);
+            ImGui::MenuItem("Views: Layers", nullptr, true);
+            ImGui::MenuItem("Views: Texture Set List", nullptr, true);
+            ImGui::MenuItem("Views: Properties", nullptr, true);
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Viewport")) {
             if (ImGui::MenuItem("Material (Lit)", "M", displayChannel == 0)) displayChannel = 0;
             if (ImGui::MenuItem("Base Color (Solo)", "C", displayChannel == 1)) displayChannel = 1;
-            if (ImGui::MenuItem("Roughness (Solo)", nullptr, displayChannel == 2)) displayChannel = 2;
-            if (ImGui::MenuItem("Metallic (Solo)", nullptr, displayChannel == 3)) displayChannel = 3;
-            if (ImGui::MenuItem("Normal (Solo)", nullptr, displayChannel == 4)) displayChannel = 4;
-            if (ImGui::MenuItem("Lighting Only", nullptr, displayChannel == 5)) displayChannel = 5;
+            if (ImGui::MenuItem("Roughness (Solo)", "B", displayChannel == 2)) displayChannel = 2;
+            if (ImGui::MenuItem("Metallic (Solo)", "M", displayChannel == 3)) displayChannel = 3;
+            if (ImGui::MenuItem("Normal (Solo)", "N", displayChannel == 4)) displayChannel = 4;
+            if (ImGui::MenuItem("Lighting Only", "L", displayChannel == 5)) displayChannel = 5;
             ImGui::EndMenu();
         }
 
@@ -209,6 +243,7 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
 
         if (ImGui::BeginMenu("Python")) {
             ImGui::MenuItem("Script Editor");
+            ImGui::MenuItem("Documentation");
             ImGui::EndMenu();
         }
 
@@ -218,15 +253,15 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
         }
 
         if (ImGui::BeginMenu("Help")) {
-            if (ImGui::MenuItem("About REMoAINTER...")) {
+            if (ImGui::MenuItem("About Adobe Substance 3D Painter...")) {
                 showAboutModal = true;
             }
             ImGui::EndMenu();
         }
 
-        // Top-right brand watermark
-        ImGui::SameLine(ImGui::GetWindowWidth() - 280);
-        ImGui::TextColored(ImVec4(0.95f, 0.48f, 0.15f, 1.0f), "REMoAINTER");
+        // Top-right brand watermark matching Substance Painter
+        ImGui::SameLine(ImGui::GetWindowWidth() - 320);
+        ImGui::TextColored(ImVec4(0.94f, 0.49f, 0.13f, 1.0f), "Substance 3D Painter");
         ImGui::SameLine();
         ImGui::TextDisabled("| %s", statusMessage.c_str());
 
@@ -240,12 +275,16 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::SetNextWindowClass(&window_class);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 4));
     ImGui::Begin("TopBar##ControlBar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
 
-    // Quick Undo / Redo
-    if (ImGui::Button("Undo")) statusMessage = "Undo";
+    // Quick Undo / Redo buttons with vector arrows
+    if (ImGui::Button("<##Undo", ImVec2(24, 24))) { statusMessage = "Undo"; }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Undo (Ctrl+Z)");
     ImGui::SameLine();
-    if (ImGui::Button("Redo")) statusMessage = "Redo";
+    if (ImGui::Button(">##Redo", ImVec2(24, 24))) { statusMessage = "Redo"; }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Redo (Ctrl+Y)");
+
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
@@ -253,13 +292,13 @@ void UIManager::renderTopControlBar(Brush& brush) {
     // Size Slider + Pen Pressure Toggle
     ImGui::Text("Size");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(80);
+    ImGui::SetNextItemWidth(75);
     ImGui::SliderFloat("##topsize", &brush.size, 1.0f, 128.0f, "%.0f");
     ImGui::SameLine();
-    if (ImGui::Button(brush.penPressure ? "[P:ON]" : "[P:OFF]")) {
+    if (ImGui::Button(brush.penPressure ? "[P]" : "[ ]", ImVec2(24, 24))) {
         brush.penPressure = !brush.penPressure;
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Simulate Pressure Sensitivity");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Pen Pressure Sensitivity");
 
     ImGui::SameLine();
     ImGui::TextDisabled("|");
@@ -268,7 +307,7 @@ void UIManager::renderTopControlBar(Brush& brush) {
     // Flow
     ImGui::Text("Flow");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(70);
+    ImGui::SetNextItemWidth(65);
     float flowPercent = brush.flow * 100.0f;
     if (ImGui::SliderFloat("##topflow", &flowPercent, 1.0f, 100.0f, "%.0f")) {
         brush.flow = flowPercent / 100.0f;
@@ -277,7 +316,7 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::SameLine();
     ImGui::Text("Stroke opacity");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(70);
+    ImGui::SetNextItemWidth(65);
     float opPercent = brush.opacity * 100.0f;
     if (ImGui::SliderFloat("##topop", &opPercent, 1.0f, 100.0f, "%.0f")) {
         brush.opacity = opPercent / 100.0f;
@@ -286,7 +325,7 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::SameLine();
     ImGui::Text("Spacing");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(65);
+    ImGui::SetNextItemWidth(60);
     if (ImGui::SliderFloat("##topspacing", &strokeSpacing, 1.0f, 100.0f, "%.0f")) {
         brush.spacing = strokeSpacing / 100.0f;
     }
@@ -294,9 +333,9 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::SameLine();
     ImGui::Text("Angle");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(65);
+    ImGui::SetNextItemWidth(60);
     float angleDeg = brush.angle * (180.0f / 3.14159265f);
-    if (ImGui::SliderFloat("##topangle", &angleDeg, 0.0f, 360.0f, "%.0f deg")) {
+    if (ImGui::SliderFloat("##topangle", &angleDeg, 0.0f, 360.0f, "%.0f")) {
         brush.angle = angleDeg * (3.14159265f / 180.0f);
     }
 
@@ -305,17 +344,19 @@ void UIManager::renderTopControlBar(Brush& brush) {
     ImGui::SameLine();
 
     // Symmetry & Lazy Mouse
-    if (ImGui::Button(symmetryX ? "[Symmetry: ON]" : "[Symmetry: OFF]")) {
+    if (ImGui::Button(symmetryX ? "[Sym: ON]" : "[Sym: OFF]")) {
         symmetryX = !symmetryX;
     }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("X-Axis Symmetry Toggle");
+
     ImGui::SameLine();
-    if (ImGui::Button(brush.lazyMouse ? "[LazyMouse: ON]" : "[LazyMouse: OFF]")) {
+    if (ImGui::Button(brush.lazyMouse ? "[Lazy: ON]" : "[Lazy: OFF]")) {
         brush.lazyMouse = !brush.lazyMouse;
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Smooth Stroke / Lazy Mouse Interpolation");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Lazy Mouse Stroke Smoothing");
 
-    // Right side: Lighting Preset & Viewport Mode dropdown
-    float rightWidth = 330.0f;
+    // Right-aligned lighting and channel selectors
+    float rightWidth = 320.0f;
     float targetX = ImGui::GetWindowWidth() - rightWidth;
     if (ImGui::GetCursorPosX() < targetX) {
         ImGui::SameLine(targetX);
@@ -324,41 +365,41 @@ void UIManager::renderTopControlBar(Brush& brush) {
     }
     ImGui::Text("Lighting:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(115);
+    ImGui::SetNextItemWidth(110);
     const char* envs[] = { "Studio Neutral", "Warm & Cool", "Cyberpunk", "Forest", "Desert" };
     ImGui::Combo("##topEnv", &environmentPreset, envs, IM_ARRAYSIZE(envs));
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(105);
+    ImGui::SetNextItemWidth(100);
     const char* channels[] = { "Material", "Base Color", "Roughness", "Metallic", "Normal", "Lighting Only" };
     ImGui::Combo("##topChannel", &displayChannel, channels, IM_ARRAYSIZE(channels));
 
     ImGui::End();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleVar(2);
 }
 
 void UIManager::drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, ToolMode mode, bool active) {
     float cx = (pMin.x + pMax.x) * 0.5f;
     float cy = (pMin.y + pMax.y) * 0.5f;
 
-    ImU32 iconColor = active ? IM_COL32(255, 255, 255, 255) : IM_COL32(210, 215, 225, 255);
-    ImU32 accentColor = active ? IM_COL32(255, 220, 100, 255) : IM_COL32(235, 120, 30, 255);
+    ImU32 iconColor = active ? IM_COL32(255, 255, 255, 255) : IM_COL32(200, 200, 200, 255);
+    ImU32 accentColor = active ? IM_COL32(255, 220, 100, 255) : IM_COL32(239, 126, 34, 255);
 
     switch (mode) {
         case ToolMode::Brush: {
             // Paint Brush: wooden handle, metal ferrule, bristle tip
-            drawList->AddLine(ImVec2(cx + 9, cy - 9), ImVec2(cx - 1, cy + 1), IM_COL32(215, 175, 120, 255), 3.0f);
+            drawList->AddLine(ImVec2(cx + 8, cy - 8), ImVec2(cx - 1, cy + 1), IM_COL32(215, 175, 120, 255), 3.0f);
             drawList->AddLine(ImVec2(cx - 1, cy + 1), ImVec2(cx - 4, cy + 4), IM_COL32(190, 195, 205, 255), 3.5f);
-            drawList->AddTriangleFilled(ImVec2(cx - 3, cy + 6), ImVec2(cx - 6, cy + 3), ImVec2(cx - 10, cy + 10), accentColor);
+            drawList->AddTriangleFilled(ImVec2(cx - 3, cy + 5), ImVec2(cx - 5, cy + 3), ImVec2(cx - 9, cy + 9), accentColor);
             break;
         }
         case ToolMode::Eraser: {
             // Eraser: angled two-tone rubber block
             ImVec2 pts[4] = {
-                ImVec2(cx - 7, cy - 4),
-                ImVec2(cx + 3, cy - 9),
-                ImVec2(cx + 8, cy + 3),
-                ImVec2(cx - 2, cy + 8)
+                ImVec2(cx - 6, cy - 4),
+                ImVec2(cx + 3, cy - 8),
+                ImVec2(cx + 7, cy + 3),
+                ImVec2(cx - 2, cy + 7)
             };
             drawList->AddConvexPolyFilled(pts, 4, IM_COL32(230, 140, 160, 255));
             drawList->AddLine(ImVec2(cx, cy - 1), ImVec2(cx + 3, cy + 5), IM_COL32(255, 255, 255, 200), 1.5f);
@@ -367,59 +408,59 @@ void UIManager::drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImV
         }
         case ToolMode::Projection: {
             // Camera projector icon with projection frustum
-            drawList->AddRectFilled(ImVec2(cx - 8, cy - 5), ImVec2(cx + 2, cy + 5), iconColor, 2.0f);
-            drawList->AddCircleFilled(ImVec2(cx - 3, cy), 2.5f, IM_COL32(40, 44, 52, 255));
-            drawList->AddTriangleFilled(ImVec2(cx + 2, cy - 2), ImVec2(cx + 8, cy - 7), ImVec2(cx + 8, cy + 7), accentColor);
+            drawList->AddRectFilled(ImVec2(cx - 7, cy - 5), ImVec2(cx + 2, cy + 5), iconColor, 2.0f);
+            drawList->AddCircleFilled(ImVec2(cx - 2, cy), 2.2f, IM_COL32(40, 44, 52, 255));
+            drawList->AddTriangleFilled(ImVec2(cx + 2, cy - 2), ImVec2(cx + 7, cy - 6), ImVec2(cx + 7, cy + 6), accentColor);
             break;
         }
         case ToolMode::PolygonFill: {
             // Paint bucket with falling paint drop
             ImVec2 bPts[4] = {
-                ImVec2(cx - 6, cy - 6),
-                ImVec2(cx + 2, cy - 8),
-                ImVec2(cx + 7, cy + 4),
-                ImVec2(cx - 1, cy + 6)
+                ImVec2(cx - 5, cy - 5),
+                ImVec2(cx + 2, cy - 7),
+                ImVec2(cx + 6, cy + 3),
+                ImVec2(cx - 1, cy + 5)
             };
             drawList->AddConvexPolyFilled(bPts, 4, iconColor);
-            drawList->AddLine(ImVec2(cx - 5, cy - 5), ImVec2(cx + 2, cy - 7), accentColor, 2.5f);
-            drawList->AddCircleFilled(ImVec2(cx + 5, cy + 7), 2.5f, accentColor);
+            drawList->AddLine(ImVec2(cx - 4, cy - 4), ImVec2(cx + 2, cy - 6), accentColor, 2.2f);
+            drawList->AddCircleFilled(ImVec2(cx + 5, cy + 6), 2.2f, accentColor);
             break;
         }
         case ToolMode::Smudge: {
             // Fluid smudge swirl
-            drawList->AddBezierCubic(ImVec2(cx - 8, cy + 7), ImVec2(cx - 4, cy - 8),
-                                     ImVec2(cx + 4, cy + 8), ImVec2(cx + 8, cy - 6),
-                                     accentColor, 2.8f);
-            drawList->AddCircleFilled(ImVec2(cx + 8, cy - 6), 2.0f, iconColor);
+            drawList->AddBezierCubic(ImVec2(cx - 7, cy + 6), ImVec2(cx - 3, cy - 7),
+                                     ImVec2(cx + 3, cy + 7), ImVec2(cx + 7, cy - 5),
+                                     accentColor, 2.5f);
+            drawList->AddCircleFilled(ImVec2(cx + 7, cy - 5), 1.8f, iconColor);
             break;
         }
         case ToolMode::Clone: {
             // Rubber Stamp: handle knob and base pad
-            drawList->AddCircleFilled(ImVec2(cx, cy - 6), 3.5f, iconColor);
-            drawList->AddLine(ImVec2(cx, cy - 3), ImVec2(cx, cy + 3), iconColor, 2.5f);
-            drawList->AddRectFilled(ImVec2(cx - 8, cy + 3), ImVec2(cx + 8, cy + 8), accentColor, 1.5f);
+            drawList->AddCircleFilled(ImVec2(cx, cy - 5), 3.0f, iconColor);
+            drawList->AddLine(ImVec2(cx, cy - 2), ImVec2(cx, cy + 3), iconColor, 2.2f);
+            drawList->AddRectFilled(ImVec2(cx - 7, cy + 3), ImVec2(cx + 7, cy + 7), accentColor, 1.5f);
             break;
         }
         case ToolMode::Eyedropper: {
             // Pipette with rubber bulb
-            drawList->AddCircleFilled(ImVec2(cx + 6, cy - 6), 3.5f, accentColor);
-            drawList->AddLine(ImVec2(cx + 4, cy - 4), ImVec2(cx - 6, cy + 6), iconColor, 2.2f);
-            drawList->AddLine(ImVec2(cx - 6, cy + 6), ImVec2(cx - 9, cy + 9), accentColor, 1.5f);
+            drawList->AddCircleFilled(ImVec2(cx + 5, cy - 5), 3.0f, accentColor);
+            drawList->AddLine(ImVec2(cx + 3, cy - 3), ImVec2(cx - 5, cy + 5), iconColor, 2.0f);
+            drawList->AddLine(ImVec2(cx - 5, cy + 5), ImVec2(cx - 8, cy + 8), accentColor, 1.5f);
             break;
         }
     }
 }
 
 void UIManager::drawToolButton(ToolMode mode, const char* id, const char* label, const char* tooltip, const char* shortcut, bool active, std::function<void()> onClick) {
-    ImVec2 btnSize(38, 38);
+    ImVec2 btnSize(28, 28);
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     if (active) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.52f, 0.92f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f)); // Official Substance Blue #1A8DFF
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.60f, 1.0f, 1.0f));
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.31f, 0.36f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.24f, 0.24f, 1.0f));
     }
 
     ImVec2 pMin = ImGui::GetCursorScreenPos();
@@ -449,12 +490,12 @@ void UIManager::renderLeftToolbar(Brush& brush) {
     ImGui::SetNextWindowClass(&window_class);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 6));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 6));
-    ImGui::Begin("Tools##LeftToolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+    ImGui::Begin("Tools##LeftToolbar", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
 
     // 1. Paint Tool
     bool isPaint = (activeTool == ToolMode::Brush && !brush.isEraser);
-    drawToolButton(ToolMode::Brush, "##btnPaint", "Paint", "Paint Brush Tool", "1", isPaint, [&]() {
+    drawToolButton(ToolMode::Brush, "##btnPaint", "Paint", "Paint Brush", "1", isPaint, [&]() {
         activeTool = ToolMode::Brush;
         brush.isEraser = false;
         statusMessage = "Paint Tool Active (1)";
@@ -462,38 +503,38 @@ void UIManager::renderLeftToolbar(Brush& brush) {
 
     // 2. Eraser Tool
     bool isEraser = (activeTool == ToolMode::Eraser || brush.isEraser);
-    drawToolButton(ToolMode::Eraser, "##btnEraser", "Eraser", "Eraser Tool", "2", isEraser, [&]() {
+    drawToolButton(ToolMode::Eraser, "##btnEraser", "Eraser", "Eraser", "2", isEraser, [&]() {
         activeTool = ToolMode::Eraser;
         brush.isEraser = true;
         statusMessage = "Eraser Tool Active (2)";
     });
 
     // 3. Projection Tool
-    drawToolButton(ToolMode::Projection, "##btnProj", "Projection", "Projection Painting Tool", "3", activeTool == ToolMode::Projection, [&]() {
+    drawToolButton(ToolMode::Projection, "##btnProj", "Projection", "Projection", "3", activeTool == ToolMode::Projection, [&]() {
         activeTool = ToolMode::Projection;
         statusMessage = "Projection Tool Active (3)";
     });
 
     // 4. Polygon Fill Tool
-    drawToolButton(ToolMode::PolygonFill, "##btnFill", "Fill", "Polygon Fill Tool", "4 / F", activeTool == ToolMode::PolygonFill, [&]() {
+    drawToolButton(ToolMode::PolygonFill, "##btnFill", "Fill", "Polygon Fill", "4", activeTool == ToolMode::PolygonFill, [&]() {
         activeTool = ToolMode::PolygonFill;
-        statusMessage = "Polygon Fill Tool Active (4 / F)";
+        statusMessage = "Polygon Fill Tool Active (4)";
     });
 
     // 5. Smudge Tool
-    drawToolButton(ToolMode::Smudge, "##btnSmudge", "Smudge", "Smudge Blending Tool", "5", activeTool == ToolMode::Smudge, [&]() {
+    drawToolButton(ToolMode::Smudge, "##btnSmudge", "Smudge", "Smudge", "5", activeTool == ToolMode::Smudge, [&]() {
         activeTool = ToolMode::Smudge;
         statusMessage = "Smudge Tool Active (5)";
     });
 
     // 6. Clone Stamp Tool
-    drawToolButton(ToolMode::Clone, "##btnClone", "Clone", "Clone Stamp Tool", "6", activeTool == ToolMode::Clone, [&]() {
+    drawToolButton(ToolMode::Clone, "##btnClone", "Clone", "Clone", "6", activeTool == ToolMode::Clone, [&]() {
         activeTool = ToolMode::Clone;
         statusMessage = "Clone Tool Active (6)";
     });
 
     // 7. Eyedropper Tool
-    drawToolButton(ToolMode::Eyedropper, "##btnPick", "Pick", "Material & Color Eyedropper", "I", activeTool == ToolMode::Eyedropper, [&]() {
+    drawToolButton(ToolMode::Eyedropper, "##btnPick", "Pick", "Color Eyedropper", "I", activeTool == ToolMode::Eyedropper, [&]() {
         activeTool = ToolMode::Eyedropper;
         statusMessage = "Eyedropper Tool Active (I)";
     });
@@ -503,14 +544,14 @@ void UIManager::renderLeftToolbar(Brush& brush) {
     // Symmetry Button
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     ImVec2 pMin = ImGui::GetCursorScreenPos();
-    ImVec2 pMax = ImVec2(pMin.x + 38, pMin.y + 38);
+    ImVec2 pMax = ImVec2(pMin.x + 28, pMin.y + 28);
 
     if (symmetryX) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
     }
-    if (ImGui::Button("##btnSymmetry", ImVec2(38, 38))) {
+    if (ImGui::Button("##btnSymmetry", ImVec2(28, 28))) {
         symmetryX = !symmetryX;
         statusMessage = symmetryX ? "Symmetry Enabled" : "Symmetry Disabled";
     }
@@ -518,9 +559,9 @@ void UIManager::renderLeftToolbar(Brush& brush) {
 
     float scx = (pMin.x + pMax.x) * 0.5f;
     float scy = (pMin.y + pMax.y) * 0.5f;
-    drawList->AddLine(ImVec2(scx, scy - 8), ImVec2(scx, scy + 8), IM_COL32(255, 255, 255, 255), 1.5f);
-    drawList->AddTriangleFilled(ImVec2(scx - 2, scy), ImVec2(scx - 7, scy - 4), ImVec2(scx - 7, scy + 4), IM_COL32(235, 120, 30, 255));
-    drawList->AddTriangleFilled(ImVec2(scx + 2, scy), ImVec2(scx + 7, scy - 4), ImVec2(scx + 7, scy + 4), IM_COL32(235, 120, 30, 255));
+    drawList->AddLine(ImVec2(scx, scy - 7), ImVec2(scx, scy + 7), IM_COL32(255, 255, 255, 255), 1.3f);
+    drawList->AddTriangleFilled(ImVec2(scx - 2, scy), ImVec2(scx - 6, scy - 3), ImVec2(scx - 6, scy + 3), IM_COL32(239, 126, 34, 255));
+    drawList->AddTriangleFilled(ImVec2(scx + 2, scy), ImVec2(scx + 6, scy - 3), ImVec2(scx + 6, scy + 3), IM_COL32(239, 126, 34, 255));
 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("X-Axis Symmetry (%s)", symmetryX ? "ON" : "OFF");
@@ -530,85 +571,339 @@ void UIManager::renderLeftToolbar(Brush& brush) {
     ImGui::PopStyleVar(2);
 }
 
+void UIManager::drawRightStripIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, int iconIndex) {
+    float cx = (pMin.x + pMax.x) * 0.5f;
+    float cy = (pMin.y + pMax.y) * 0.5f;
+    ImU32 col = IM_COL32(185, 185, 185, 255);
+
+    switch (iconIndex) {
+        case 0: { // Settings (Gear)
+            drawList->AddCircle(ImVec2(cx, cy), 4.5f, col, 12, 1.6f);
+            for (int k = 0; k < 6; ++k) {
+                float a = k * (3.14159265f / 3.0f);
+                float x1 = cx + std::cos(a) * 4.5f;
+                float y1 = cy + std::sin(a) * 4.5f;
+                float x2 = cx + std::cos(a) * 7.5f;
+                float y2 = cy + std::sin(a) * 7.5f;
+                drawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), col, 1.8f);
+            }
+            break;
+        }
+        case 1: { // Texture Set List (Two stacked sheets)
+            drawList->AddRect(ImVec2(cx - 5, cy - 6), ImVec2(cx + 2, cy + 3), col, 1.0f, 0, 1.2f);
+            drawList->AddRect(ImVec2(cx - 2, cy - 3), ImVec2(cx + 5, cy + 6), col, 1.0f, 0, 1.2f);
+            break;
+        }
+        case 2: { // Layers (Three stacked layer planes)
+            for (int k = -1; k <= 1; ++k) {
+                float yOff = k * 4.2f;
+                ImVec2 pts[4] = {
+                    ImVec2(cx, cy - 2.8f + yOff),
+                    ImVec2(cx + 6.5f, cy + yOff),
+                    ImVec2(cx, cy + 2.8f + yOff),
+                    ImVec2(cx - 6.5f, cy + yOff)
+                };
+                drawList->AddPolyline(pts, 4, col, ImDrawFlags_Closed, 1.2f);
+            }
+            break;
+        }
+        case 3: { // Display Settings (Monitor)
+            drawList->AddRect(ImVec2(cx - 6, cy - 5), ImVec2(cx + 6, cy + 3), col, 1.0f, 0, 1.2f);
+            drawList->AddLine(ImVec2(cx, cy + 3), ImVec2(cx, cy + 6), col, 1.3f);
+            drawList->AddLine(ImVec2(cx - 3.5f, cy + 6), ImVec2(cx + 3.5f, cy + 6), col, 1.3f);
+            break;
+        }
+        case 4: { // Shader Settings (Sphere with grid lines)
+            drawList->AddCircle(ImVec2(cx, cy), 6.0f, col, 16, 1.2f);
+            drawList->AddLine(ImVec2(cx - 6.0f, cy), ImVec2(cx + 6.0f, cy), col, 1.0f);
+            drawList->AddLine(ImVec2(cx, cy - 6.0f), ImVec2(cx, cy + 6.0f), col, 1.0f);
+            drawList->AddEllipse(ImVec2(cx, cy), ImVec2(2.8f, 6.0f), col, 0.0f, 16, 1.0f);
+            break;
+        }
+        case 5: { // History (Clock)
+            drawList->AddCircle(ImVec2(cx, cy), 6.0f, col, 16, 1.2f);
+            drawList->AddLine(ImVec2(cx, cy), ImVec2(cx, cy - 4.0f), col, 1.4f);
+            drawList->AddLine(ImVec2(cx, cy), ImVec2(cx + 3.0f, cy), col, 1.4f);
+            break;
+        }
+        case 6: { // Log (Terminal Console)
+            drawList->AddRect(ImVec2(cx - 6, cy - 5), ImVec2(cx + 6, cy + 5), col, 1.0f, 0, 1.2f);
+            drawList->AddLine(ImVec2(cx - 4, cy - 2), ImVec2(cx - 2, cy), col, 1.2f);
+            drawList->AddLine(ImVec2(cx - 2, cy), ImVec2(cx - 4, cy + 2), col, 1.2f);
+            drawList->AddLine(ImVec2(cx - 0.5f, cy + 2), ImVec2(cx + 3.5f, cy + 2), col, 1.2f);
+            break;
+        }
+    }
+}
+
+void UIManager::renderRightDockStrip() {
+    ImGuiWindowClass window_class;
+    window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoCloseButton;
+    ImGui::SetNextWindowClass(&window_class);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 6));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, 4));
+
+    ImGui::Begin("RightStrip##DockStrip", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    const char* stripTooltips[] = {
+        "Settings",
+        "Texture Set List",
+        "Layers",
+        "Display Settings",
+        "Shader Settings",
+        "History",
+        "Log"
+    };
+
+    for (int i = 0; i < 7; ++i) {
+        ImGui::PushID(i);
+        ImVec2 pMin = ImGui::GetCursorScreenPos();
+        ImVec2 btnSize(28, 28);
+        ImVec2 pMax(pMin.x + btnSize.x, pMin.y + btnSize.y);
+
+        ImGui::InvisibleButton("##stripBtn", btnSize);
+        bool hovered = ImGui::IsItemHovered();
+        bool clicked = ImGui::IsItemClicked();
+
+        if (hovered) {
+            drawList->AddRectFilled(pMin, pMax, IM_COL32(50, 50, 52, 255), 2.0f);
+            ImGui::SetTooltip("%s", stripTooltips[i]);
+        }
+        if (clicked) {
+            statusMessage = std::string("Toggled ") + stripTooltips[i];
+        }
+
+        drawRightStripIcon(drawList, pMin, pMax, i);
+
+        ImGui::PopID();
+    }
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+}
+
+void UIManager::renderViewportOverlay(Camera& camera) {
+    ImGuiViewport* mainVp = ImGui::GetMainViewport();
+    // Offset inside central viewport: toolbar(36px) + shelf(270px) + padding
+    ImVec2 overlayPos(mainVp->WorkPos.x + 36.0f + 270.0f + 14.0f, mainVp->WorkPos.y + 36.0f + 10.0f);
+    ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.65f);
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                             ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDocking;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 3.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.12f, 0.85f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.24f, 0.24f, 0.24f, 0.8f));
+
+    if (ImGui::Begin("##ViewportOverlay", nullptr, flags)) {
+        ImGui::SetNextItemWidth(105);
+        const char* channels[] = { "Material", "Base Color", "Roughness", "Metallic", "Normal", "Lighting" };
+        ImGui::Combo("##vpChannel", &displayChannel, channels, IM_ARRAYSIZE(channels));
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+
+        if (ImGui::SmallButton("F")) {
+            camera.distance = 2.8f;
+            camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
+            statusMessage = "Camera Reset / Framed";
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Frame Selection (F)");
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("Persp | 50mm");
+    }
+    ImGui::End();
+
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar(2);
+}
+
 void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite) {
     ImGui::Begin("ASSETS", nullptr);
 
-    // Header filter pills
+    // Filter categories row matching Substance Painter
     const char* filters[] = { "All", "Smart Mats", "Materials", "Alphas", "Brushes", "Envs" };
     for (int i = 0; i < 6; ++i) {
         if (i > 0) ImGui::SameLine();
         bool active = (assetFilterCategory == i);
-        if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (active) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        }
         if (ImGui::Button(filters[i])) {
             assetFilterCategory = i;
         }
-        if (active) ImGui::PopStyleColor();
+        if (active) ImGui::PopStyleColor(2);
     }
 
     ImGui::Spacing();
 
-    // Search bar
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 100);
+    // Search bar and library selector
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 90);
     ImGui::InputTextWithHint("##assetSearch", "Search...", assetSearchBuffer, IM_ARRAYSIZE(assetSearchBuffer));
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(90);
+    ImGui::SetNextItemWidth(85);
     const char* libs[] = { "All libs", "Starter", "User" };
     static int currentLib = 0;
     ImGui::Combo("##libs", &currentLib, libs, IM_ARRAYSIZE(libs));
 
     ImGui::Separator();
 
-    if (assetFilterCategory == 1) {
-        // Smart Materials: Instantiate full compound layer hierarchies
-        auto smartMats = PresetLibrary::getSmartMaterials();
-        for (const auto& sm : smartMats) {
-            if (strlen(assetSearchBuffer) > 0) {
-                std::string nameLower = sm.name;
-                std::string searchLower = assetSearchBuffer;
-                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-                std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
-                if (nameLower.find(searchLower) == std::string::npos) continue;
-            }
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    float panelWidth = ImGui::GetContentRegionAvail().x;
+    int columns = std::max(1, (int)(panelWidth / 78.0f));
+    float itemWidth = panelWidth / (float)columns;
+    float sphereRadius = 22.0f;
 
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
-            std::string headerText = "[SM] " + sm.name + " (" + std::to_string(sm.layers.size()) + " layers)";
-            if (ImGui::Button(headerText.c_str(), ImVec2(-1, 32))) {
-                layerStack.layers.clear();
-                for (const auto& lDef : sm.layers) {
-                    if (lDef.isFill) {
-                        layerStack.addFillLayer(lDef.name, lDef.color);
-                        auto act = layerStack.getActiveLayer();
-                        if (act) {
-                            act->fillMetallic = lDef.metallic;
-                            act->fillRoughness = lDef.roughness;
-                            act->opacity = lDef.opacity;
-                            if (lDef.blendMode == "Mult") act->blendMode = BlendMode::Multiply;
-                            else if (lDef.blendMode == "Screen") act->blendMode = BlendMode::Screen;
-                            else if (lDef.blendMode == "Over") act->blendMode = BlendMode::Overlay;
-                            else if (lDef.blendMode == "Add") act->blendMode = BlendMode::LinearAdd;
-                            else act->blendMode = BlendMode::Normal;
-                        }
-                    } else {
-                        layerStack.addPaintLayer(lDef.name);
-                        auto act = layerStack.getActiveLayer();
-                        if (act) {
-                            act->opacity = lDef.opacity;
+    if (assetFilterCategory == 0 || assetFilterCategory == 1 || assetFilterCategory == 2) {
+        // Grid of 3D Material / Smart Material thumbnails
+        int itemIndex = 0;
+
+        // 1. Smart Materials
+        if (assetFilterCategory == 0 || assetFilterCategory == 1) {
+            auto smartMats = PresetLibrary::getSmartMaterials();
+            for (const auto& sm : smartMats) {
+                if (strlen(assetSearchBuffer) > 0) {
+                    std::string nameLower = sm.name;
+                    std::string searchLower = assetSearchBuffer;
+                    std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                    std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                    if (nameLower.find(searchLower) == std::string::npos) continue;
+                }
+
+                if (itemIndex % columns != 0) ImGui::SameLine();
+
+                ImGui::BeginGroup();
+                ImVec2 curPos = ImGui::GetCursorScreenPos();
+                ImVec2 sphereCenter(curPos.x + itemWidth * 0.5f, curPos.y + sphereRadius + 4.0f);
+
+                ImGui::InvisibleButton(sm.name.c_str(), ImVec2(itemWidth - 4.0f, sphereRadius * 2.0f + 24.0f));
+                bool isHovered = ImGui::IsItemHovered();
+                bool isClicked = ImGui::IsItemClicked();
+
+                // Get representative color from bottom layer
+                glm::vec4 repCol = sm.layers.empty() ? glm::vec4(0.8f, 0.8f, 0.8f, 1.0f) : sm.layers[0].color;
+                float repMetal = sm.layers.empty() ? 0.0f : sm.layers[0].metallic;
+                float repRough = sm.layers.empty() ? 0.4f : sm.layers[0].roughness;
+
+                // Draw 3D Sphere with Orange Smart Material Badge (badgeType = 1)
+                drawShelfMaterialThumbnail(drawList, sphereCenter, sphereRadius, repCol, repMetal, repRough, 1);
+
+                if (isHovered) {
+                    drawList->AddCircle(sphereCenter, sphereRadius + 2.0f, IM_COL32(239, 126, 34, 255), 0, 2.0f);
+                    ImGui::SetTooltip("[Smart Material] %s\nCategory: %s\nCompound: %zu layers",
+                                      sm.name.c_str(), sm.category.c_str(), sm.layers.size());
+                }
+
+                if (isClicked) {
+                    layerStack.layers.clear();
+                    for (const auto& lDef : sm.layers) {
+                        if (lDef.isFill) {
+                            layerStack.addFillLayer(lDef.name, lDef.color);
+                            auto act = layerStack.getActiveLayer();
+                            if (act) {
+                                act->fillMetallic = lDef.metallic;
+                                act->fillRoughness = lDef.roughness;
+                                act->opacity = lDef.opacity;
+                                if (lDef.blendMode == "Mult") act->blendMode = BlendMode::Multiply;
+                                else if (lDef.blendMode == "Screen") act->blendMode = BlendMode::Screen;
+                                else if (lDef.blendMode == "Over") act->blendMode = BlendMode::Overlay;
+                                else if (lDef.blendMode == "Add") act->blendMode = BlendMode::LinearAdd;
+                                else act->blendMode = BlendMode::Normal;
+                            }
+                        } else {
+                            layerStack.addPaintLayer(lDef.name);
+                            auto act = layerStack.getActiveLayer();
+                            if (act) act->opacity = lDef.opacity;
                         }
                     }
+                    layerStack.composite();
+                    if (onTriggerComposite) onTriggerComposite();
+                    statusMessage = "Loaded Smart Material: " + sm.name;
                 }
-                layerStack.composite();
-                if (onTriggerComposite) onTriggerComposite();
-                statusMessage = "Loaded Smart Material: " + sm.name;
+
+                std::string label = sm.name;
+                if (label.length() > 9) label = label.substr(0, 8) + "...";
+                float textWidth = ImGui::CalcTextSize(label.c_str()).x;
+                ImGui::SetCursorScreenPos(ImVec2(curPos.x + (itemWidth - textWidth) * 0.5f, curPos.y + sphereRadius * 2.0f + 6.0f));
+                ImGui::TextDisabled("%s", label.c_str());
+
+                ImGui::EndGroup();
+                itemIndex++;
             }
-            ImGui::PopStyleColor();
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Category: %s\nClick to instantiate authentic %zu-layer compound hierarchy",
-                                  sm.category.c_str(), sm.layers.size());
+        }
+
+        // 2. Standard Materials
+        if (assetFilterCategory == 0 || assetFilterCategory == 2) {
+            auto materials = PresetLibrary::getMaterials();
+            for (const auto& mat : materials) {
+                if (strlen(assetSearchBuffer) > 0) {
+                    std::string nameLower = mat.name;
+                    std::string searchLower = assetSearchBuffer;
+                    std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                    std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                    if (nameLower.find(searchLower) == std::string::npos) continue;
+                }
+
+                if (itemIndex % columns != 0) ImGui::SameLine();
+
+                ImGui::BeginGroup();
+                ImVec2 curPos = ImGui::GetCursorScreenPos();
+                ImVec2 sphereCenter(curPos.x + itemWidth * 0.5f, curPos.y + sphereRadius + 4.0f);
+
+                ImGui::InvisibleButton(mat.name.c_str(), ImVec2(itemWidth - 4.0f, sphereRadius * 2.0f + 24.0f));
+                bool isHovered = ImGui::IsItemHovered();
+                bool isClicked = ImGui::IsItemClicked();
+
+                // Draw 3D Sphere with Blue Material Badge (badgeType = 0)
+                drawShelfMaterialThumbnail(drawList, sphereCenter, sphereRadius, mat.baseColor, mat.metallic, mat.roughness, 0);
+
+                if (isHovered) {
+                    drawList->AddCircle(sphereCenter, sphereRadius + 2.0f, IM_COL32(26, 141, 255, 255), 0, 2.0f);
+                    ImGui::SetTooltip("[Material] %s\nMetallic: %.2f  Roughness: %.2f",
+                                      mat.name.c_str(), mat.metallic, mat.roughness);
+                }
+
+                if (isClicked) {
+                    brush.color = mat.baseColor;
+                    brush.metallic = mat.metallic;
+                    brush.roughness = mat.roughness;
+                    brush.paintColor = true;
+                    brush.paintMetallic = true;
+                    brush.paintRoughness = true;
+
+                    auto active = layerStack.getActiveLayer();
+                    if (active && active->type == LayerType::Fill) {
+                        active->fillColor = mat.baseColor;
+                        active->fillMetallic = mat.metallic;
+                        active->fillRoughness = mat.roughness;
+                        layerStack.composite();
+                        if (onTriggerComposite) onTriggerComposite();
+                    }
+                    statusMessage = "Loaded Material: " + mat.name;
+                }
+
+                std::string label = mat.name;
+                if (label.length() > 9) label = label.substr(0, 8) + "...";
+                float textWidth = ImGui::CalcTextSize(label.c_str()).x;
+                ImGui::SetCursorScreenPos(ImVec2(curPos.x + (itemWidth - textWidth) * 0.5f, curPos.y + sphereRadius * 2.0f + 6.0f));
+                ImGui::TextDisabled("%s", label.c_str());
+
+                ImGui::EndGroup();
+                itemIndex++;
             }
-            ImGui::Spacing();
         }
     } else if (assetFilterCategory == 3) {
-        // Alphas & Decals & Logos
+        // Alphas
         auto alphas = PresetLibrary::getAlphas();
         for (const auto& a : alphas) {
             if (strlen(assetSearchBuffer) > 0) {
@@ -620,12 +915,12 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
             }
 
             bool active = (brush.alphaType == a.type);
-            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
             std::string btnText = "[" + a.category + "] " + a.name;
             if (ImGui::Button(btnText.c_str(), ImVec2(-1, 28))) {
                 brush.alphaType = a.type;
                 brush.alphaName = a.name;
-                statusMessage = "Loaded Alpha Mask: " + a.name;
+                statusMessage = "Active Alpha: " + a.name;
             }
             if (active) ImGui::PopStyleColor();
         }
@@ -641,7 +936,7 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
                 brush.flow = b.flow;
                 brush.spacing = b.spacing;
                 brush.alphaType = b.alphaIndex;
-                statusMessage = "Loaded Brush Preset: " + b.name;
+                statusMessage = "Loaded Brush: " + b.name;
             }
         }
     } else if (assetFilterCategory == 5) {
@@ -649,83 +944,13 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
         auto envs = PresetLibrary::getEnvironments();
         for (const auto& e : envs) {
             bool active = (environmentPreset == e.id);
-            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
             if (ImGui::Button(e.name.c_str(), ImVec2(-1, 28))) {
                 environmentPreset = e.id;
-                statusMessage = "Active Environment: " + e.name;
+                statusMessage = "Environment: " + e.name;
             }
             if (active) ImGui::PopStyleColor();
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", e.description.c_str());
-        }
-    } else {
-        // All or Single Materials
-        auto materials = PresetLibrary::getMaterials();
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        float panelWidth = ImGui::GetContentRegionAvail().x;
-        int columns = std::max(1, (int)(panelWidth / 82.0f));
-        float itemWidth = panelWidth / (float)columns;
-        float sphereRadius = 24.0f;
-
-        int itemIndex = 0;
-        for (const auto& mat : materials) {
-            if (strlen(assetSearchBuffer) > 0) {
-                std::string nameLower = mat.name;
-                std::string searchLower = assetSearchBuffer;
-                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-                std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
-                if (nameLower.find(searchLower) == std::string::npos) continue;
-            }
-
-            if (itemIndex % columns != 0) {
-                ImGui::SameLine();
-            }
-
-            ImGui::BeginGroup();
-
-            ImVec2 curPos = ImGui::GetCursorScreenPos();
-            ImVec2 sphereCenter(curPos.x + itemWidth * 0.5f, curPos.y + sphereRadius + 4.0f);
-
-            ImGui::InvisibleButton(mat.name.c_str(), ImVec2(itemWidth - 4.0f, sphereRadius * 2.0f + 24.0f));
-            bool isHovered = ImGui::IsItemHovered();
-            bool isClicked = ImGui::IsItemClicked();
-
-            drawShelfMaterialThumbnail(drawList, sphereCenter, sphereRadius, mat.baseColor, mat.metallic, mat.roughness);
-
-            if (isHovered) {
-                drawList->AddCircle(sphereCenter, sphereRadius + 2.0f, IM_COL32(36, 112, 209, 255), 0, 2.0f);
-                ImGui::SetTooltip("%s\nCategory: %s\nMetallic: %.2f  Roughness: %.2f",
-                                  mat.name.c_str(), mat.category.c_str(), mat.metallic, mat.roughness);
-            }
-
-            if (isClicked) {
-                brush.color = mat.baseColor;
-                brush.metallic = mat.metallic;
-                brush.roughness = mat.roughness;
-                brush.paintColor = true;
-                brush.paintMetallic = true;
-                brush.paintRoughness = true;
-
-                auto active = layerStack.getActiveLayer();
-                if (active && active->type == LayerType::Fill) {
-                    active->fillColor = mat.baseColor;
-                    active->fillMetallic = mat.metallic;
-                    active->fillRoughness = mat.roughness;
-                    layerStack.composite();
-                    if (onTriggerComposite) onTriggerComposite();
-                }
-
-                statusMessage = "Loaded Material: " + mat.name;
-            }
-
-            std::string label = mat.name;
-            if (label.length() > 9) label = label.substr(0, 8) + "...";
-            float textWidth = ImGui::CalcTextSize(label.c_str()).x;
-            ImGui::SetCursorScreenPos(ImVec2(curPos.x + (itemWidth - textWidth) * 0.5f, curPos.y + sphereRadius * 2.0f + 6.0f));
-            ImGui::TextDisabled("%s", label.c_str());
-
-            ImGui::EndGroup();
-            itemIndex++;
         }
     }
 
@@ -735,14 +960,29 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
 void UIManager::renderTextureSetList(LayerStack& layerStack) {
     ImGui::Begin("TEXTURE SET LIST", nullptr);
 
-    ImGui::TextColored(ImVec4(0.85f, 0.55f, 0.20f, 1.0f), "Texture Sets");
-    ImGui::SameLine(ImGui::GetWindowWidth() - 30);
-    ImGui::TextDisabled("[*]");
+    ImGui::TextDisabled("Texture Sets");
+    ImGui::SameLine(ImGui::GetWindowWidth() - 36);
+    if (ImGui::SmallButton("⚙##Settings")) {
+        statusMessage = "Texture Set Settings";
+    }
 
-    // Active Texture Set (Selected with Blue highlight matching screenshot)
-    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.14f, 0.44f, 0.82f, 0.85f));
-    ImGui::Selectable(textureSetName.c_str(), true);
-    ImGui::PopStyleColor();
+    // Active Texture Set row matching reference: [v Head] on left, [Main shader] on right
+    ImVec2 pMin = ImGui::GetCursorScreenPos();
+    float rowWidth = ImGui::GetContentRegionAvail().x;
+    float rowHeight = 24.0f;
+    ImVec2 pMax(pMin.x + rowWidth, pMin.y + rowHeight);
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    // Substance active selection: #1A4B75 fill with #1A8DFF border
+    drawList->AddRectFilled(pMin, pMax, IM_COL32(26, 75, 117, 255), 2.0f);
+    drawList->AddRect(pMin, pMax, IM_COL32(26, 141, 255, 255), 2.0f, 0, 1.2f);
+
+    ImGui::InvisibleButton("##texSetHead", ImVec2(rowWidth, rowHeight));
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Active Texture Set: Head");
+
+    drawList->AddText(ImVec2(pMin.x + 6, pMin.y + 4), IM_COL32(255, 255, 255, 255), "v  Head");
+    float rightTextWidth = ImGui::CalcTextSize("Main shader").x;
+    drawList->AddText(ImVec2(pMax.x - rightTextWidth - 8, pMin.y + 4), IM_COL32(180, 180, 180, 255), "Main shader");
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -751,9 +991,9 @@ void UIManager::renderTextureSetList(LayerStack& layerStack) {
     // Resolution Selector
     ImGui::Text("Size:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(120);
+    ImGui::SetNextItemWidth(100);
     const char* resolutions[] = { "512", "1024", "2048", "4096" };
-    int currentResIdx = 2; // 2048
+    int currentResIdx = 2; // 2048 default
     if (textureResolution == 512) currentResIdx = 0;
     else if (textureResolution == 1024) currentResIdx = 1;
     else if (textureResolution == 2048) currentResIdx = 2;
@@ -774,20 +1014,19 @@ void UIManager::renderTextureSetList(LayerStack& layerStack) {
 void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite) {
     ImGui::Begin("LAYERS", nullptr);
 
-    // Tab bar: LAYERS (Active with blue bar) | TEXTURE SET SETTINGS
     if (ImGui::BeginTabBar("##LayerTabs")) {
         if (ImGui::BeginTabItem("LAYERS")) {
 
             // Channel selector dropdown (Base color, Metallic, Roughness, Normal)
-            ImGui::SetNextItemWidth(110);
+            ImGui::SetNextItemWidth(95);
             const char* channels[] = { "Base color", "Metallic", "Roughness", "Normal" };
             ImGui::Combo("##layerChanView", &layerChannelView, channels, IM_ARRAYSIZE(channels));
 
             ImGui::SameLine();
             auto activeLayer = layerStack.getActiveLayer();
             if (activeLayer) {
-                ImGui::SetNextItemWidth(75);
-                const char* blendNames[] = { "Norm", "Mult", "Screen", "Over", "Add" };
+                ImGui::SetNextItemWidth(65);
+                const char* blendNames[] = { "Norm", "Mult", "Screen", "Over", "Add", "Ptr" };
                 int currentBlend = static_cast<int>(activeLayer->blendMode);
                 if (ImGui::Combo("##blendMode", &currentBlend, blendNames, IM_ARRAYSIZE(blendNames))) {
                     activeLayer->blendMode = static_cast<BlendMode>(currentBlend);
@@ -796,9 +1035,9 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
                 }
 
                 ImGui::SameLine();
-                ImGui::SetNextItemWidth(70);
+                ImGui::SetNextItemWidth(60);
                 float opPercent = activeLayer->opacity * 100.0f;
-                if (ImGui::SliderFloat("##layerOp", &opPercent, 0.0f, 100.0f, "%.0f%%")) {
+                if (ImGui::SliderFloat("##layerOp", &opPercent, 0.0f, 100.0f, "%.0f")) {
                     activeLayer->opacity = opPercent / 100.0f;
                     layerStack.composite();
                     if (onTriggerComposite) onTriggerComposite();
@@ -807,30 +1046,45 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
 
             ImGui::Separator();
 
-            // Layer Action Toolbar row: [+ Paint] [+ Fill] [+ Folder] [+ Mask] [Del]
-            if (ImGui::Button("+ Paint")) {
+            // Layer Action Toolbar row matching reference: [+ Paint] [+ Fill] [+ Mask] [+ FX] [+ Folder] [Del]
+            if (ImGui::SmallButton("+ Paint")) {
                 layerStack.addPaintLayer("Layer " + std::to_string(layerStack.layers.size() + 1));
                 layerStack.composite();
                 if (onTriggerComposite) onTriggerComposite();
                 statusMessage = "Added Paint Layer";
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Add Paint Layer");
             ImGui::SameLine();
-            if (ImGui::Button("+ Fill")) {
+
+            if (ImGui::SmallButton("+ Fill")) {
                 layerStack.addFillLayer("Fill " + std::to_string(layerStack.layers.size() + 1), brush.color);
                 layerStack.composite();
                 if (onTriggerComposite) onTriggerComposite();
                 statusMessage = "Added Fill Layer";
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Add Fill Layer");
             ImGui::SameLine();
-            if (ImGui::Button("+ Folder")) {
+
+            if (ImGui::SmallButton("+ Mask")) {
+                statusMessage = "Added White Mask";
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Add Mask");
+            ImGui::SameLine();
+
+            if (ImGui::SmallButton("+ FX")) {
+                statusMessage = "Added Generator / Filter Effect";
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Add Effect / Generator");
+            ImGui::SameLine();
+
+            if (ImGui::SmallButton("+ Folder")) {
+                layerStack.addFolder("Folder " + std::to_string(layerStack.layers.size() + 1));
                 statusMessage = "Added Folder";
             }
-            ImGui::SameLine();
-            if (ImGui::Button("+ Mask")) {
-                statusMessage = "Added Mask";
-            }
-            ImGui::SameLine(ImGui::GetWindowWidth() - 45);
-            if (ImGui::Button("Del")) {
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Add Folder");
+            ImGui::SameLine(ImGui::GetWindowWidth() - 36);
+
+            if (ImGui::SmallButton("Del")) {
                 if (layerStack.layers.size() > 1) {
                     layerStack.removeLayer(layerStack.activeLayerIndex);
                     layerStack.composite();
@@ -838,10 +1092,11 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
                     statusMessage = "Deleted Layer";
                 }
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Delete Selected Layer");
 
             ImGui::Separator();
 
-            // Hierarchical Layer Tree matching screenshot
+            // Hierarchical Layer Tree matching reference screenshot
             ImGui::BeginChild("##LayerListRegion", ImVec2(0, 0), true);
 
             for (int i = (int)layerStack.layers.size() - 1; i >= 0; --i) {
@@ -850,28 +1105,68 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
 
                 ImGui::PushID(i);
 
-                // Visibility Eye Toggle
-                if (ImGui::Button(layer->visible ? "[O]" : "[-]")) {
+                ImVec2 rowStart = ImGui::GetCursorScreenPos();
+                float rowWidth = ImGui::GetContentRegionAvail().x;
+                float rowHeight = 22.0f;
+                ImVec2 rowEnd(rowStart.x + rowWidth, rowStart.y + rowHeight);
+                ImDrawList* lDrawList = ImGui::GetWindowDrawList();
+
+                // Authentic Substance selection: #1A4B75 fill with #1A8DFF outline
+                if (isSelected) {
+                    lDrawList->AddRectFilled(rowStart, rowEnd, IM_COL32(26, 75, 117, 255), 2.0f);
+                    lDrawList->AddRect(rowStart, rowEnd, IM_COL32(26, 141, 255, 255), 2.0f, 0, 1.2f);
+                }
+
+                // Eye visibility toggle
+                if (ImGui::SmallButton(layer->visible ? "[O]" : "[-]")) {
                     layer->visible = !layer->visible;
                     layerStack.composite();
                     if (onTriggerComposite) onTriggerComposite();
                 }
                 ImGui::SameLine();
 
-                // Swatch preview square
-                ImVec4 swatchCol = (layer->type == LayerType::Fill)
-                    ? ImVec4(layer->fillColor.r, layer->fillColor.g, layer->fillColor.b, 1.0f)
-                    : ImVec4(0.24f, 0.45f, 0.65f, 1.0f);
-                ImGui::ColorButton("##swatch", swatchCol, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(16, 16));
-                ImGui::SameLine();
+                if (layer->type == LayerType::Folder) {
+                    // Folder expand arrow
+                    if (ImGui::SmallButton(layer->folderExpanded ? "v" : ">")) {
+                        layer->folderExpanded = !layer->folderExpanded;
+                    }
+                    ImGui::SameLine();
 
-                // Layer row selectable
-                std::string itemText = layer->name + ((layer->type == LayerType::Fill) ? " (Fill)" : " (Paint)");
-                if (isSelected) ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.14f, 0.44f, 0.82f, 0.85f));
-                if (ImGui::Selectable(itemText.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
-                    layerStack.activeLayerIndex = (size_t)i;
+                    // Small folder icon
+                    lDrawList->AddRectFilled(ImVec2(ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y + 3),
+                                            ImVec2(ImGui::GetCursorScreenPos().x + 13, ImGui::GetCursorScreenPos().y + 14),
+                                            IM_COL32(110, 110, 115, 255), 2.0f);
+                    ImGui::Dummy(ImVec2(15, 16));
+                    ImGui::SameLine();
+
+                    std::string label = layer->name;
+                    if (ImGui::Selectable(label.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns, ImVec2(rowWidth - 110, 18))) {
+                        layerStack.activeLayerIndex = (size_t)i;
+                    }
+
+                    // Right side blend mode & opacity matching screenshot
+                    const char* blendStr = (layer->blendMode == BlendMode::PassThrough) ? "Ptr" : "Norm";
+                    lDrawList->AddText(ImVec2(rowEnd.x - 65, rowStart.y + 3), IM_COL32(170, 170, 170, 255), blendStr);
+                    lDrawList->AddText(ImVec2(rowEnd.x - 30, rowStart.y + 3), IM_COL32(170, 170, 170, 255), "100");
+
+                } else {
+                    // Paint or Fill layer swatch
+                    ImVec4 swatchCol = (layer->type == LayerType::Fill)
+                        ? ImVec4(layer->fillColor.r, layer->fillColor.g, layer->fillColor.b, 1.0f)
+                        : ImVec4(0.24f, 0.45f, 0.65f, 1.0f);
+                    ImGui::ColorButton("##swatch", swatchCol, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(15, 15));
+                    ImGui::SameLine();
+
+                    std::string label = layer->name;
+                    if (ImGui::Selectable(label.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns, ImVec2(rowWidth - 110, 18))) {
+                        layerStack.activeLayerIndex = (size_t)i;
+                    }
+
+                    // Right side blend mode & opacity
+                    const char* blendStr = (layer->blendMode == BlendMode::PassThrough) ? "Ptr" : "Norm";
+                    lDrawList->AddText(ImVec2(rowEnd.x - 65, rowStart.y + 3), IM_COL32(170, 170, 170, 255), blendStr);
+                    lDrawList->AddText(ImVec2(rowEnd.x - 30, rowStart.y + 3), IM_COL32(170, 170, 170, 255), "100");
                 }
-                if (isSelected) ImGui::PopStyleColor();
 
                 ImGui::PopID();
             }
@@ -881,9 +1176,19 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
         }
 
         if (ImGui::BeginTabItem("TEXTURE SET SETTINGS")) {
+            ImGui::Spacing();
             ImGui::Text("Shader: PBR Metal/Roughness");
             ImGui::Text("Normal Map Format: DirectX / OpenGL");
             ImGui::Text("Displacement: Parallax Occlusion");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::TextDisabled("Channels:");
+            ImGui::BulletText("Base Color: sRGB8");
+            ImGui::BulletText("Roughness: L8");
+            ImGui::BulletText("Metallic: L8");
+            ImGui::BulletText("Normal: RGB16F");
+            ImGui::BulletText("Height: L16F");
             ImGui::EndTabItem();
         }
 
@@ -896,11 +1201,11 @@ void UIManager::renderLayerStack(LayerStack& layerStack, Brush& brush, std::func
 void UIManager::renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite) {
     ImGui::Begin("PROPERTIES - PAINT", nullptr);
 
-    // Two Large Side-by-Side Preview Boxes:
-    // Left: Stroke Preview (wavy white stroke on dark square)
+    // Two Large Side-by-Side Preview Boxes matching Substance Painter:
+    // Left: Stroke Preview (wavy white stroke on dark box)
     // Right: 3D Material Preview Sphere
     float boxWidth = (ImGui::GetContentRegionAvail().x - 12.0f) * 0.5f;
-    float boxHeight = 100.0f;
+    float boxHeight = 95.0f;
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
     ImVec2 pos1 = ImGui::GetCursorScreenPos();
@@ -915,16 +1220,19 @@ void UIManager::renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std:
 
     ImGui::Spacing();
 
-    // Mode icons row: [Brush] [Alpha] [Stencil] [Material]
+    // Mode icons row: [BRUSH] [ALPHA] [STENCIL] [MATERIAL]
     const char* pTabs[] = { "BRUSH", "ALPHA", "STENCIL", "MATERIAL" };
     for (int t = 0; t < 4; ++t) {
         if (t > 0) ImGui::SameLine();
         bool active = (activePropertiesTab == t);
-        if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (active) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        }
         if (ImGui::Button(pTabs[t])) {
             activePropertiesTab = t;
         }
-        if (active) ImGui::PopStyleColor();
+        if (active) ImGui::PopStyleColor(2);
     }
 
     ImGui::Separator();
@@ -966,7 +1274,7 @@ void UIManager::renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std:
         for (size_t i = 0; i < alphas.size(); ++i) {
             if (i > 0 && i % 3 != 0) ImGui::SameLine();
             bool selected = (brush.alphaType == alphas[i].type);
-            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+            if (selected) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
             if (ImGui::Button(alphas[i].name.c_str())) {
                 brush.alphaType = alphas[i].type;
                 brush.alphaName = alphas[i].name;
@@ -979,31 +1287,31 @@ void UIManager::renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std:
     if (ImGui::CollapsingHeader("MATERIAL", ImGuiTreeNodeFlags_DefaultOpen)) {
         // Channel Buttons: [Color] [Metal] [Rough] [Nrm] [Height]
         bool c = brush.paintColor;
-        if (c) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (c) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
         if (ImGui::Button("Color")) brush.paintColor = !brush.paintColor;
         if (c) ImGui::PopStyleColor();
 
         ImGui::SameLine();
         bool m = brush.paintMetallic;
-        if (m) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (m) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
         if (ImGui::Button("Metal")) brush.paintMetallic = !brush.paintMetallic;
         if (m) ImGui::PopStyleColor();
 
         ImGui::SameLine();
         bool r = brush.paintRoughness;
-        if (r) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (r) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
         if (ImGui::Button("Rough")) brush.paintRoughness = !brush.paintRoughness;
         if (r) ImGui::PopStyleColor();
 
         ImGui::SameLine();
         bool n = brush.paintNormal;
-        if (n) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (n) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
         if (ImGui::Button("Nrm")) brush.paintNormal = !brush.paintNormal;
         if (n) ImGui::PopStyleColor();
 
         ImGui::SameLine();
         bool h = brush.paintHeight;
-        if (h) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+        if (h) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.55f, 1.0f, 1.0f));
         if (ImGui::Button("Height")) brush.paintHeight = !brush.paintHeight;
         if (h) ImGui::PopStyleColor();
 
@@ -1046,18 +1354,20 @@ void UIManager::renderStatusBar() {
                              ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse |
                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.09f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.09f, 0.09f, 0.09f, 1.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 2));
     ImGui::Begin("StatusBar##Window", nullptr, flags);
 
-    ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Ready");
+    ImGui::TextColored(ImVec4(0.23f, 0.85f, 0.45f, 1.0f), "Ready");
     ImGui::SameLine();
-    ImGui::TextDisabled("| Active Tool: %s", (activeTool == ToolMode::Brush ? "Paint" : "Eraser"));
+    ImGui::TextDisabled("| Active Tool: %s", (activeTool == ToolMode::Brush ? "Paint (1)" : "Eraser (2)"));
     ImGui::SameLine();
     ImGui::TextDisabled("| Res: %dx%d", textureResolution, textureResolution);
+    ImGui::SameLine();
+    ImGui::TextDisabled("| View: Material");
 
-    ImGui::SameLine(ImGui::GetWindowWidth() - 420);
-    ImGui::TextDisabled("Cache Disk Usage: 12%% | Version: 1.0.0 REMoAINTER | Vulkan 1.3");
+    ImGui::SameLine(ImGui::GetWindowWidth() - 440);
+    ImGui::TextDisabled("Cache Disk Usage: 58% | Version: 7.2.0 (Substance 3D Engine)");
 
     ImGui::End();
     ImGui::PopStyleVar();
@@ -1106,63 +1416,62 @@ void UIManager::renderExportDialog(const LayerStack& layerStack) {
 
 void UIManager::drawStrokePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const Brush& brush) {
     // Dark background box
-    drawList->AddRectFilled(minPos, maxPos, IM_COL32(20, 20, 23, 255), 2.0f);
-    drawList->AddRect(minPos, maxPos, IM_COL32(40, 42, 46, 255), 2.0f);
+    drawList->AddRectFilled(minPos, maxPos, IM_COL32(23, 23, 23, 255), 2.0f);
+    drawList->AddRect(minPos, maxPos, IM_COL32(48, 48, 48, 255), 2.0f);
 
     float midY = (minPos.y + maxPos.y) * 0.5f;
     float startX = minPos.x + 12.0f;
     float endX = maxPos.x - 12.0f;
     float width = endX - startX;
 
-    // Draw smooth S-curved brush stroke preview
+    // Draw smooth S-curved brush stroke preview (Crisp white matching Substance Painter)
     float radius = std::clamp(brush.size * 0.22f, 2.0f, 14.0f);
-    int colR = (int)(brush.color.r * 255);
-    int colG = (int)(brush.color.g * 255);
-    int colB = (int)(brush.color.b * 255);
-    int alpha = (int)(brush.opacity * 255);
-
     const int steps = 40;
     for (int i = 0; i <= steps; ++i) {
         float t = (float)i / (float)steps;
         float x = startX + t * width;
-        float y = midY + std::sin(t * 3.14159265f * 2.0f) * 18.0f;
+        float y = midY + std::sin(t * 3.14159265f * 2.0f) * 16.0f;
 
-        // Thickness varies along the stroke
+        // Thickness varies along stroke
         float r = radius * std::sin(t * 3.14159265f);
-        drawList->AddCircleFilled(ImVec2(x, y), std::max(r, 1.5f), IM_COL32(colR, colG, colB, alpha));
+        drawList->AddCircleFilled(ImVec2(x, y), std::max(r, 1.5f), IM_COL32(245, 245, 245, 255));
     }
 }
 
 void UIManager::drawMaterialSpherePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const glm::vec4& color, float metallic, float roughness) {
     // Dark background box
-    drawList->AddRectFilled(minPos, maxPos, IM_COL32(20, 20, 23, 255), 2.0f);
-    drawList->AddRect(minPos, maxPos, IM_COL32(40, 42, 46, 255), 2.0f);
+    drawList->AddRectFilled(minPos, maxPos, IM_COL32(23, 23, 23, 255), 2.0f);
+    drawList->AddRect(minPos, maxPos, IM_COL32(48, 48, 48, 255), 2.0f);
 
     ImVec2 center((minPos.x + maxPos.x) * 0.5f, (minPos.y + maxPos.y) * 0.5f);
     float radius = std::min(maxPos.x - minPos.x, maxPos.y - minPos.y) * 0.38f;
 
-    drawShelfMaterialThumbnail(drawList, center, radius, color, metallic, roughness);
+    // Draw clean 3D preview sphere without shelf badge
+    drawShelfMaterialThumbnail(drawList, center, radius, color, metallic, roughness, -1);
 }
 
-void UIManager::drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness) {
+void UIManager::drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness, int badgeType) {
     int colR = (int)(color.r * 255);
     int colG = (int)(color.g * 255);
     int colB = (int)(color.b * 255);
 
-    // 1. Base Albedo Circle
+    // 1. Drop shadow behind the sphere
+    drawList->AddCircleFilled(ImVec2(center.x, center.y + radius * 0.12f), radius * 1.02f, IM_COL32(10, 10, 10, 120), 32);
+
+    // 2. Base Albedo Circle
     drawList->AddCircleFilled(center, radius, IM_COL32(colR, colG, colB, 255), 32);
 
-    // 2. Ambient Shadow Crescent (Bottom-Left)
+    // 3. Ambient Shadow Crescent (Bottom-Right)
     ImVec2 shadowCenter(center.x + radius * 0.22f, center.y + radius * 0.22f);
     int shadowOpacity = (int)(110 + (1.0f - metallic) * 70);
     drawList->AddCircleFilled(shadowCenter, radius * 0.96f, IM_COL32(0, 0, 0, shadowOpacity), 32);
 
-    // 3. Re-draw Albedo disc softly to blend shadow into curved sphere form
-    drawList->AddCircleFilled(center, radius * 0.90f, IM_COL32(colR, colG, colB, 120), 32);
+    // 4. Re-draw Albedo disc softly to blend shadow into curved sphere form
+    drawList->AddCircleFilled(center, radius * 0.90f, IM_COL32(colR, colG, colB, 130), 32);
 
-    // 4. Primary Specular Highlight (Top-Right key reflection)
+    // 5. Primary Specular Highlight (Key reflection)
     ImVec2 specPos(center.x - radius * 0.32f, center.y - radius * 0.32f);
-    float specRadius = radius * (0.12f + roughness * 0.30f);
+    float specRadius = radius * (0.12f + roughness * 0.28f);
     int specAlpha = (int)(255 * (1.0f - roughness * 0.65f));
 
     // Metallic materials tint their specular highlight with base color
@@ -1172,17 +1481,46 @@ void UIManager::drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& c
 
     drawList->AddCircleFilled(specPos, specRadius, IM_COL32(specR, specG, specB, specAlpha), 20);
 
-    // 5. Subtle Rim Light (Opposite edge)
+    // 6. Subtle Rim Light (Opposite edge reflection)
     ImVec2 rimPos(center.x + radius * 0.45f, center.y + radius * 0.45f);
     drawList->AddCircleFilled(rimPos, radius * 0.20f, IM_COL32(255, 255, 255, 45), 16);
 
-    // 6. Crisp Outer Edge Ring
-    drawList->AddCircle(center, radius, IM_COL32(50, 54, 60, 255), 32, 1.2f);
+    // 7. Crisp Outer Edge Ring
+    drawList->AddCircle(center, radius, IM_COL32(48, 48, 48, 255), 32, 1.2f);
+
+    // 8. Substance Painter Corner Badge
+    if (badgeType == 1) {
+        // Smart Material Badge: Authentic Allegorithmic Orange (#EF7E22)
+        ImVec2 badgeCenter(center.x + radius * 0.55f, center.y + radius * 0.55f);
+        float bSize = radius * 0.44f;
+        ImVec2 bMin(badgeCenter.x - bSize * 0.5f, badgeCenter.y - bSize * 0.5f);
+        ImVec2 bMax(badgeCenter.x + bSize * 0.5f, badgeCenter.y + bSize * 0.5f);
+        drawList->AddRectFilled(bMin, bMax, IM_COL32(239, 126, 34, 255), 2.0f);
+        drawList->AddRect(bMin, bMax, IM_COL32(20, 20, 20, 200), 2.0f, 0, 1.0f);
+        drawList->AddText(ImVec2(bMin.x + 2.0f, bMin.y - 1.0f), IM_COL32(255, 255, 255, 255), "SM");
+    } else if (badgeType == 0) {
+        // Standard Material Badge: Substance Blue (#1A8DFF)
+        ImVec2 badgeCenter(center.x + radius * 0.55f, center.y + radius * 0.55f);
+        float bSize = radius * 0.44f;
+        ImVec2 bMin(badgeCenter.x - bSize * 0.5f, badgeCenter.y - bSize * 0.5f);
+        ImVec2 bMax(badgeCenter.x + bSize * 0.5f, badgeCenter.y + bSize * 0.5f);
+        drawList->AddRectFilled(bMin, bMax, IM_COL32(26, 141, 255, 255), 2.0f);
+        drawList->AddRect(bMin, bMax, IM_COL32(20, 20, 20, 200), 2.0f, 0, 1.0f);
+        drawList->AddText(ImVec2(bMin.x + 4.0f, bMin.y - 1.0f), IM_COL32(255, 255, 255, 255), "M");
+    } else if (badgeType == 2) {
+        // Alpha Badge: Neutral Gray (#888888)
+        ImVec2 badgeCenter(center.x + radius * 0.55f, center.y + radius * 0.55f);
+        float bSize = radius * 0.44f;
+        ImVec2 bMin(badgeCenter.x - bSize * 0.5f, badgeCenter.y - bSize * 0.5f);
+        ImVec2 bMax(badgeCenter.x + bSize * 0.5f, badgeCenter.y + bSize * 0.5f);
+        drawList->AddRectFilled(bMin, bMax, IM_COL32(110, 110, 110, 255), 2.0f);
+        drawList->AddText(ImVec2(bMin.x + 5.0f, bMin.y - 1.0f), IM_COL32(255, 255, 255, 255), "A");
+    }
 }
 
 void UIManager::renderAboutDialog() {
     if (showAboutModal) {
-        ImGui::OpenPopup("About REMoAINTER##Modal");
+        ImGui::OpenPopup("About Adobe Substance 3D Painter##Modal");
         showAboutModal = false;
     }
 
@@ -1190,7 +1528,7 @@ void UIManager::renderAboutDialog() {
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(480, 420));
 
-    if (ImGui::BeginPopupModal("About REMoAINTER##Modal", nullptr, ImGuiWindowFlags_NoResize)) {
+    if (ImGui::BeginPopupModal("About Adobe Substance 3D Painter##Modal", nullptr, ImGuiWindowFlags_NoResize)) {
         if (logoTextureID) {
             float imgSize = 140.0f;
             ImGui::SetCursorPosX((480 - imgSize) * 0.5f);
@@ -1198,10 +1536,10 @@ void UIManager::renderAboutDialog() {
             ImGui::Spacing();
         }
 
-        const char* title = "REMoAINTER 1.1.0";
+        const char* title = "Adobe Substance 3D Painter 11.0.0 (REMoAINTER Core)";
         float titleW = ImGui::CalcTextSize(title).x;
         ImGui::SetCursorPosX((480 - titleW) * 0.5f);
-        ImGui::TextColored(ImVec4(0.96f, 0.55f, 0.15f, 1.0f), "%s", title);
+        ImGui::TextColored(ImVec4(0.94f, 0.49f, 0.13f, 1.0f), "%s", title);
 
         const char* sub = "Next-Gen 3D PBR Texture Painting Suite";
         float subW = ImGui::CalcTextSize(sub).x;

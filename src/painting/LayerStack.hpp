@@ -33,6 +33,7 @@ public:
 
     void addPaintLayer(const std::string& name = "Paint Layer");
     void addFillLayer(const std::string& name = "Fill Layer", const glm::vec4& color = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    void addFolder(const std::string& name = "Folder");
     void removeLayer(int index);
     void moveLayerUp(int index);
     void moveLayerDown(int index);

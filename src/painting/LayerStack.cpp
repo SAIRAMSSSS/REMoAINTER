@@ -10,10 +10,15 @@ LayerStack::LayerStack(uint32_t w, uint32_t h) : width(w), height(h) {
     compositedMetallicRoughness.resize(numPixels * 4);
     compositedNormal.resize(numPixels * 4);
 
-    // Default: Add a base fill layer and an active paint layer
-    addFillLayer("Base Material", glm::vec4(0.8f, 0.8f, 0.82f, 1.0f));
-    addPaintLayer("Paint Layer 1");
-    activeLayerIndex = 1;
+    // Default: Realistic Substance Painter hierarchy matching reference
+    addFillLayer("Base", glm::vec4(0.82f, 0.82f, 0.84f, 1.0f));
+    addFolder("Scattering");
+    addFolder("Color");
+    addFolder("Roughness");
+    addFolder("Final Touches");
+    layers.back()->blendMode = BlendMode::PassThrough;
+    addPaintLayer("Layer 1");
+    activeLayerIndex = 5; // "Layer 1" active on top
 
     composite();
 }
@@ -31,6 +36,13 @@ void LayerStack::addFillLayer(const std::string& name, const glm::vec4& color) {
     layer->fillRoughness = 0.45f;
     layer->fillMetallic = 0.0f;
     layer->clear();
+    layers.push_back(layer);
+    activeLayerIndex = (int)layers.size() - 1;
+    markFullDirty();
+}
+
+void LayerStack::addFolder(const std::string& name) {
+    auto layer = std::make_shared<Layer>(name, LayerType::Folder, width, height);
     layers.push_back(layer);
     activeLayerIndex = (int)layers.size() - 1;
     markFullDirty();
@@ -161,7 +173,7 @@ void LayerStack::compositeRect(int minX, int minY, int maxX, int maxY) {
 
             // Blend layers from bottom to top
             for (const auto& layer : layers) {
-                if (!layer->visible || layer->opacity <= 0.001f) continue;
+                if (!layer->visible || layer->opacity <= 0.001f || layer->type == LayerType::Folder) continue;
 
                 float layerOpacity = layer->opacity;
                 float srcA = (layer->colorData[idx + 3] / 255.0f) * layerOpacity;

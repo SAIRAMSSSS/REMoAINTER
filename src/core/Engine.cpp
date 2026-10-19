@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <set>
 #include <cstring>
+#include <filesystem>
 
 namespace REMoAINTER {
 
@@ -881,6 +882,17 @@ void Engine::initImGui() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    // Load authentic clean typography matching Substance 3D Painter
+    ImFontConfig fontCfg;
+    fontCfg.OversampleH = 3;
+    fontCfg.OversampleV = 3;
+    fontCfg.PixelSnapH = true;
+    if (std::filesystem::exists("/usr/share/fonts/TTF/OpenSans-Regular.ttf")) {
+        io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/OpenSans-Regular.ttf", 13.5f, &fontCfg);
+    } else if (std::filesystem::exists("/usr/share/fonts/TTF/DejaVuSans.ttf")) {
+        io.Fonts->AddFontFromFileTTF("/usr/share/fonts/TTF/DejaVuSans.ttf", 13.5f, &fontCfg);
+    }
 
     applyDarkSubstanceTheme();
 

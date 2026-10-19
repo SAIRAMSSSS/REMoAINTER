@@ -10,7 +10,8 @@ namespace REMoAINTER {
 
 enum class LayerType {
     Paint,
-    Fill
+    Fill,
+    Folder
 };
 
 enum class BlendMode {
@@ -18,7 +19,8 @@ enum class BlendMode {
     Multiply,
     Screen,
     Overlay,
-    LinearAdd
+    LinearAdd,
+    PassThrough
 };
 
 class Layer {
@@ -26,6 +28,7 @@ public:
     std::string name = "New Layer";
     LayerType type = LayerType::Paint;
     bool visible = true;
+    bool folderExpanded = true;
     float opacity = 1.0f;
     BlendMode blendMode = BlendMode::Normal;
 

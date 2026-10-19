@@ -80,6 +80,8 @@ private:
     void renderTextureSetList(LayerStack& layerStack);
     void renderLayerStack(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
     void renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
+    void renderRightDockStrip();
+    void renderViewportOverlay(Camera& camera);
     void renderStatusBar();
     void renderExportDialog(const LayerStack& layerStack);
     void renderAboutDialog();
@@ -87,9 +89,10 @@ private:
     // Tool Icon & Dynamic Preview Helpers
     void drawToolButton(ToolMode mode, const char* id, const char* label, const char* tooltip, const char* shortcut, bool active, std::function<void()> onClick);
     void drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, ToolMode mode, bool active);
+    void drawRightStripIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, int iconIndex);
     void drawStrokePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const Brush& brush);
     void drawMaterialSpherePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const glm::vec4& color, float metallic, float roughness);
-    void drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness);
+    void drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness, int badgeType = 0);
 };
 
 } // namespace REMoAINTER
