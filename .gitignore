@@ -1,0 +1,4 @@
+build/
+*.spv
+.cache/
+compile_commands.json
