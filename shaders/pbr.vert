@@ -16,6 +16,9 @@ layout(push_constant) uniform PushConstants {
     mat4 viewProj;
     vec3 cameraPos;
     float lightIntensity;
+    float envRotation;
+    int displayChannel;
+    int envPreset;
 } ubo;
 
 void main() {

@@ -9,6 +9,10 @@ struct Brush {
     float hardness = 0.8f;    // Edge softness (0.0 = fuzzy gaussian, 1.0 = sharp)
     float opacity = 1.0f;     // Stroke strength (0.0 to 1.0)
     float flow = 1.0f;        // Continuous flow rate
+    float spacing = 0.15f;    // Distance ratio between stamps
+    float angle = 0.0f;       // Brush rotation angle
+
+    int alphaType = 0;        // 0: RoundHard, 1: RoundSoft, 2: Noise, 3: Scratches, 4: Stipple, 5: Square, 6: Star
 
     // PBR Material values painted by this brush
     bool paintColor = true;

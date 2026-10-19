@@ -16,16 +16,26 @@ namespace REMoAINTER {
 static bool s_FramebufferResized = false;
 
 static std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open file: " + filename);
+    std::vector<std::string> candidates = {
+        filename,
+        "shaders/" + filename,
+        "../shaders/" + filename,
+        "/mnt/shared/REMoAINTER/shaders/" + filename,
+        "/mnt/shared/REMoAINTER/" + filename
+    };
+
+    for (const auto& path : candidates) {
+        std::ifstream file(path, std::ios::ate | std::ios::binary);
+        if (file.is_open()) {
+            size_t fileSize = (size_t)file.tellg();
+            std::vector<char> buffer(fileSize);
+            file.seekg(0);
+            file.read(buffer.data(), fileSize);
+            file.close();
+            return buffer;
+        }
     }
-    size_t fileSize = (size_t)file.tellg();
-    std::vector<char> buffer(fileSize);
-    file.seekg(0);
-    file.read(buffer.data(), fileSize);
-    file.close();
-    return buffer;
+    throw std::runtime_error("failed to open file: " + filename);
 }
 
 static VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code) {
@@ -497,8 +507,8 @@ void Engine::createDescriptorPool() {
 }
 
 void Engine::createPbrPipeline() {
-    auto vertShaderCode = readFile("/mnt/shared/REMoAINTER/shaders/pbr.vert.spv");
-    auto fragShaderCode = readFile("/mnt/shared/REMoAINTER/shaders/pbr.frag.spv");
+    auto vertShaderCode = readFile("pbr.vert.spv");
+    auto fragShaderCode = readFile("pbr.frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(device, vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(device, fragShaderCode);
@@ -580,12 +590,15 @@ void Engine::createPbrPipeline() {
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
-    // Push constant range (matrices + lighting)
+    // Push constant range (matrices + lighting + display channel)
     struct PushConstantData {
         glm::mat4 model;
         glm::mat4 viewProj;
         glm::vec3 cameraPos;
         float lightIntensity;
+        float envRotation;
+        int displayChannel;
+        int envPreset;
     };
 
     VkPushConstantRange pushConstantRange{};
@@ -780,12 +793,18 @@ void Engine::processInput() {
     bool altHeld = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS ||
                    glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS;
 
+    bool shiftHeld = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+                     glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS;
+
     bool leftDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
     bool middleDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
     bool rightDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
 
-    // Camera Navigation: Alt + Left (Orbit), Alt + Middle (Pan), Alt + Right (Zoom)
-    if (altHeld) {
+    // Shift + Right Mouse Button Drag rotates environment lighting (Substance Painter standard)
+    if (shiftHeld && rightDown) {
+        uiManager.environmentRotation += deltaX * 0.015f;
+    } else if (altHeld) {
+        // Camera Navigation: Alt + Left (Orbit), Alt + Middle (Pan), Alt + Right (Zoom)
         if (leftDown) {
             camera.orbit(deltaX * 0.4f, -deltaY * 0.4f);
         } else if (middleDown) {
@@ -809,6 +828,9 @@ void Engine::processInput() {
                 auto activeLayer = layerStack.getActiveLayer();
                 if (activeLayer && activeLayer->type == LayerType::Paint) {
                     activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush);
+                    if (uiManager.symmetryX) {
+                        activeLayer->paintStamp(1.0f - hoveredUV.x, hoveredUV.y, brush);
+                    }
                     layerStack.composite();
                     updatePbrTexturesFromLayerStack();
                 }
@@ -865,12 +887,15 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
     scissor.extent = swapchainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    // Push Constants (Camera & Matrices)
+    // Push Constants (Camera & Matrices & Lighting & Display Channel)
     struct PushConstantData {
         glm::mat4 model;
         glm::mat4 viewProj;
         glm::vec3 cameraPos;
         float lightIntensity;
+        float envRotation;
+        int displayChannel;
+        int envPreset;
     } pushData;
 
     pushData.model = glm::mat4(1.0f);
@@ -878,7 +903,10 @@ void Engine::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIn
     glm::mat4 proj = camera.getProjectionMatrix((float)swapchainExtent.width / (float)swapchainExtent.height);
     pushData.viewProj = proj * view;
     pushData.cameraPos = camera.getPosition();
-    pushData.lightIntensity = 1.0f;
+    pushData.lightIntensity = uiManager.lightIntensity;
+    pushData.envRotation = uiManager.environmentRotation;
+    pushData.displayChannel = uiManager.displayChannel;
+    pushData.envPreset = uiManager.environmentPreset;
 
     vkCmdPushConstants(commandBuffer, pbrPipelineLayout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
