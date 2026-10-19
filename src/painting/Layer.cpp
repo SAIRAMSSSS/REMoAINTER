@@ -290,8 +290,17 @@ void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& bru
         }
     };
 
+    // Handle horizontal UV seam wrapping: compute shortest path across [0, 1)
+    glm::vec2 targetP1 = p1;
+    float dx = targetP1.x - p0.x;
+    if (dx > 0.5f) {
+        targetP1.x -= 1.0f;
+    } else if (dx < -0.5f) {
+        targetP1.x += 1.0f;
+    }
+
     glm::vec2 startPx(p0.x * (float)width, p0.y * (float)height);
-    glm::vec2 endPx(p1.x * (float)width, p1.y * (float)height);
+    glm::vec2 endPx(targetP1.x * (float)width, targetP1.y * (float)height);
 
     float distPx = glm::distance(startPx, endPx);
     float stepPx = std::max(1.0f, brush.size * std::max(brush.spacing, 0.05f));
@@ -305,13 +314,14 @@ void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& bru
     int sMinX = (int)width, sMinY = (int)height, sMaxX = -1, sMaxY = -1;
 
     if (distPx < stepPx) {
-        paintStamp(p1.x, p1.y, currentBrush, &sMinX, &sMinY, &sMaxX, &sMaxY);
+        paintStamp(targetP1.x, targetP1.y, currentBrush, &sMinX, &sMinY, &sMaxX, &sMaxY);
         updateBounds(sMinX, sMinY, sMaxX, sMaxY);
     } else {
         int steps = static_cast<int>(std::ceil(distPx / stepPx));
+        steps = std::min(steps, 600);
         for (int i = 1; i <= steps; ++i) {
             float t = static_cast<float>(i) / static_cast<float>(steps);
-            glm::vec2 pt = glm::mix(p0, p1, t);
+            glm::vec2 pt = glm::mix(p0, targetP1, t);
             paintStamp(pt.x, pt.y, currentBrush, &sMinX, &sMinY, &sMaxX, &sMaxY);
             updateBounds(sMinX, sMinY, sMaxX, sMaxY);
         }

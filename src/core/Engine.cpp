@@ -1007,14 +1007,16 @@ void Engine::processInput() {
         static bool s_StrokeActive = false;
         static glm::vec2 s_LastStrokeUV(0.0f);
         static glm::vec2 s_SmoothedUV(0.0f);
-
-        if (!leftDown) {
-            s_StrokeActive = false;
-        }
+        static glm::vec3 s_LastStrokePoint3D(0.0f);
 
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         RayHit hit;
         isMeshHovered = currentMesh.intersectRay(rayOrigin, rayDir, modelMatrix, hit);
+
+        if (!leftDown || !isMeshHovered || altHeld) {
+            s_StrokeActive = false;
+        }
+
         if (isMeshHovered) {
             hoveredUV = hit.uv;
 
@@ -1023,10 +1025,18 @@ void Engine::processInput() {
                 if (activeLayer && activeLayer->type == LayerType::Paint) {
                     int sMinX = (int)layerStack.width, sMinY = (int)layerStack.height, sMaxX = -1, sMaxY = -1;
 
+                    // If 3D position jumped across silhouette or to disconnected surface, start fresh stroke segment
+                    float dist3D = s_StrokeActive ? glm::distance(hit.point, s_LastStrokePoint3D) : 0.0f;
+                    if (dist3D > 0.40f) {
+                        s_StrokeActive = false;
+                    }
+
                     if (!s_StrokeActive) {
                         s_StrokeActive = true;
                         s_LastStrokeUV = hoveredUV;
                         s_SmoothedUV = hoveredUV;
+                        s_LastStrokePoint3D = hit.point;
+
                         activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush, &sMinX, &sMinY, &sMaxX, &sMaxY);
                         if (sMinX <= sMaxX && sMinY <= sMaxY) layerStack.markDirtyRect(sMinX, sMinY, sMaxX, sMaxY);
 
@@ -1038,7 +1048,20 @@ void Engine::processInput() {
                     } else {
                         glm::vec2 targetUV = hoveredUV;
                         if (brush.lazyMouse) {
-                            s_SmoothedUV += (targetUV - s_SmoothedUV) * (1.0f - std::clamp(brush.lazyRadius, 0.0f, 0.85f));
+                            // Compute shortest delta in periodic UV space for smooth lazy mouse
+                            float deltaX = targetUV.x - s_SmoothedUV.x;
+                            if (deltaX > 0.5f) deltaX -= 1.0f;
+                            else if (deltaX < -0.5f) deltaX += 1.0f;
+
+                            float deltaY = targetUV.y - s_SmoothedUV.y;
+                            float smoothFactor = 1.0f - std::clamp(brush.lazyRadius, 0.0f, 0.85f);
+
+                            s_SmoothedUV.x += deltaX * smoothFactor;
+                            s_SmoothedUV.y += deltaY * smoothFactor;
+
+                            // Wrap smoothed UV into [0, 1)
+                            s_SmoothedUV.x = s_SmoothedUV.x - std::floor(s_SmoothedUV.x);
+                            s_SmoothedUV.y = std::clamp(s_SmoothedUV.y, 0.0f, 1.0f);
                         } else {
                             s_SmoothedUV = targetUV;
                         }
@@ -1052,7 +1075,9 @@ void Engine::processInput() {
                                                    glm::vec2(1.0f - s_SmoothedUV.x, s_SmoothedUV.y), brush, &symMinX, &symMinY, &symMaxX, &symMaxY);
                             if (symMinX <= symMaxX && symMinY <= symMaxY) layerStack.markDirtyRect(symMinX, symMinY, symMaxX, symMaxY);
                         }
+
                         s_LastStrokeUV = s_SmoothedUV;
+                        s_LastStrokePoint3D = hit.point;
                     }
                 }
             }
