@@ -55,6 +55,7 @@ public:
     void clear();
 
     void paintStamp(float uvX, float uvY, const Brush& brush);
+    void paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush);
 };
 
 } // namespace REMoAINTER

@@ -1,3 +1,3 @@
-#!/bin/bash
-cd /mnt/shared/REMoAINTER || exit 1
+#!/usr/bin/env bash
+cd /mnt/shared/REMoAINTER
 exec /mnt/shared/REMoAINTER/build/remoainter "$@"

@@ -18,11 +18,14 @@ layout(push_constant) uniform PushConstants {
     float lightIntensity;
     float envRotation;     // Shift+RMB rotates lighting
     int displayChannel;    // 0: Lit, 1: BaseColor, 2: Roughness, 3: Metallic, 4: Normal, 5: LightingOnly
-    int envPreset;         // 0: Studio, 1: Sunset, 2: Cyberpunk, 3: Forest, 4: Desert
+    int envPreset;         // 0: Studio Neutral, 1: Warm & Cool Studio, 2: Cyberpunk, 3: Forest, 4: Desert
 } ubo;
 
 const float PI = 3.14159265359;
 
+// ==========================================
+// Cook-Torrance GGX Microfacet BRDF
+// ==========================================
 float distributionGGX(vec3 N, vec3 H, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -54,9 +57,23 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-// Procedural Environment Lighting Model
-void getEnvironmentLighting(int preset, float rotation, vec3 N, vec3 V, float roughness, out vec3 ambientDiffuse, out vec3 ambientSpecular, out vec3 keyDir, out vec3 keyColor, out vec3 fillDir, out vec3 fillColor) {
-    // Rotate directional vectors around Y axis
+// ==========================================
+// 5-Light Studio Rig & Environment
+// ==========================================
+struct StudioRig {
+    vec3 lightDirs[5];
+    vec3 lightColors[5];
+    vec3 ambientSky;
+    vec3 ambientGround;
+    vec3 softboxColor1;
+    vec3 softboxDir1;
+    vec3 softboxColor2;
+    vec3 softboxDir2;
+};
+
+StudioRig getStudioRig(int preset, float rotation) {
+    StudioRig rig;
+
     float c = cos(rotation);
     float s = sin(rotation);
     mat3 rotY = mat3(
@@ -65,67 +82,129 @@ void getEnvironmentLighting(int preset, float rotation, vec3 N, vec3 V, float ro
         -s, 0.0, c
     );
 
-    vec3 R = reflect(-V, N);
-
-    vec3 zenithColor;
-    vec3 horizonColor;
-    vec3 groundColor;
-
     if (preset == 1) {
-        // Sunset Warm
-        zenithColor   = vec3(0.25, 0.20, 0.45);
-        horizonColor  = vec3(1.00, 0.45, 0.15);
-        groundColor   = vec3(0.12, 0.08, 0.05);
-        keyDir        = rotY * normalize(vec3(0.9, 0.35, 0.4));
-        keyColor      = vec3(3.5, 1.6, 0.6);
-        fillDir       = rotY * normalize(vec3(-0.8, 0.5, -0.6));
-        fillColor     = vec3(0.4, 0.5, 0.9);
+        // Warm & Cool Studio (Substance Painter Key/Fill setup matching reference)
+        rig.lightDirs[0] = rotY * normalize(vec3(0.75, 0.85, 0.60)); // Main Key
+        rig.lightColors[0] = vec3(3.2, 2.7, 2.2);                     // Warm 4800K
+
+        rig.lightDirs[1] = rotY * normalize(vec3(-0.85, 0.40, -0.40)); // Cool Fill
+        rig.lightColors[1] = vec3(1.1, 1.4, 1.9);                      // Cool 7000K
+
+        rig.lightDirs[2] = rotY * normalize(vec3(-0.30, 0.70, -0.90)); // Sharp Back Rim
+        rig.lightColors[2] = vec3(2.4, 2.5, 2.6);                      // Crisp Rim
+
+        rig.lightDirs[3] = rotY * normalize(vec3(0.0, 1.0, 0.15));      // Overhead Softbox
+        rig.lightColors[3] = vec3(1.4, 1.35, 1.3);
+
+        rig.lightDirs[4] = normalize(vec3(0.0, -0.9, 0.4));            // Table Bounce
+        rig.lightColors[4] = vec3(0.8, 0.5, 0.3);                      // Warm Wood Bounce
+
+        rig.ambientSky    = vec3(0.32, 0.34, 0.38);
+        rig.ambientGround = vec3(0.18, 0.14, 0.11);
+
+        rig.softboxDir1   = rig.lightDirs[0];
+        rig.softboxColor1 = vec3(2.5, 2.2, 1.9);
+        rig.softboxDir2   = rig.lightDirs[1];
+        rig.softboxColor2 = vec3(1.2, 1.4, 1.8);
     } else if (preset == 2) {
         // Cyberpunk Neon
-        zenithColor   = vec3(0.08, 0.02, 0.18);
-        horizonColor  = vec3(0.85, 0.05, 0.55);
-        groundColor   = vec3(0.02, 0.10, 0.15);
-        keyDir        = rotY * normalize(vec3(0.7, 0.8, 0.3));
-        keyColor      = vec3(0.2, 2.5, 3.2); // Cyan Key
-        fillDir       = rotY * normalize(vec3(-0.7, 0.3, -0.7));
-        fillColor     = vec3(3.2, 0.3, 2.0); // Magenta Fill
+        rig.lightDirs[0] = rotY * normalize(vec3(0.8, 0.6, 0.4));
+        rig.lightColors[0] = vec3(0.2, 3.2, 3.8); // Cyan Key
+
+        rig.lightDirs[1] = rotY * normalize(vec3(-0.8, 0.5, -0.6));
+        rig.lightColors[1] = vec3(3.8, 0.3, 2.4); // Magenta Fill
+
+        rig.lightDirs[2] = rotY * normalize(vec3(0.1, 0.9, -0.9));
+        rig.lightColors[2] = vec3(2.0, 0.8, 3.5); // Purple Rim
+
+        rig.lightDirs[3] = rotY * normalize(vec3(0.0, 1.0, 0.0));
+        rig.lightColors[3] = vec3(0.5, 1.5, 2.0);
+
+        rig.lightDirs[4] = normalize(vec3(0.0, -1.0, 0.0));
+        rig.lightColors[4] = vec3(0.2, 0.1, 0.3);
+
+        rig.ambientSky    = vec3(0.10, 0.08, 0.20);
+        rig.ambientGround = vec3(0.04, 0.06, 0.08);
+
+        rig.softboxDir1   = rig.lightDirs[0];
+        rig.softboxColor1 = vec3(0.3, 3.0, 3.5);
+        rig.softboxDir2   = rig.lightDirs[1];
+        rig.softboxColor2 = vec3(3.5, 0.4, 2.2);
     } else if (preset == 3) {
-        // Forest Sunlight
-        zenithColor   = vec3(0.20, 0.40, 0.65);
-        horizonColor  = vec3(0.55, 0.70, 0.40);
-        groundColor   = vec3(0.15, 0.22, 0.08);
-        keyDir        = rotY * normalize(vec3(0.5, 1.0, 0.5));
-        keyColor      = vec3(3.2, 3.1, 2.6);
-        fillDir       = rotY * normalize(vec3(-0.6, 0.3, -0.6));
-        fillColor     = vec3(0.4, 0.7, 0.5);
+        // Forest Daylight
+        rig.lightDirs[0] = rotY * normalize(vec3(0.5, 0.95, 0.4));
+        rig.lightColors[0] = vec3(3.6, 3.4, 2.8); // Sun
+
+        rig.lightDirs[1] = rotY * normalize(vec3(-0.7, 0.4, -0.6));
+        rig.lightColors[1] = vec3(0.6, 0.9, 1.3); // Sky fill
+
+        rig.lightDirs[2] = rotY * normalize(vec3(0.2, 0.3, -0.9));
+        rig.lightColors[2] = vec3(1.5, 1.6, 1.4);
+
+        rig.lightDirs[3] = rotY * normalize(vec3(0.0, 1.0, 0.0));
+        rig.lightColors[3] = vec3(1.2, 1.4, 1.0);
+
+        rig.lightDirs[4] = normalize(vec3(0.0, -1.0, 0.0));
+        rig.lightColors[4] = vec3(0.3, 0.5, 0.2); // Foliage bounce
+
+        rig.ambientSky    = vec3(0.25, 0.40, 0.60);
+        rig.ambientGround = vec3(0.12, 0.20, 0.08);
+
+        rig.softboxDir1   = rig.lightDirs[0];
+        rig.softboxColor1 = vec3(3.0, 2.8, 2.2);
+        rig.softboxDir2   = rig.lightDirs[1];
+        rig.softboxColor2 = vec3(0.8, 1.1, 1.4);
     } else if (preset == 4) {
         // Desert High Noon
-        zenithColor   = vec3(0.35, 0.55, 0.85);
-        horizonColor  = vec3(0.85, 0.75, 0.60);
-        groundColor   = vec3(0.45, 0.35, 0.20);
-        keyDir        = rotY * normalize(vec3(0.2, 1.0, 0.1));
-        keyColor      = vec3(4.5, 4.2, 3.8);
-        fillDir       = rotY * normalize(vec3(-0.5, 0.2, -0.8));
-        fillColor     = vec3(0.8, 0.7, 0.5);
+        rig.lightDirs[0] = rotY * normalize(vec3(0.2, 1.0, 0.15));
+        rig.lightColors[0] = vec3(4.5, 4.2, 3.6); // Direct Noon Sun
+
+        rig.lightDirs[1] = rotY * normalize(vec3(-0.6, 0.3, -0.7));
+        rig.lightColors[1] = vec3(0.9, 1.1, 1.5);
+
+        rig.lightDirs[2] = rotY * normalize(vec3(0.8, 0.2, -0.5));
+        rig.lightColors[2] = vec3(1.6, 1.4, 1.2);
+
+        rig.lightDirs[3] = rotY * normalize(vec3(0.0, 1.0, 0.0));
+        rig.lightColors[3] = vec3(2.0, 1.8, 1.6);
+
+        rig.lightDirs[4] = normalize(vec3(0.0, -1.0, 0.0));
+        rig.lightColors[4] = vec3(1.0, 0.8, 0.5); // Sand bounce
+
+        rig.ambientSky    = vec3(0.35, 0.50, 0.75);
+        rig.ambientGround = vec3(0.35, 0.28, 0.18);
+
+        rig.softboxDir1   = rig.lightDirs[0];
+        rig.softboxColor1 = vec3(3.8, 3.5, 3.0);
+        rig.softboxDir2   = rig.lightDirs[4];
+        rig.softboxColor2 = vec3(1.2, 0.9, 0.6);
     } else {
-        // Studio Neutral (Default)
-        zenithColor   = vec3(0.35, 0.38, 0.42);
-        horizonColor  = vec3(0.50, 0.52, 0.55);
-        groundColor   = vec3(0.18, 0.18, 0.20);
-        keyDir        = rotY * normalize(vec3(0.65, 0.85, 0.55));
-        keyColor      = vec3(2.8, 2.8, 2.8);
-        fillDir       = rotY * normalize(vec3(-0.7, 0.4, -0.6));
-        fillColor     = vec3(1.1, 1.2, 1.3);
+        // Studio Neutral (Default Clean Photography Studio)
+        rig.lightDirs[0] = rotY * normalize(vec3(0.65, 0.85, 0.65));
+        rig.lightColors[0] = vec3(3.0, 3.0, 3.0); // 5500K Clean White Key
+
+        rig.lightDirs[1] = rotY * normalize(vec3(-0.75, 0.45, -0.55));
+        rig.lightColors[1] = vec3(1.3, 1.35, 1.45); // Soft Fill
+
+        rig.lightDirs[2] = rotY * normalize(vec3(0.0, 0.65, -0.90));
+        rig.lightColors[2] = vec3(2.2, 2.2, 2.3); // Rim
+
+        rig.lightDirs[3] = rotY * normalize(vec3(0.0, 1.0, 0.0));
+        rig.lightColors[3] = vec3(1.5, 1.5, 1.5); // Overhead Softbox
+
+        rig.lightDirs[4] = normalize(vec3(0.0, -1.0, 0.2));
+        rig.lightColors[4] = vec3(0.6, 0.6, 0.65); // Floor bounce
+
+        rig.ambientSky    = vec3(0.35, 0.38, 0.42);
+        rig.ambientGround = vec3(0.18, 0.18, 0.20);
+
+        rig.softboxDir1   = rig.lightDirs[0];
+        rig.softboxColor1 = vec3(2.5, 2.5, 2.5);
+        rig.softboxDir2   = rig.lightDirs[1];
+        rig.softboxColor2 = vec3(1.2, 1.3, 1.4);
     }
 
-    // Hemisphere diffuse irradiance
-    float upFraction = N.y * 0.5 + 0.5;
-    ambientDiffuse = mix(groundColor, mix(horizonColor, zenithColor, max(N.y, 0.0)), upFraction) * 0.45;
-
-    // Specular environment reflection approximation
-    float specUp = R.y * 0.5 + 0.5;
-    vec3 skyReflect = mix(groundColor, mix(horizonColor, zenithColor, max(R.y, 0.0)), specUp);
-    ambientSpecular = mix(skyReflect, ambientDiffuse, roughness * 0.75);
+    return rig;
 }
 
 void main() {
@@ -143,7 +222,7 @@ void main() {
     vec3 N = normalize(inTBN * normalSample);
 
     // ==========================================
-    // Display Mode Solo Channel Overrides
+    // Solo Channel Viewport Modes (M / C keys)
     // ==========================================
     if (ubo.displayChannel == 1) {
         // Base Color Solo
@@ -163,30 +242,23 @@ void main() {
         return;
     } else if (ubo.displayChannel == 5) {
         // Lighting Only (Neutral Clay Material)
-        albedo = vec3(0.75);
+        albedo = vec3(0.72);
         metallic = 0.0;
-        roughness = 0.4;
+        roughness = 0.45;
     }
 
     vec3 V = normalize(ubo.cameraPos - inWorldPos);
+    vec3 R = reflect(-V, N);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    // Setup Environment Lighting
-    vec3 ambientDiffuse, ambientSpecular;
-    vec3 keyDir, keyColor, fillDir, fillColor;
-    getEnvironmentLighting(ubo.envPreset, ubo.envRotation, N, V, roughness,
-                           ambientDiffuse, ambientSpecular, keyDir, keyColor, fillDir, fillColor);
-
-    keyColor *= ubo.lightIntensity;
-    fillColor *= ubo.lightIntensity;
-
-    // Direct Lighting Evaluation (Cook-Torrance GGX)
-    vec3 lightDirs[2]   = vec3[](keyDir, fillDir);
-    vec3 lightColors[2] = vec3[](keyColor, fillColor);
+    // 5-Light Studio Rig
+    StudioRig rig = getStudioRig(ubo.envPreset, ubo.envRotation);
 
     vec3 Lo = vec3(0.0);
-    for (int i = 0; i < 2; ++i) {
-        vec3 L = lightDirs[i];
+
+    // Evaluate all 5 studio lights with Cook-Torrance GGX
+    for (int i = 0; i < 5; ++i) {
+        vec3 L = rig.lightDirs[i];
         vec3 H = normalize(V + L);
         float NdotL = max(dot(N, L), 0.0);
 
@@ -202,26 +274,39 @@ void main() {
             vec3 kS = F;
             vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
-            Lo += (kD * albedo / PI + specular) * lightColors[i] * NdotL;
+            vec3 lightRadiance = rig.lightColors[i] * ubo.lightIntensity;
+            Lo += (kD * albedo / PI + specular) * lightRadiance * NdotL;
         }
     }
 
-    // Indirect / IBL Approximation
-    vec3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    vec3 kD = (1.0 - kS) * (1.0 - metallic);
-    vec3 diffuseIBL = kD * ambientDiffuse * albedo;
-    vec3 specularIBL = ambientSpecular * kS;
-    vec3 ambient = (diffuseIBL + specularIBL) * ubo.lightIntensity;
+    // Studio Softbox specular reflections in direction R
+    float softbox1 = pow(max(dot(R, rig.softboxDir1), 0.0), mix(64.0, 4.0, roughness));
+    float softbox2 = pow(max(dot(R, rig.softboxDir2), 0.0), mix(48.0, 3.0, roughness));
+    vec3 softboxSpec = (rig.softboxColor1 * softbox1 + rig.softboxColor2 * softbox2) * (1.0 - roughness * 0.7);
 
-    vec3 color = ambient + Lo;
+    // Two-hemisphere ambient irradiance
+    float upFraction = N.y * 0.5 + 0.5;
+    vec3 ambientDiffuse = mix(rig.ambientGround, rig.ambientSky, upFraction) * 0.40;
 
-    // ACES Film Tone Mapping Curve for rich cinematic colors
-    vec3 a = color * (color + 0.0245786) - 0.000090537;
-    vec3 b = color * (0.983729 * color + 0.4329510) + 0.238081;
-    color = clamp(a / b, 0.0, 1.0);
+    // Specular IBL Environment reflection
+    vec3 kS_env = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kD_env = (1.0 - kS_env) * (1.0 - metallic);
 
-    // Convert back to sRGB display space
-    color = pow(color, vec3(1.0 / 2.2));
+    float specUp = R.y * 0.5 + 0.5;
+    vec3 envReflection = mix(rig.ambientGround, rig.ambientSky, specUp) * 0.5;
+    vec3 specularIBL = (envReflection + softboxSpec * 0.35) * kS_env;
 
-    outColor = vec4(color, alpha);
+    vec3 ambient = (kD_env * ambientDiffuse * albedo + specularIBL) * ubo.lightIntensity;
+
+    vec3 finalColor = ambient + Lo;
+
+    // ACES Filmic Tone Mapping Curve (Matches Substance Painter Iray / Viewport tone mapping)
+    vec3 a = finalColor * (finalColor + 0.0245786) - 0.000090537;
+    vec3 b = finalColor * (0.983729 * finalColor + 0.4329510) + 0.238081;
+    finalColor = clamp(a / b, 0.0, 1.0);
+
+    // Linear to sRGB gamma correction
+    finalColor = pow(finalColor, vec3(1.0 / 2.2));
+
+    outColor = vec4(finalColor, alpha);
 }

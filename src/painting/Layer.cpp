@@ -222,4 +222,33 @@ void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
     }
 }
 
+void Layer::paintLine(const glm::vec2& p0, const glm::vec2& p1, const Brush& brush) {
+    if (type != LayerType::Paint) return;
+
+    glm::vec2 startPx(p0.x * (float)width, p0.y * (float)height);
+    glm::vec2 endPx(p1.x * (float)width, p1.y * (float)height);
+
+    float distPx = glm::distance(startPx, endPx);
+    float stepPx = std::max(1.0f, brush.size * std::max(brush.spacing, 0.05f));
+
+    Brush currentBrush = brush;
+    if (brush.followPath && distPx > 1.0f) {
+        glm::vec2 dir = glm::normalize(endPx - startPx);
+        currentBrush.angle = std::atan2(dir.y, dir.x);
+    }
+
+    if (distPx < stepPx) {
+        paintStamp(p1.x, p1.y, currentBrush);
+        return;
+    }
+
+    int steps = static_cast<int>(std::ceil(distPx / stepPx));
+    for (int i = 1; i <= steps; ++i) {
+        float t = static_cast<float>(i) / static_cast<float>(steps);
+        glm::vec2 pt = glm::mix(p0, p1, t);
+        paintStamp(pt.x, pt.y, currentBrush);
+    }
+}
+
 } // namespace REMoAINTER
+

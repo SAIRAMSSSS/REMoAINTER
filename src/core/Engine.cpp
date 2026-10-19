@@ -818,6 +818,14 @@ void Engine::processInput() {
         camera.screenPointToRay((float)mouseX, (float)mouseY, (float)swapchainExtent.width, (float)swapchainExtent.height,
                                 rayOrigin, rayDir);
 
+        static bool s_StrokeActive = false;
+        static glm::vec2 s_LastStrokeUV(0.0f);
+        static glm::vec2 s_SmoothedUV(0.0f);
+
+        if (!leftDown) {
+            s_StrokeActive = false;
+        }
+
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         RayHit hit;
         isMeshHovered = currentMesh.intersectRay(rayOrigin, rayDir, modelMatrix, hit);
@@ -827,15 +835,51 @@ void Engine::processInput() {
             if (leftDown) {
                 auto activeLayer = layerStack.getActiveLayer();
                 if (activeLayer && activeLayer->type == LayerType::Paint) {
-                    activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush);
-                    if (uiManager.symmetryX) {
-                        activeLayer->paintStamp(1.0f - hoveredUV.x, hoveredUV.y, brush);
+                    if (!s_StrokeActive) {
+                        s_StrokeActive = true;
+                        s_LastStrokeUV = hoveredUV;
+                        s_SmoothedUV = hoveredUV;
+                        activeLayer->paintStamp(hoveredUV.x, hoveredUV.y, brush);
+                        if (uiManager.symmetryX) {
+                            activeLayer->paintStamp(1.0f - hoveredUV.x, hoveredUV.y, brush);
+                        }
+                    } else {
+                        glm::vec2 targetUV = hoveredUV;
+                        if (brush.lazyMouse) {
+                            s_SmoothedUV += (targetUV - s_SmoothedUV) * (1.0f - std::clamp(brush.lazyRadius, 0.0f, 0.85f));
+                        } else {
+                            s_SmoothedUV = targetUV;
+                        }
+
+                        activeLayer->paintLine(s_LastStrokeUV, s_SmoothedUV, brush);
+                        if (uiManager.symmetryX) {
+                            activeLayer->paintLine(glm::vec2(1.0f - s_LastStrokeUV.x, s_LastStrokeUV.y),
+                                                   glm::vec2(1.0f - s_SmoothedUV.x, s_SmoothedUV.y), brush);
+                        }
+                        s_LastStrokeUV = s_SmoothedUV;
                     }
+
                     layerStack.composite();
                     updatePbrTexturesFromLayerStack();
                 }
             }
         }
+    }
+
+    // Substance Painter Standard Keyboard Shortcuts
+    if (!io.WantCaptureKeyboard) {
+        if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) uiManager.displayChannel = 0; // Material view
+        if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) uiManager.displayChannel = 1; // Base Color solo view
+        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Brush;
+            brush.isEraser = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
+            uiManager.activeTool = ToolMode::Eraser;
+            brush.isEraser = true;
+        }
+        if (glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS) brush.size = std::max(1.0f, brush.size - 0.5f);
+        if (glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS) brush.size = std::min(256.0f, brush.size + 0.5f);
     }
 
     lastMouseX = mouseX;

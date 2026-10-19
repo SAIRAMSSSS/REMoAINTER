@@ -31,6 +31,7 @@ public:
 
     std::shared_ptr<Layer> getActiveLayer();
 
+    void resize(uint32_t w, uint32_t h);
     void composite();
 };
 

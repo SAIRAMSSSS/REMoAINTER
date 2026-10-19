@@ -69,6 +69,20 @@ std::shared_ptr<Layer> LayerStack::getActiveLayer() {
     return nullptr;
 }
 
+void LayerStack::resize(uint32_t w, uint32_t h) {
+    width = w;
+    height = h;
+    size_t numPixels = (size_t)width * height;
+    compositedBaseColor.resize(numPixels * 4);
+    compositedMetallicRoughness.resize(numPixels * 4);
+    compositedNormal.resize(numPixels * 4);
+
+    for (auto& layer : layers) {
+        layer->resize(w, h);
+    }
+    composite();
+}
+
 static inline float applyBlendMode(float bg, float fg, BlendMode mode) {
     switch (mode) {
         case BlendMode::Multiply:
