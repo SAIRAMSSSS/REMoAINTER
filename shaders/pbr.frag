@@ -216,10 +216,19 @@ void main() {
     float roughness = clamp(mrSample.g, 0.04, 1.0);
     float metallic  = clamp(mrSample.b, 0.0, 1.0);
 
+    // Orthonormalize TBN frame against vertex normal to eliminate tangent distortion & shading artifacts
+    vec3 geomN = normalize(inNormal);
+    vec3 geomT = normalize(inTBN[0]);
+    geomT = normalize(geomT - dot(geomT, geomN) * geomN);
+    vec3 geomB = cross(geomN, geomT);
+    mat3 TBN = mat3(geomT, geomB, geomN);
+
     // Unpack normal map
-    vec3 normalSample = texture(normalMap, inTexCoord).rgb;
-    normalSample = normalize(normalSample * 2.0 - 1.0);
-    vec3 N = normalize(inTBN * normalSample);
+    vec3 normalSample = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
+    vec3 N = normalize(TBN * normalSample);
+    if (!gl_FrontFacing || dot(N, normalize(ubo.cameraPos - inWorldPos)) < 0.0) {
+        N = geomN;
+    }
 
     // ==========================================
     // Solo Channel Viewport Modes (M / C keys)
@@ -250,6 +259,7 @@ void main() {
     vec3 V = normalize(ubo.cameraPos - inWorldPos);
     vec3 R = reflect(-V, N);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    float NdotV = max(dot(N, V), 0.001);
 
     // 5-Light Studio Rig
     StudioRig rig = getStudioRig(ubo.envPreset, ubo.envRotation);
@@ -268,8 +278,8 @@ void main() {
             vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
             vec3 numerator = NDF * G * F;
-            float denominator = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
-            vec3 specular = numerator / denominator;
+            float denominator = 4.0 * NdotV * max(NdotL, 0.001);
+            vec3 specular = clamp(numerator / denominator, vec3(0.0), vec3(50.0));
 
             vec3 kS = F;
             vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);

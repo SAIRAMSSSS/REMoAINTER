@@ -14,6 +14,22 @@ struct MaterialPreset {
     float roughness;
 };
 
+struct SmartMaterialLayerDef {
+    std::string name;
+    bool isFill;
+    glm::vec4 color;
+    float metallic;
+    float roughness;
+    float opacity;
+    std::string blendMode; // "Norm", "Mult", "Screen", "Over", "Add"
+};
+
+struct SmartMaterialPreset {
+    std::string name;
+    std::string category;
+    std::vector<SmartMaterialLayerDef> layers;
+};
+
 struct BrushPreset {
     std::string name;
     float size;
@@ -26,7 +42,8 @@ struct BrushPreset {
 
 struct AlphaPreset {
     std::string name;
-    int type; // 0: RoundHard, 1: RoundSoft, 2: Noise, 3: Scratches, 4: Stipple, 5: Square, 6: Star
+    std::string category;
+    int type; // 0: RoundHard, 1: RoundSoft, 2: Noise, 3: Scratches, 4: Stipple, 5: Square, 6: Star, 7: Biohazard, 8: HazardStripe, 9: TechDial
 };
 
 struct EnvironmentPreset {
@@ -74,28 +91,103 @@ public:
         };
     }
 
+    static std::vector<SmartMaterialPreset> getSmartMaterials() {
+        return {
+            {
+                "Steel Painted Green", "Metal",
+                {
+                    { "Cast Steel Substrate", true, glm::vec4(0.35f, 0.36f, 0.38f, 1.0f), 0.95f, 0.40f, 1.0f, "Norm" },
+                    { "Primer Coat Grey", true, glm::vec4(0.28f, 0.28f, 0.30f, 1.0f), 0.0f, 0.65f, 1.0f, "Norm" },
+                    { "Machine Green Enamel", true, glm::vec4(0.14f, 0.45f, 0.28f, 1.0f), 0.0f, 0.35f, 1.0f, "Norm" },
+                    { "Edge Scratches & Chips", false, glm::vec4(0.75f, 0.75f, 0.78f, 1.0f), 1.0f, 0.22f, 0.95f, "Norm" },
+                    { "Crevice Dirt & Dust", true, glm::vec4(0.10f, 0.08f, 0.06f, 1.0f), 0.05f, 0.92f, 0.45f, "Mult" }
+                }
+            },
+            {
+                "Aluminium Anodized Red", "Metal",
+                {
+                    { "Aluminum Base", true, glm::vec4(0.90f, 0.91f, 0.92f, 1.0f), 1.0f, 0.22f, 1.0f, "Norm" },
+                    { "Red Anodized Sheen", true, glm::vec4(0.85f, 0.06f, 0.10f, 1.0f), 0.85f, 0.16f, 0.95f, "Over" },
+                    { "Specular Edge Highlights", false, glm::vec4(0.96f, 0.96f, 0.98f, 1.0f), 1.0f, 0.12f, 0.85f, "Screen" }
+                }
+            },
+            {
+                "Bronze Corroded Statue", "Metal",
+                {
+                    { "Cast Antique Bronze", true, glm::vec4(0.62f, 0.44f, 0.24f, 1.0f), 1.0f, 0.32f, 1.0f, "Norm" },
+                    { "Verdigris Patina Crust", true, glm::vec4(0.22f, 0.65f, 0.54f, 1.0f), 0.05f, 0.88f, 0.82f, "Norm" },
+                    { "Polished Highpoints", false, glm::vec4(0.82f, 0.62f, 0.34f, 1.0f), 1.0f, 0.16f, 0.90f, "Norm" }
+                }
+            },
+            {
+                "Gold Damaged 24K", "Metal",
+                {
+                    { "Pure 24K Gold Base", true, glm::vec4(1.00f, 0.85f, 0.42f, 1.0f), 1.0f, 0.12f, 1.0f, "Norm" },
+                    { "Surface Micro-Scratches", false, glm::vec4(0.82f, 0.68f, 0.30f, 1.0f), 0.90f, 0.45f, 0.70f, "Norm" },
+                    { "Crevice Cavity Dirt", true, glm::vec4(0.12f, 0.09f, 0.04f, 1.0f), 0.0f, 0.95f, 0.40f, "Mult" }
+                }
+            },
+            {
+                "Machinery Heavy Duty", "Metal",
+                {
+                    { "Cast Iron Frame", true, glm::vec4(0.22f, 0.23f, 0.24f, 1.0f), 0.95f, 0.50f, 1.0f, "Norm" },
+                    { "Safety Yellow Enamel", true, glm::vec4(0.95f, 0.78f, 0.08f, 1.0f), 0.0f, 0.28f, 1.0f, "Norm" },
+                    { "Oil & Grease Leaks", false, glm::vec4(0.04f, 0.04f, 0.05f, 1.0f), 0.20f, 0.06f, 0.80f, "Norm" },
+                    { "Surface Rust Spots", true, glm::vec4(0.42f, 0.18f, 0.08f, 1.0f), 0.25f, 0.85f, 0.40f, "Over" }
+                }
+            },
+            {
+                "Leather Calf Aged", "Leather",
+                {
+                    { "Cognac Leather Base", true, glm::vec4(0.38f, 0.22f, 0.14f, 1.0f), 0.0f, 0.55f, 1.0f, "Norm" },
+                    { "Deep Crease Grain", true, glm::vec4(0.24f, 0.13f, 0.08f, 1.0f), 0.0f, 0.68f, 0.65f, "Mult" },
+                    { "Surface Worn Sheen", false, glm::vec4(0.52f, 0.35f, 0.24f, 1.0f), 0.0f, 0.32f, 0.50f, "Norm" }
+                }
+            },
+            {
+                "Hull Damage Sci-Fi", "Synthetics",
+                {
+                    { "Ceramic Armor Plating", true, glm::vec4(0.85f, 0.86f, 0.88f, 1.0f), 0.10f, 0.35f, 1.0f, "Norm" },
+                    { "Exposed Composite Core", true, glm::vec4(0.10f, 0.10f, 0.11f, 1.0f), 0.40f, 0.70f, 0.80f, "Norm" },
+                    { "Thermal Blast Burn", false, glm::vec4(0.05f, 0.04f, 0.03f, 1.0f), 0.0f, 0.95f, 0.70f, "Mult" }
+                }
+            },
+            {
+                "Marble Carrara Polished", "Stone",
+                {
+                    { "White Marble Base", true, glm::vec4(0.92f, 0.93f, 0.94f, 1.0f), 0.0f, 0.18f, 1.0f, "Norm" },
+                    { "Mineral Veins Grey", false, glm::vec4(0.45f, 0.48f, 0.50f, 1.0f), 0.0f, 0.25f, 0.65f, "Norm" },
+                    { "Polished Clearcoat", true, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.0f, 0.05f, 0.35f, "Screen" }
+                }
+            }
+        };
+    }
+
     static std::vector<BrushPreset> getBrushes() {
         return {
-            { "Paint Basic", 32.0f, 0.85f, 1.0f, 1.0f, 0.12f, 0 },
+            { "Basic Paint", 32.0f, 0.85f, 1.0f, 1.0f, 0.12f, 0 },
             { "Soft Airbrush", 48.0f, 0.15f, 0.6f, 0.40f, 0.10f, 1 },
             { "Hard Chisel", 24.0f, 1.00f, 1.0f, 1.0f, 0.08f, 5 },
             { "Grunge Dirt", 45.0f, 0.60f, 0.8f, 0.65f, 0.15f, 2 },
-            { "Scratch Metal", 30.0f, 0.90f, 0.9f, 0.80f, 0.18f, 3 },
+            { "Metal Scratches", 30.0f, 0.90f, 0.9f, 0.80f, 0.18f, 3 },
             { "Stipple Noise", 50.0f, 0.50f, 0.7f, 0.55f, 0.20f, 4 },
             { "Star Burst", 36.0f, 0.75f, 0.85f, 0.70f, 0.25f, 6 },
-            { "Detail 4px", 4.0f, 0.95f, 1.0f, 1.0f, 0.05f, 0 }
+            { "Detail Ink 4px", 4.0f, 0.95f, 1.0f, 1.0f, 0.05f, 0 }
         };
     }
 
     static std::vector<AlphaPreset> getAlphas() {
         return {
-            { "Round Hard", 0 },
-            { "Round Soft", 1 },
-            { "Grunge Noise", 2 },
-            { "Scratches", 3 },
-            { "Stipple Grid", 4 },
-            { "Square Box", 5 },
-            { "Star Burst", 6 }
+            { "Round Hard", "Basic", 0 },
+            { "Round Soft", "Basic", 1 },
+            { "Grunge Noise", "Noise", 2 },
+            { "Linear Scratches", "Noise", 3 },
+            { "Stipple Grid", "Noise", 4 },
+            { "Square Box", "Hard Surface", 5 },
+            { "Star Emblem", "Logos", 6 },
+            { "Biohazard Logo", "Logos", 7 },
+            { "Industrial Chevrons", "Hard Surface", 8 },
+            { "Tech Dial Gauge", "Hard Surface", 9 }
         };
     }
 

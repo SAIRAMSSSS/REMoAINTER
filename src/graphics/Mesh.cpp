@@ -208,7 +208,8 @@ bool Mesh::intersectRay(const glm::vec3& rayOrigin, const glm::vec3& rayDir, con
         glm::vec3 pvec = glm::cross(localDir, e2);
         float det = glm::dot(e1, pvec);
 
-        if (std::abs(det) < 1e-7f) continue;
+        // Cull back-facing triangles so ray never penetrates through to the back of the model (prevents mirrored auto-painting)
+        if (det < 1e-7f) continue;
         float invDet = 1.0f / det;
 
         glm::vec3 tvec = localOrigin - v0.position;
@@ -243,42 +244,53 @@ bool Mesh::intersectRay(const glm::vec3& rayOrigin, const glm::vec3& rayDir, con
 Mesh Mesh::createSphere(float radius, int rings, int sectors) {
     Mesh mesh;
     mesh.name = "PBR Material Sphere";
-    const float R = 1.0f / (float)(rings - 1);
-    const float S = 1.0f / (float)(sectors - 1);
     const float PI = 3.14159265358979323846f;
 
-    for (int r = 0; r < rings; ++r) {
-        for (int s = 0; s < sectors; ++s) {
-            float y = std::sin(-PI / 2.0f + PI * r * R);
-            float x = std::cos(2.0f * PI * s * S) * std::sin(PI * r * R);
-            float z = std::sin(2.0f * PI * s * S) * std::sin(PI * r * R);
+    for (int r = 0; r <= rings; ++r) {
+        float phi = PI * (float)r / (float)rings;
+        float sinPhi = std::sin(phi);
+        float cosPhi = std::cos(phi);
+
+        for (int s = 0; s <= sectors; ++s) {
+            float theta = 2.0f * PI * (float)s / (float)sectors;
+            float sinTheta = std::sin(theta);
+            float cosTheta = std::cos(theta);
+
+            float x = sinPhi * cosTheta;
+            float y = cosPhi;
+            float z = sinPhi * sinTheta;
 
             Vertex v;
             v.position = glm::vec3(x, y, z) * radius;
-            v.normal = glm::normalize(v.position);
-            v.texCoord = glm::vec2(s * S, r * R);
+            v.normal = glm::vec3(x, y, z);
+            v.texCoord = glm::vec2((float)s / (float)sectors, (float)r / (float)rings);
+
+            v.tangent = glm::vec3(-sinTheta, 0.0f, cosTheta);
+            v.bitangent = glm::cross(v.normal, v.tangent);
+
             mesh.vertices.push_back(v);
         }
     }
 
-    for (int r = 0; r < rings - 1; ++r) {
-        for (int s = 0; s < sectors - 1; ++s) {
-            uint32_t i0 = r * sectors + s;
-            uint32_t i1 = (r + 1) * sectors + s;
-            uint32_t i2 = (r + 1) * sectors + (s + 1);
-            uint32_t i3 = r * sectors + (s + 1);
+    int stride = sectors + 1;
+    for (int r = 0; r < rings; ++r) {
+        for (int s = 0; s < sectors; ++s) {
+            uint32_t i0 = r * stride + s;
+            uint32_t i1 = (r + 1) * stride + s;
+            uint32_t i2 = (r + 1) * stride + (s + 1);
+            uint32_t i3 = r * stride + (s + 1);
 
+            // Counter-clockwise front-facing winding
             mesh.indices.push_back(i0);
-            mesh.indices.push_back(i1);
-            mesh.indices.push_back(i2);
-
-            mesh.indices.push_back(i0);
-            mesh.indices.push_back(i2);
             mesh.indices.push_back(i3);
+            mesh.indices.push_back(i2);
+
+            mesh.indices.push_back(i0);
+            mesh.indices.push_back(i2);
+            mesh.indices.push_back(i1);
         }
     }
 
-    computeTangents(mesh.vertices, mesh.indices);
     return mesh;
 }
 

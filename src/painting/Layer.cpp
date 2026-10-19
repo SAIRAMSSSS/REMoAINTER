@@ -82,143 +82,177 @@ static inline float hash2D(float x, float y) {
 void Layer::paintStamp(float uvX, float uvY, const Brush& brush) {
     if (type != LayerType::Paint) return;
 
+    // Normalize and wrap UV
+    uvX = uvX - std::floor(uvX);
+    uvY = std::clamp(uvY, 0.0f, 1.0f);
+
     float px = uvX * (float)width;
     float py = uvY * (float)height;
 
-    float r = brush.size;
-    int minX = std::max(0, (int)std::floor(px - r));
-    int maxX = std::min((int)width - 1, (int)std::ceil(px + r));
-    int minY = std::max(0, (int)std::floor(py - r));
-    int maxY = std::min((int)height - 1, (int)std::ceil(py + r));
+    auto applyStampAt = [this, &brush](float cx, float cy) {
+        float r = brush.size;
+        int minX = std::max(0, (int)std::floor(cx - r));
+        int maxX = std::min((int)width - 1, (int)std::ceil(cx + r));
+        int minY = std::max(0, (int)std::floor(cy - r));
+        int maxY = std::min((int)height - 1, (int)std::ceil(cy + r));
 
-    float r2 = r * r;
-    float hardness = std::clamp(brush.hardness, 0.01f, 0.999f);
+        if (minX > maxX || minY > maxY) return;
 
-    uint8_t brushColR = (uint8_t)std::clamp(brush.color.r * 255.0f, 0.0f, 255.0f);
-    uint8_t brushColG = (uint8_t)std::clamp(brush.color.g * 255.0f, 0.0f, 255.0f);
-    uint8_t brushColB = (uint8_t)std::clamp(brush.color.b * 255.0f, 0.0f, 255.0f);
-    uint8_t brushRough = (uint8_t)std::clamp(brush.roughness * 255.0f, 0.0f, 255.0f);
-    uint8_t brushMetal = (uint8_t)std::clamp(brush.metallic * 255.0f, 0.0f, 255.0f);
+        float hardness = std::clamp(brush.hardness, 0.01f, 0.999f);
 
-    uint8_t brushNx = (uint8_t)std::clamp((brush.normal.x * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
-    uint8_t brushNy = (uint8_t)std::clamp((brush.normal.y * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
-    uint8_t brushNz = (uint8_t)std::clamp((brush.normal.z * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+        uint8_t brushColR = (uint8_t)std::clamp(brush.color.r * 255.0f, 0.0f, 255.0f);
+        uint8_t brushColG = (uint8_t)std::clamp(brush.color.g * 255.0f, 0.0f, 255.0f);
+        uint8_t brushColB = (uint8_t)std::clamp(brush.color.b * 255.0f, 0.0f, 255.0f);
+        uint8_t brushRough = (uint8_t)std::clamp(brush.roughness * 255.0f, 0.0f, 255.0f);
+        uint8_t brushMetal = (uint8_t)std::clamp(brush.metallic * 255.0f, 0.0f, 255.0f);
 
-    float cosAngle = std::cos(brush.angle);
-    float sinAngle = std::sin(brush.angle);
+        uint8_t brushNx = (uint8_t)std::clamp((brush.normal.x * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+        uint8_t brushNy = (uint8_t)std::clamp((brush.normal.y * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
+        uint8_t brushNz = (uint8_t)std::clamp((brush.normal.z * 0.5f + 0.5f) * 255.0f, 0.0f, 255.0f);
 
-    for (int y = minY; y <= maxY; ++y) {
-        float dy = (float)y - py;
+        float cosAngle = std::cos(brush.angle);
+        float sinAngle = std::sin(brush.angle);
 
-        for (int x = minX; x <= maxX; ++x) {
-            float dx = (float)x - px;
+        for (int y = minY; y <= maxY; ++y) {
+            float dy = (float)y - cy;
 
-            // Rotate normalized coordinates by brush angle
-            float rx = (dx * cosAngle - dy * sinAngle) / r;
-            float ry = (dx * sinAngle + dy * cosAngle) / r;
-            float dist = std::sqrt(rx * rx + ry * ry);
+            for (int x = minX; x <= maxX; ++x) {
+                float dx = (float)x - cx;
 
-            if (dist > 1.0f && brush.alphaType != 5) continue; // Boundary check
+                float rx = (dx * cosAngle - dy * sinAngle) / r;
+                float ry = (dx * sinAngle + dy * cosAngle) / r;
+                float dist = std::sqrt(rx * rx + ry * ry);
 
-            float alphaMask = 1.0f;
+                if (dist > 1.0f && brush.alphaType != 5) continue;
 
-            // Evaluate Alpha Preset Mask
-            switch (brush.alphaType) {
-                case 1: // Circle Soft
-                    alphaMask = std::pow(std::clamp(1.0f - dist, 0.0f, 1.0f), 1.5f);
-                    break;
-                case 2: { // Noise / Grunge
-                    float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
-                    float n = hash2D(std::floor(rx * 20.0f), std::floor(ry * 20.0f));
-                    alphaMask = baseFalloff * (n > 0.35f ? 1.0f : 0.0f);
-                    break;
-                }
-                case 3: { // Scratches
-                    float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
-                    float scratch = std::abs(std::sin(rx * 18.0f + ry * 3.0f));
-                    alphaMask = baseFalloff * (scratch > 0.5f ? 1.0f : 0.05f);
-                    break;
-                }
-                case 4: { // Stipple
-                    float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
-                    float dots = std::sin(rx * 35.0f) * std::sin(ry * 35.0f);
-                    alphaMask = baseFalloff * (dots > 0.0f ? 1.0f : 0.0f);
-                    break;
-                }
-                case 5: // Square Box
-                    if (std::abs(rx) > 0.8f || std::abs(ry) > 0.8f) alphaMask = 0.0f;
-                    else alphaMask = 1.0f;
-                    break;
-                case 6: { // Star Burst
-                    float starDist = std::abs(rx) + std::abs(ry);
-                    if (starDist > 1.0f) alphaMask = 0.0f;
-                    else alphaMask = 1.0f - starDist;
-                    break;
-                }
-                case 0: // Circle Hard
-                default:
-                    if (dist <= hardness) {
-                        alphaMask = 1.0f;
-                    } else {
-                        float t = (dist - hardness) / (1.0f - hardness);
-                        alphaMask = 0.5f * (1.0f + std::cos(t * 3.14159265f));
+                float alphaMask = 1.0f;
+                switch (brush.alphaType) {
+                    case 1:
+                        alphaMask = std::pow(std::clamp(1.0f - dist, 0.0f, 1.0f), 1.5f);
+                        break;
+                    case 2: {
+                        float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
+                        float n = hash2D(std::floor(rx * 20.0f), std::floor(ry * 20.0f));
+                        alphaMask = baseFalloff * (n > 0.35f ? 1.0f : 0.0f);
+                        break;
                     }
-                    break;
-            }
-
-            float alpha = alphaMask * brush.opacity * brush.flow;
-            if (alpha <= 0.001f) continue;
-
-            size_t idx = ((size_t)y * width + x) * 4;
-
-            if (brush.isEraser) {
-                float existingAlpha = colorData[idx + 3] / 255.0f;
-                float newAlpha = std::max(0.0f, existingAlpha - alpha);
-                colorData[idx + 3] = (uint8_t)(newAlpha * 255.0f);
-                mrData[idx + 3] = (uint8_t)(newAlpha * 255.0f);
-                continue;
-            }
-
-            // Blend Color Channel
-            if (brush.paintColor) {
-                float existingAlpha = colorData[idx + 3] / 255.0f;
-                float outAlpha = alpha + existingAlpha * (1.0f - alpha);
-
-                if (outAlpha > 0.001f) {
-                    float rVal = (brushColR * alpha + colorData[idx + 0] * existingAlpha * (1.0f - alpha)) / outAlpha;
-                    float gVal = (brushColG * alpha + colorData[idx + 1] * existingAlpha * (1.0f - alpha)) / outAlpha;
-                    float bVal = (brushColB * alpha + colorData[idx + 2] * existingAlpha * (1.0f - alpha)) / outAlpha;
-
-                    colorData[idx + 0] = (uint8_t)std::clamp(rVal, 0.0f, 255.0f);
-                    colorData[idx + 1] = (uint8_t)std::clamp(gVal, 0.0f, 255.0f);
-                    colorData[idx + 2] = (uint8_t)std::clamp(bVal, 0.0f, 255.0f);
-                    colorData[idx + 3] = (uint8_t)std::clamp(outAlpha * 255.0f, 0.0f, 255.0f);
+                    case 3: {
+                        float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
+                        float scratch = std::abs(std::sin(rx * 18.0f + ry * 3.0f));
+                        alphaMask = baseFalloff * (scratch > 0.5f ? 1.0f : 0.05f);
+                        break;
+                    }
+                    case 4: {
+                        float baseFalloff = (dist <= hardness) ? 1.0f : 0.5f * (1.0f + std::cos((dist - hardness) / (1.0f - hardness) * 3.14159f));
+                        float dots = std::sin(rx * 35.0f) * std::sin(ry * 35.0f);
+                        alphaMask = baseFalloff * (dots > 0.0f ? 1.0f : 0.0f);
+                        break;
+                    }
+                    case 5:
+                        if (std::abs(rx) > 0.8f || std::abs(ry) > 0.8f) alphaMask = 0.0f;
+                        else alphaMask = 1.0f;
+                        break;
+                    case 6: {
+                        float starDist = std::abs(rx) + std::abs(ry);
+                        if (starDist > 1.0f) alphaMask = 0.0f;
+                        else alphaMask = 1.0f - starDist;
+                        break;
+                    }
+                    case 7: { // Biohazard Decal Logo
+                        float rDist = std::sqrt(rx * rx + ry * ry);
+                        float angle = std::atan2(ry, rx);
+                        float triple = std::fmod(angle + 3.14159f, 2.0944f) - 1.0472f;
+                        bool ring = (rDist > 0.45f && rDist < 0.75f && std::abs(triple) > 0.25f);
+                        bool centerDot = (rDist < 0.20f);
+                        alphaMask = (ring || centerDot) ? 1.0f : 0.0f;
+                        break;
+                    }
+                    case 8: { // Industrial Chevrons
+                        float chevron = std::abs(rx) + ry * 0.7f;
+                        float stripe = std::fmod(std::abs(chevron * 6.0f), 2.0f);
+                        alphaMask = (stripe > 1.0f && std::abs(rx) < 0.85f && std::abs(ry) < 0.85f) ? 1.0f : 0.0f;
+                        break;
+                    }
+                    case 9: { // Tech Dial Gauge
+                        float rDist = std::sqrt(rx * rx + ry * ry);
+                        float angle = std::atan2(ry, rx);
+                        bool outerRing = (rDist > 0.70f && rDist < 0.85f);
+                        bool innerTicks = (rDist > 0.50f && rDist < 0.70f && std::abs(std::sin(angle * 12.0f)) > 0.85f);
+                        alphaMask = (outerRing || innerTicks) ? 1.0f : 0.0f;
+                        break;
+                    }
+                    case 0:
+                    default:
+                        if (dist <= hardness) {
+                            alphaMask = 1.0f;
+                        } else {
+                            float t = (dist - hardness) / (1.0f - hardness);
+                            alphaMask = 0.5f * (1.0f + std::cos(t * 3.14159265f));
+                        }
+                        break;
                 }
-            }
 
-            // Blend Metallic / Roughness Channels
-            if (brush.paintRoughness || brush.paintMetallic) {
-                float existingCoverage = mrData[idx + 3] / 255.0f;
-                float outCoverage = alpha + existingCoverage * (1.0f - alpha);
+                float alpha = alphaMask * brush.opacity * brush.flow;
+                if (alpha <= 0.001f) continue;
 
-                if (brush.paintRoughness) {
-                    float rVal = (brushRough * alpha + mrData[idx + 1] * existingCoverage * (1.0f - alpha)) / std::max(outCoverage, 0.001f);
-                    mrData[idx + 1] = (uint8_t)std::clamp(rVal, 0.0f, 255.0f);
+                size_t idx = ((size_t)y * width + x) * 4;
+
+                if (brush.isEraser) {
+                    float existingAlpha = colorData[idx + 3] / 255.0f;
+                    float newAlpha = std::max(0.0f, existingAlpha - alpha);
+                    colorData[idx + 3] = (uint8_t)(newAlpha * 255.0f);
+                    mrData[idx + 3] = (uint8_t)(newAlpha * 255.0f);
+                    continue;
                 }
-                if (brush.paintMetallic) {
-                    float mVal = (brushMetal * alpha + mrData[idx + 2] * existingCoverage * (1.0f - alpha)) / std::max(outCoverage, 0.001f);
-                    mrData[idx + 2] = (uint8_t)std::clamp(mVal, 0.0f, 255.0f);
-                }
-                mrData[idx + 3] = (uint8_t)std::clamp(outCoverage * 255.0f, 0.0f, 255.0f);
-            }
 
-            // Blend Normal Deviation Channel
-            if (brush.paintNormal) {
-                normalData[idx + 0] = (uint8_t)(brushNx * alpha + normalData[idx + 0] * (1.0f - alpha));
-                normalData[idx + 1] = (uint8_t)(brushNy * alpha + normalData[idx + 1] * (1.0f - alpha));
-                normalData[idx + 2] = (uint8_t)(brushNz * alpha + normalData[idx + 2] * (1.0f - alpha));
+                if (brush.paintColor) {
+                    float existingAlpha = colorData[idx + 3] / 255.0f;
+                    float outAlpha = alpha + existingAlpha * (1.0f - alpha);
+
+                    if (outAlpha > 0.001f) {
+                        float rVal = (brushColR * alpha + colorData[idx + 0] * existingAlpha * (1.0f - alpha)) / outAlpha;
+                        float gVal = (brushColG * alpha + colorData[idx + 1] * existingAlpha * (1.0f - alpha)) / outAlpha;
+                        float bVal = (brushColB * alpha + colorData[idx + 2] * existingAlpha * (1.0f - alpha)) / outAlpha;
+
+                        colorData[idx + 0] = (uint8_t)std::clamp(rVal, 0.0f, 255.0f);
+                        colorData[idx + 1] = (uint8_t)std::clamp(gVal, 0.0f, 255.0f);
+                        colorData[idx + 2] = (uint8_t)std::clamp(bVal, 0.0f, 255.0f);
+                        colorData[idx + 3] = (uint8_t)std::clamp(outAlpha * 255.0f, 0.0f, 255.0f);
+                    }
+                }
+
+                if (brush.paintRoughness || brush.paintMetallic) {
+                    float existingCoverage = mrData[idx + 3] / 255.0f;
+                    float outCoverage = alpha + existingCoverage * (1.0f - alpha);
+
+                    if (brush.paintRoughness) {
+                        float rVal = (brushRough * alpha + mrData[idx + 1] * existingCoverage * (1.0f - alpha)) / std::max(outCoverage, 0.001f);
+                        mrData[idx + 1] = (uint8_t)std::clamp(rVal, 0.0f, 255.0f);
+                    }
+                    if (brush.paintMetallic) {
+                        float mVal = (brushMetal * alpha + mrData[idx + 2] * existingCoverage * (1.0f - alpha)) / std::max(outCoverage, 0.001f);
+                        mrData[idx + 2] = (uint8_t)std::clamp(mVal, 0.0f, 255.0f);
+                    }
+                    mrData[idx + 3] = (uint8_t)std::clamp(outCoverage * 255.0f, 0.0f, 255.0f);
+                }
+
+                if (brush.paintNormal) {
+                    normalData[idx + 0] = (uint8_t)(brushNx * alpha + normalData[idx + 0] * (1.0f - alpha));
+                    normalData[idx + 1] = (uint8_t)(brushNy * alpha + normalData[idx + 1] * (1.0f - alpha));
+                    normalData[idx + 2] = (uint8_t)(brushNz * alpha + normalData[idx + 2] * (1.0f - alpha));
+                }
             }
         }
+    };
+
+    applyStampAt(px, py);
+
+    // Toroidal horizontal wrap across UV seam:
+    if (px - brush.size < 0.0f) {
+        applyStampAt(px + (float)width, py);
+    }
+    if (px + brush.size >= (float)width) {
+        applyStampAt(px - (float)width, py);
     }
 }
 

@@ -47,6 +47,14 @@ void UIManager::render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, C
 
 void UIManager::renderMainMenuBar(LayerStack& layerStack) {
     if (ImGui::BeginMenuBar()) {
+        // Authentic Adobe Substance 3D Painter [Pt] Brand Badge
+        ImDrawList* menuDraw = ImGui::GetWindowDrawList();
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        menuDraw->AddRectFilled(ImVec2(p.x, p.y + 2), ImVec2(p.x + 20, p.y + 20), IM_COL32(235, 115, 20, 255), 3.0f);
+        menuDraw->AddText(ImVec2(p.x + 4, p.y + 3), IM_COL32(255, 255, 255, 255), "Pt");
+        ImGui::Dummy(ImVec2(24, 20));
+        ImGui::SameLine();
+
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Project...", "Ctrl+N")) {
                 layerStack.layers.clear();
@@ -317,7 +325,7 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
     ImGui::Begin("ASSETS", nullptr);
 
     // Header filter pills
-    const char* filters[] = { "All", "Materials", "Smart Mats", "Brushes", "Alphas", "Envs" };
+    const char* filters[] = { "All", "Smart Mats", "Materials", "Alphas", "Brushes", "Envs" };
     for (int i = 0; i < 6; ++i) {
         if (i > 0) ImGui::SameLine();
         bool active = (assetFilterCategory == i);
@@ -341,84 +349,175 @@ void UIManager::renderAssetShelf(LayerStack& layerStack, Brush& brush, std::func
 
     ImGui::Separator();
 
-    // Render 3-column circular preview sphere grid
-    auto materials = PresetLibrary::getMaterials();
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-    float panelWidth = ImGui::GetContentRegionAvail().x;
-    int columns = std::max(1, (int)(panelWidth / 82.0f));
-    float itemWidth = panelWidth / (float)columns;
-    float sphereRadius = 24.0f;
-
-    int itemIndex = 0;
-    for (const auto& mat : materials) {
-        // Filter by category
-        if (assetFilterCategory == 1 && mat.category != "Metals") continue;
-        if (assetFilterCategory == 2 && mat.category != "Smart Masks") continue;
-
-        // Filter by search buffer
-        if (strlen(assetSearchBuffer) > 0) {
-            std::string nameLower = mat.name;
-            std::string searchLower = assetSearchBuffer;
-            std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-            std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
-            if (nameLower.find(searchLower) == std::string::npos) continue;
-        }
-
-        if (itemIndex % columns != 0) {
-            ImGui::SameLine();
-        }
-
-        ImGui::BeginGroup();
-
-        ImVec2 curPos = ImGui::GetCursorScreenPos();
-        ImVec2 sphereCenter(curPos.x + itemWidth * 0.5f, curPos.y + sphereRadius + 4.0f);
-
-        // Invisible button for interaction
-        ImGui::InvisibleButton(mat.name.c_str(), ImVec2(itemWidth - 4.0f, sphereRadius * 2.0f + 24.0f));
-        bool isHovered = ImGui::IsItemHovered();
-        bool isClicked = ImGui::IsItemClicked();
-
-        // Draw 3D glossy circular preview sphere
-        drawShelfMaterialThumbnail(drawList, sphereCenter, sphereRadius, mat.baseColor, mat.metallic, mat.roughness);
-
-        if (isHovered) {
-            drawList->AddCircle(sphereCenter, sphereRadius + 2.0f, IM_COL32(36, 112, 209, 255), 0, 2.0f);
-            ImGui::SetTooltip("%s\nCategory: %s\nMetallic: %.2f  Roughness: %.2f",
-                              mat.name.c_str(), mat.category.c_str(), mat.metallic, mat.roughness);
-        }
-
-        // Apply material when clicked
-        if (isClicked) {
-            brush.color = mat.baseColor;
-            brush.metallic = mat.metallic;
-            brush.roughness = mat.roughness;
-            brush.paintColor = true;
-            brush.paintMetallic = true;
-            brush.paintRoughness = true;
-
-            // Also update active layer if it's a fill layer
-            auto active = layerStack.getActiveLayer();
-            if (active && active->type == LayerType::Fill) {
-                active->fillColor = mat.baseColor;
-                active->fillMetallic = mat.metallic;
-                active->fillRoughness = mat.roughness;
-                layerStack.composite();
-                if (onTriggerComposite) onTriggerComposite();
+    if (assetFilterCategory == 1) {
+        // Smart Materials: Instantiate full compound layer hierarchies
+        auto smartMats = PresetLibrary::getSmartMaterials();
+        for (const auto& sm : smartMats) {
+            if (strlen(assetSearchBuffer) > 0) {
+                std::string nameLower = sm.name;
+                std::string searchLower = assetSearchBuffer;
+                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                if (nameLower.find(searchLower) == std::string::npos) continue;
             }
 
-            statusMessage = "Loaded Material: " + mat.name;
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.22f, 0.26f, 1.0f));
+            std::string headerText = "[SM] " + sm.name + " (" + std::to_string(sm.layers.size()) + " layers)";
+            if (ImGui::Button(headerText.c_str(), ImVec2(-1, 32))) {
+                layerStack.layers.clear();
+                for (const auto& lDef : sm.layers) {
+                    if (lDef.isFill) {
+                        layerStack.addFillLayer(lDef.name, lDef.color);
+                        auto act = layerStack.getActiveLayer();
+                        if (act) {
+                            act->fillMetallic = lDef.metallic;
+                            act->fillRoughness = lDef.roughness;
+                            act->opacity = lDef.opacity;
+                            if (lDef.blendMode == "Mult") act->blendMode = BlendMode::Multiply;
+                            else if (lDef.blendMode == "Screen") act->blendMode = BlendMode::Screen;
+                            else if (lDef.blendMode == "Over") act->blendMode = BlendMode::Overlay;
+                            else if (lDef.blendMode == "Add") act->blendMode = BlendMode::LinearAdd;
+                            else act->blendMode = BlendMode::Normal;
+                        }
+                    } else {
+                        layerStack.addPaintLayer(lDef.name);
+                        auto act = layerStack.getActiveLayer();
+                        if (act) {
+                            act->opacity = lDef.opacity;
+                        }
+                    }
+                }
+                layerStack.composite();
+                if (onTriggerComposite) onTriggerComposite();
+                statusMessage = "Loaded Smart Material: " + sm.name;
+            }
+            ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Category: %s\nClick to instantiate authentic %zu-layer compound hierarchy",
+                                  sm.category.c_str(), sm.layers.size());
+            }
+            ImGui::Spacing();
         }
+    } else if (assetFilterCategory == 3) {
+        // Alphas & Decals & Logos
+        auto alphas = PresetLibrary::getAlphas();
+        for (const auto& a : alphas) {
+            if (strlen(assetSearchBuffer) > 0) {
+                std::string nameLower = a.name;
+                std::string searchLower = assetSearchBuffer;
+                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                if (nameLower.find(searchLower) == std::string::npos) continue;
+            }
 
-        // Truncate name label underneath
-        std::string label = mat.name;
-        if (label.length() > 9) label = label.substr(0, 8) + "...";
-        float textWidth = ImGui::CalcTextSize(label.c_str()).x;
-        ImGui::SetCursorScreenPos(ImVec2(curPos.x + (itemWidth - textWidth) * 0.5f, curPos.y + sphereRadius * 2.0f + 6.0f));
-        ImGui::TextDisabled("%s", label.c_str());
+            bool active = (brush.alphaType == a.type);
+            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+            std::string btnText = "[" + a.category + "] " + a.name;
+            if (ImGui::Button(btnText.c_str(), ImVec2(-1, 28))) {
+                brush.alphaType = a.type;
+                brush.alphaName = a.name;
+                statusMessage = "Loaded Alpha Mask: " + a.name;
+            }
+            if (active) ImGui::PopStyleColor();
+        }
+    } else if (assetFilterCategory == 4) {
+        // Brushes
+        auto brushes = PresetLibrary::getBrushes();
+        for (const auto& b : brushes) {
+            std::string bText = b.name + " (" + std::to_string((int)b.size) + "px)";
+            if (ImGui::Button(bText.c_str(), ImVec2(-1, 28))) {
+                brush.size = b.size;
+                brush.hardness = b.hardness;
+                brush.opacity = b.opacity;
+                brush.flow = b.flow;
+                brush.spacing = b.spacing;
+                brush.alphaType = b.alphaIndex;
+                statusMessage = "Loaded Brush Preset: " + b.name;
+            }
+        }
+    } else if (assetFilterCategory == 5) {
+        // Environments
+        auto envs = PresetLibrary::getEnvironments();
+        for (const auto& e : envs) {
+            bool active = (environmentPreset == e.id);
+            if (active) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.44f, 0.82f, 1.0f));
+            if (ImGui::Button(e.name.c_str(), ImVec2(-1, 28))) {
+                environmentPreset = e.id;
+                statusMessage = "Active Environment: " + e.name;
+            }
+            if (active) ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", e.description.c_str());
+        }
+    } else {
+        // All or Single Materials
+        auto materials = PresetLibrary::getMaterials();
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-        ImGui::EndGroup();
-        itemIndex++;
+        float panelWidth = ImGui::GetContentRegionAvail().x;
+        int columns = std::max(1, (int)(panelWidth / 82.0f));
+        float itemWidth = panelWidth / (float)columns;
+        float sphereRadius = 24.0f;
+
+        int itemIndex = 0;
+        for (const auto& mat : materials) {
+            if (strlen(assetSearchBuffer) > 0) {
+                std::string nameLower = mat.name;
+                std::string searchLower = assetSearchBuffer;
+                std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(), ::tolower);
+                if (nameLower.find(searchLower) == std::string::npos) continue;
+            }
+
+            if (itemIndex % columns != 0) {
+                ImGui::SameLine();
+            }
+
+            ImGui::BeginGroup();
+
+            ImVec2 curPos = ImGui::GetCursorScreenPos();
+            ImVec2 sphereCenter(curPos.x + itemWidth * 0.5f, curPos.y + sphereRadius + 4.0f);
+
+            ImGui::InvisibleButton(mat.name.c_str(), ImVec2(itemWidth - 4.0f, sphereRadius * 2.0f + 24.0f));
+            bool isHovered = ImGui::IsItemHovered();
+            bool isClicked = ImGui::IsItemClicked();
+
+            drawShelfMaterialThumbnail(drawList, sphereCenter, sphereRadius, mat.baseColor, mat.metallic, mat.roughness);
+
+            if (isHovered) {
+                drawList->AddCircle(sphereCenter, sphereRadius + 2.0f, IM_COL32(36, 112, 209, 255), 0, 2.0f);
+                ImGui::SetTooltip("%s\nCategory: %s\nMetallic: %.2f  Roughness: %.2f",
+                                  mat.name.c_str(), mat.category.c_str(), mat.metallic, mat.roughness);
+            }
+
+            if (isClicked) {
+                brush.color = mat.baseColor;
+                brush.metallic = mat.metallic;
+                brush.roughness = mat.roughness;
+                brush.paintColor = true;
+                brush.paintMetallic = true;
+                brush.paintRoughness = true;
+
+                auto active = layerStack.getActiveLayer();
+                if (active && active->type == LayerType::Fill) {
+                    active->fillColor = mat.baseColor;
+                    active->fillMetallic = mat.metallic;
+                    active->fillRoughness = mat.roughness;
+                    layerStack.composite();
+                    if (onTriggerComposite) onTriggerComposite();
+                }
+
+                statusMessage = "Loaded Material: " + mat.name;
+            }
+
+            std::string label = mat.name;
+            if (label.length() > 9) label = label.substr(0, 8) + "...";
+            float textWidth = ImGui::CalcTextSize(label.c_str()).x;
+            ImGui::SetCursorScreenPos(ImVec2(curPos.x + (itemWidth - textWidth) * 0.5f, curPos.y + sphereRadius * 2.0f + 6.0f));
+            ImGui::TextDisabled("%s", label.c_str());
+
+            ImGui::EndGroup();
+            itemIndex++;
+        }
     }
 
     ImGui::End();
