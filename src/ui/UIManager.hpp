@@ -25,6 +25,8 @@ enum class ToolMode {
 
 class UIManager {
 public:
+    UIManager();
+
     ToolMode activeTool = ToolMode::Brush;
     std::string statusMessage = "Ready";
 
@@ -66,6 +68,62 @@ public:
     bool showAboutModal = false;
     ImTextureID logoTextureID = 0;
 
+    // 7 Right Dock Strip Panel Visibility & Focus States
+    bool showTextureSetSettings = true;
+    bool showTextureSetList = true;
+    bool showLayers = true;
+    bool showDisplaySettings = true;
+    bool showShaderSettings = true;
+    bool showHistory = true;
+    bool showLog = true;
+
+    bool isPanelVisible[7] = { false, true, true, false, false, false, false };
+    int requestFocusPanel = -1;
+
+    // Viewport & Lighting Settings (Display Settings)
+    bool displayShadows = true;
+    float shadowOpacity = 0.85f;
+    float shadowSoftness = 3.0f;
+    bool displayWireframe = false;
+    int tonemappingMethod = 0; // 0: ACES, 1: Reinhard, 2: Filmic, 3: Linear
+    float displayExposure = 1.0f;
+    float backgroundBlur = 0.7f;
+    bool showEnvironmentBackground = false;
+
+    // Shader Settings
+    float roughnessScale = 1.0f;
+    float roughnessBias = 0.0f;
+    float metallicScale = 1.0f;
+    float normalIntensity = 1.0f;
+    float aoIntensity = 1.0f;
+    bool specularAntiAliasing = true;
+
+    // Texture Set & Baking Settings
+    int normalMapFormat = 0; // 0: DirectX, 1: OpenGL
+    bool invertNormalY = false;
+    float parallaxDepth = 0.02f;
+    bool isBaking = false;
+    float bakeProgress = 0.0f;
+
+    // History Panel State
+    std::vector<std::string> historyActions;
+    int currentHistoryIndex = 0;
+    void addHistoryAction(const std::string& action);
+
+    // Log Panel State
+    struct LogEntry {
+        std::string level; // "INFO", "WARN", "ERROR"
+        std::string message;
+        std::string timestamp;
+    };
+    std::vector<LogEntry> logEntries;
+    bool logFilterInfo = true;
+    bool logFilterWarn = true;
+    bool logFilterError = true;
+    bool logAutoScroll = true;
+    char logSearchFilter[64] = "";
+    void addLog(const std::string& level, const std::string& message);
+
     void render(LayerStack& layerStack, Brush& brush, const Mesh& mesh, Camera& camera,
                 bool isMeshHovered, const glm::vec2& hoveredUV,
                 ImTextureID logoTexture,
@@ -77,9 +135,14 @@ private:
     void renderTopControlBar(Brush& brush);
     void renderLeftToolbar(Brush& brush);
     void renderAssetShelf(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
+    void renderTextureSetSettings(LayerStack& layerStack);
     void renderTextureSetList(LayerStack& layerStack);
     void renderLayerStack(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
+    void renderDisplaySettings(Camera& camera);
+    void renderShaderSettings();
     void renderPropertiesPanel(LayerStack& layerStack, Brush& brush, std::function<void()> onTriggerComposite);
+    void renderHistoryPanel();
+    void renderLogPanel();
     void renderRightDockStrip();
     void renderViewportOverlay(Camera& camera);
     void renderStatusBar();
@@ -89,7 +152,7 @@ private:
     // Tool Icon & Dynamic Preview Helpers
     void drawToolButton(ToolMode mode, const char* id, const char* label, const char* tooltip, const char* shortcut, bool active, std::function<void()> onClick);
     void drawToolIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, ToolMode mode, bool active);
-    void drawRightStripIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, int iconIndex);
+    void drawRightStripIcon(ImDrawList* drawList, const ImVec2& pMin, const ImVec2& pMax, int iconIndex, bool active);
     void drawStrokePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const Brush& brush);
     void drawMaterialSpherePreview(ImDrawList* drawList, const ImVec2& minPos, const ImVec2& maxPos, const glm::vec4& color, float metallic, float roughness);
     void drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& center, float radius, const glm::vec4& color, float metallic, float roughness, int badgeType = 0);
