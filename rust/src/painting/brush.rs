@@ -18,12 +18,14 @@ pub enum AlphaShape {
     Grunge,
     Concrete,
     Scratches,
+    Custom,
 }
 
 #[derive(Debug, Clone)]
 pub struct Brush {
     pub size: f32,
     pub min_size_percent: f32,
+    pub hardness: f32,
     pub flow: f32,
     pub opacity: f32,
     pub spacing: f32,
@@ -56,6 +58,7 @@ impl Default for Brush {
         Self {
             size: 32.0,
             min_size_percent: 1.0,
+            hardness: 0.85,
             flow: 1.0,
             opacity: 1.0,
             spacing: 0.15,

@@ -114,7 +114,9 @@ impl Mesh {
 
             if !m.texcoords.is_empty() {
                 for i in (0..m.texcoords.len()).step_by(2) {
-                    uvs.push([m.texcoords[i], 1.0 - m.texcoords[i + 1]]);
+                    let u = m.texcoords[i].rem_euclid(1.0);
+                    let v = (1.0 - m.texcoords[i + 1]).rem_euclid(1.0);
+                    uvs.push([u, v]);
                 }
             } else {
                 uvs.resize(vertices.len(), [0.0, 0.0]);
@@ -219,9 +221,9 @@ impl Mesh {
             [x2 / len, y2 / len, z2 / len]
         };
 
-        let l1 = transform_light(w_l1);
-        let l2 = transform_light(w_l2);
-        let l3 = transform_light(w_l3);
+        let _l1 = transform_light(w_l1);
+        let _l2 = transform_light(w_l2);
+        let _l3 = transform_light(w_l3);
 
         // 1. Transform all vertices
         let n_verts = self.vertices.len();
@@ -281,46 +283,14 @@ impl Mesh {
             let v_len = (vx * vx + vy * vy + vz * vz).sqrt().max(0.0001);
             let v = [vx / v_len, vy / v_len, vz / v_len];
 
-            // 1. Key Light Diffuse & Specular (Blinn-Phong / GGX)
-            let n_dot_l1 = (n[0] * l1[0] + n[1] * l1[1] + n[2] * l1[2]).max(0.0);
-            let h1 = [l1[0] + v[0], l1[1] + v[1], l1[2] + v[2]];
-            let h1_len = (h1[0] * h1[0] + h1[1] * h1[1] + h1[2] * h1[2]).sqrt().max(0.0001);
-            let n_dot_h1 = ((n[0] * h1[0] + n[1] * h1[1] + n[2] * h1[2]) / h1_len).max(0.0);
-            let spec1 = n_dot_h1.powf(36.0);
+            // Soft geometric curvature & contact shading (preserves 100% of PBR Lit texture colors while giving 3D volume)
+            let n_dot_v = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).clamp(0.0, 1.0);
+            let geom_ao = 0.90 + 0.10 * n_dot_v;
+            let rim_glow = (1.0 - n_dot_v).powf(4.0) * 0.10;
+            let factor = ((geom_ao + rim_glow) * light_intensity).clamp(0.2, 1.0);
+            let val = (factor * 255.0) as u8;
 
-            // 2. Fill Light
-            let n_dot_l2 = (n[0] * l2[0] + n[1] * l2[1] + n[2] * l2[2]).max(0.0);
-            let h2 = [l2[0] + v[0], l2[1] + v[1], l2[2] + v[2]];
-            let h2_len = (h2[0] * h2[0] + h2[1] * h2[1] + h2[2] * h2[2]).sqrt().max(0.0001);
-            let n_dot_h2 = ((n[0] * h2[0] + n[1] * h2[1] + n[2] * h2[2]) / h2_len).max(0.0);
-            let spec2 = n_dot_h2.powf(20.0);
-
-            // 3. Rim / Backlight
-            let n_dot_l3 = (n[0] * l3[0] + n[1] * l3[1] + n[2] * l3[2]).max(0.0);
-            let h3 = [l3[0] + v[0], l3[1] + v[1], l3[2] + v[2]];
-            let h3_len = (h3[0] * h3[0] + h3[1] * h3[1] + h3[2] * h3[2]).sqrt().max(0.0001);
-            let n_dot_h3 = ((n[0] * h3[0] + n[1] * h3[1] + n[2] * h3[2]) / h3_len).max(0.0);
-            let spec3 = n_dot_h3.powf(44.0);
-
-            // 4. Fresnel reflection at grazing angles
-            let n_dot_v = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).max(0.0);
-            let fresnel = (1.0 - n_dot_v).powf(3.5) * 0.40;
-
-            // 5. Studio ground / sky ambient
-            let ambient = 0.32 + (n[1] * 0.5 + 0.5) * 0.18;
-
-            // Combine into rich studio tone with realistic highlights
-            let diff_r = (n_dot_l1 * 0.70 * 1.05 + n_dot_l2 * 0.20 * 0.85 + n_dot_l3 * 0.15 + ambient * 0.95) * light_intensity;
-            let diff_g = (n_dot_l1 * 0.70 * 0.98 + n_dot_l2 * 0.20 * 0.95 + n_dot_l3 * 0.15 + ambient * 0.95) * light_intensity;
-            let diff_b = (n_dot_l1 * 0.70 * 0.90 + n_dot_l2 * 0.20 * 1.10 + n_dot_l3 * 0.15 + ambient * 1.00) * light_intensity;
-
-            let spec = (spec1 * 0.85 + spec2 * 0.25 + spec3 * 0.65 + fresnel) * light_intensity;
-
-            let r = ((diff_r + spec).clamp(0.18, 1.0) * 255.0) as u8;
-            let g = ((diff_g + spec).clamp(0.18, 1.0) * 255.0) as u8;
-            let b = ((diff_b + spec).clamp(0.18, 1.0) * 255.0) as u8;
-
-            proj_color.push(egui::Color32::from_rgb(r, g, b));
+            proj_color.push(egui::Color32::from_rgb(val, val, val));
         }
 
         // 2. Filter & Depth-sort Triangles

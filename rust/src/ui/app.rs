@@ -1,5 +1,5 @@
 use crate::baker::{BakedMaps, BakerEngine, BakerOptions, MapType};
-use crate::graphics::Mesh;
+use crate::graphics::{EnvironmentPreset, Mesh};
 use crate::painting::brush::AlphaMaskData;
 use crate::painting::{AnchorPoint, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect};
 use crate::ui::icons::{draw_icon, IconType};
@@ -160,7 +160,8 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
                     let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
                     if ext == "webp" || ext == "png" || ext == "sbsar" || ext == "spmsk" {
                         let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string();
-                        let thumb_p = thumb_sub.join(format!("{}.png", stem));
+                        let thumb_png = thumb_sub.join(format!("{}.png", stem));
+                        let thumb_p = if thumb_png.exists() { thumb_png } else { p.clone() };
                         let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&stem);
 
                         assets.push(ShelfAsset {
@@ -249,6 +250,7 @@ impl Default for RemoainterApp {
         for p in &lantern_paths {
             if let Ok(m) = Mesh::load_obj(p) {
                 app.mesh = m;
+                app.selected_model_idx = 1;
                 app.status_message = "Loaded Test Asset: Antique Lantern (14,570 faces)".to_string();
                 break;
             }
@@ -267,56 +269,49 @@ impl Default for RemoainterApp {
             id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
         };
 
-        // Initialize with Substance PBR UV Calibration & Checker material
-        let mut base_layer = Layer::new_fill(
-            1,
-            "Substance UV Calibration".to_string(),
-            [0.35, 0.38, 0.42, 1.0],
-            0.55,
-            0.30,
-            1024,
-            1024,
-        );
-
-        for y in 0..1024 {
-            for x in 0..1024 {
-                let idx = y * 1024 + x;
-                let u = x as f32 / 1024.0;
-                let v = y as f32 / 1024.0;
-
-                // 16x16 UV tile grid
-                let gx = (u * 16.0) as usize;
-                let gy = (v * 16.0) as usize;
-                let is_dark = (gx + gy) % 2 == 0;
-
-                // Sub-grid lines (every 64px, and major every 256px)
-                let is_border = (x % 64 == 0) || (y % 64 == 0);
-                let is_major = (x % 256 == 0) || (y % 256 == 0);
-
-                let (col, met, rough) = if is_major {
-                    ([0.95f32, 0.65, 0.15, 1.0], 0.20f32, 0.35f32) // Substance Orange major grid
-                } else if is_border {
-                    ([0.20f32, 0.70, 0.95, 1.0], 0.15f32, 0.40f32) // Cyan UV border
-                } else if is_dark {
-                    ([0.26f32, 0.29, 0.33, 1.0], 0.75f32, 0.25f32) // Gunmetal steel
-                } else {
-                    ([0.44f32, 0.48, 0.54, 1.0], 0.70f32, 0.28f32) // Brushed steel
-                };
-
-                base_layer.color_buffer[idx] = col;
-                base_layer.metallic_buffer[idx] = met;
-                base_layer.roughness_buffer[idx] = rough;
-            }
-        }
-
-        app.layer_stack.layers.push(base_layer);
-        app.layer_stack.composite(app.baked_maps.curvature.as_deref(), app.baked_maps.ambient_occlusion.as_deref());
-        app.texture_needs_update = true;
+        app.recompute_composite();
         app
     }
 }
 
 impl RemoainterApp {
+    pub fn get_env_preset(&self) -> EnvironmentPreset {
+        match self.env_preset {
+            0 => EnvironmentPreset::StudioTomoco,
+            1 => EnvironmentPreset::GlazedPatio,
+            2 => EnvironmentPreset::Panorama,
+            _ => EnvironmentPreset::WarmCoolStudio,
+        }
+    }
+
+    pub fn recompute_composite(&mut self) {
+        let preset = self.get_env_preset();
+        let rot = self.env_rotation.to_radians();
+        let intensity = self.light_intensity;
+        self.layer_stack.composite(
+            self.baked_maps.curvature.as_deref(),
+            self.baked_maps.ambient_occlusion.as_deref(),
+            preset,
+            rot,
+            intensity,
+        );
+        self.texture_needs_update = true;
+    }
+
+    pub fn recompute_dirty(&mut self, bbox: [i32; 4]) {
+        let preset = self.get_env_preset();
+        let rot = self.env_rotation.to_radians();
+        let intensity = self.light_intensity;
+        self.layer_stack.composite_dirty(
+            bbox,
+            self.baked_maps.ambient_occlusion.as_deref(),
+            preset,
+            rot,
+            intensity,
+        );
+        self.texture_needs_update = true;
+    }
+
     pub fn channel_name(&self, channel: usize) -> &'static str {
         match channel {
             0 => "Material (M)",
@@ -351,8 +346,7 @@ impl RemoainterApp {
             "INFO".into(),
             format!("Baked mesh maps (AO, Curvature, Normals, Position) for {}", self.mesh.name),
         ));
-        self.layer_stack.composite(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
-        self.texture_needs_update = true;
+        self.recompute_composite();
     }
 
     pub fn bake_single_map(&mut self, map_type: MapType) {
@@ -385,8 +379,7 @@ impl RemoainterApp {
             "INFO".into(),
             format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution),
         ));
-        self.layer_stack.composite(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
-        self.texture_needs_update = true;
+        self.recompute_composite();
     }
 
     pub fn load_model(&mut self, idx: usize) {
@@ -428,7 +421,7 @@ impl RemoainterApp {
             }
             _ => {}
         }
-        self.texture_needs_update = true;
+        self.recompute_composite();
         self.status_message = format!("Loaded {} (Bake maps via Ctrl+Shift+B)", self.mesh.name);
     }
 }
@@ -899,23 +892,19 @@ impl eframe::App for RemoainterApp {
                             self.brush.color = color;
                             self.brush.metallic = metallic;
                             self.brush.roughness = roughness;
-                            let id = self.layer_stack.layers.len();
-                            let fill = Layer::new_fill(
+                            let id = self.layer_stack.layers.len() + 1;
+                            let fill = Layer::from_texture_asset(
                                 id,
                                 format!("SM: {}", name),
-                                color,
-                                metallic,
-                                roughness,
+                                &_path,
+                                1,
+                                (color, metallic, roughness),
                                 self.layer_stack.width,
                                 self.layer_stack.height,
                             );
                             self.layer_stack.layers.push(fill);
                             self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
-                            self.layer_stack.composite(
-                                self.baked_maps.curvature.as_deref(),
-                                self.baked_maps.ambient_occlusion.as_deref(),
-                            );
-                            self.texture_needs_update = true;
+                            self.recompute_composite();
                             self.status_message = format!("Applied Smart Material: {}", name);
                             self.history.push(format!("{:02}  Apply Smart Material ({})", self.history.len() + 1, name));
                         }
@@ -923,41 +912,37 @@ impl eframe::App for RemoainterApp {
                             self.brush.color = color;
                             self.brush.metallic = metallic;
                             self.brush.roughness = roughness;
-                            let id = self.layer_stack.layers.len();
-                            let fill = Layer::new_fill(
+                            let id = self.layer_stack.layers.len() + 1;
+                            let fill = Layer::from_texture_asset(
                                 id,
                                 format!("Mat: {}", name),
-                                color,
-                                metallic,
-                                roughness,
+                                &_path,
+                                2,
+                                (color, metallic, roughness),
                                 self.layer_stack.width,
                                 self.layer_stack.height,
                             );
                             self.layer_stack.layers.push(fill);
                             self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
-                            self.layer_stack.composite(
-                                self.baked_maps.curvature.as_deref(),
-                                self.baked_maps.ambient_occlusion.as_deref(),
-                            );
-                            self.texture_needs_update = true;
+                            self.recompute_composite();
                             self.status_message = format!("Applied Material: {}", name);
                             self.history.push(format!("{:02}  Apply Material ({})", self.history.len() + 1, name));
                         }
                         3 => {
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                active_layer.add_black_mask();
+                                active_layer.apply_smart_mask_file(
+                                    &_path,
+                                    self.baked_maps.curvature.as_deref(),
+                                    self.baked_maps.ambient_occlusion.as_deref(),
+                                );
                                 self.status_message = format!("Applied Smart Mask ({}) to Layer: {}", name, active_layer.name);
-                                self.history.push(format!("{:02}  Add Mask ({})", self.history.len() + 1, name));
+                                self.history.push(format!("{:02}  Apply Smart Mask ({})", self.history.len() + 1, name));
                             }
-                            self.layer_stack.composite(
-                                self.baked_maps.curvature.as_deref(),
-                                self.baked_maps.ambient_occlusion.as_deref(),
-                            );
-                            self.texture_needs_update = true;
+                            self.recompute_composite();
                         }
                         4 => {
                             self.brush.alpha_name = name.clone();
-                            if let Ok(img) = image::open(&thumb) {
+                            if let Ok(img) = image::open(&_path).or_else(|_| image::open(&thumb)) {
                                 let gray = img.to_luma8();
                                 let (w, h) = gray.dimensions();
                                 self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
@@ -965,6 +950,7 @@ impl eframe::App for RemoainterApp {
                                     height: h,
                                     data: gray.into_raw(),
                                 }));
+                                self.brush.alpha_shape = crate::painting::brush::AlphaShape::Custom;
                             }
                             self.status_message = format!("Selected Alpha: {}", name);
                             self.history.push(format!("{:02}  Select Alpha ({})", self.history.len() + 1, name));
@@ -1071,20 +1057,19 @@ impl eframe::App for RemoainterApp {
                     } else {
                         vec![Color32::WHITE; w * h]
                     },
-                    _ => self.layer_stack.composite_color.iter().map(|c| {
-                        Color32::from_rgba_premultiplied(
+                    _ => self.layer_stack.composite_lit.iter().map(|c| {
+                        Color32::from_rgb(
                             (c[0].clamp(0.0, 1.0) * 255.0) as u8,
                             (c[1].clamp(0.0, 1.0) * 255.0) as u8,
                             (c[2].clamp(0.0, 1.0) * 255.0) as u8,
-                            255,
                         )
                     }).collect(),
                 };
                 let img = egui::ColorImage { size: [w, h], pixels };
                 if let Some(ref mut handle) = self.texture_handle {
-                    handle.set(img, egui::TextureOptions::LINEAR);
+                    handle.set(img, egui::TextureOptions::LINEAR_REPEAT);
                 } else {
-                    self.texture_handle = Some(ctx.load_texture("pbr_composite", img, egui::TextureOptions::LINEAR));
+                    self.texture_handle = Some(ctx.load_texture("pbr_composite", img, egui::TextureOptions::LINEAR_REPEAT));
                 }
                 self.texture_needs_update = false;
             }
@@ -1246,8 +1231,7 @@ impl RemoainterApp {
                         }
                     };
                     self.last_painted_uv = Some(uv);
-                    self.layer_stack.composite_dirty(bbox);
-                    self.texture_needs_update = true;
+                    self.recompute_dirty(bbox);
                 }
             }
         } else {
@@ -1320,11 +1304,15 @@ impl RemoainterApp {
                 }
             }
 
-            // Camera Orbit (Alt+LMB or MMB) / Zoom (Alt+RMB) & 3D Surface Painting
+            // Camera Orbit (Alt+LMB or MMB) / Zoom (Alt+RMB) / Environment Rotate (Shift+RMB) & 3D Surface Painting
             if response.dragged() {
                 let delta = response.drag_delta();
                 if ctx.input(|i| i.modifiers.alt && i.pointer.button_down(egui::PointerButton::Secondary)) {
                     self.camera_dist = (self.camera_dist + delta.y * 0.01).clamp(0.5, 6.0);
+                } else if ctx.input(|i| i.modifiers.shift && i.pointer.button_down(egui::PointerButton::Secondary)) {
+                    // Substance Painter Standard: Shift + RMB drag rotates Environment Global Illumination!
+                    self.env_rotation = (self.env_rotation + delta.x * 0.8).rem_euclid(360.0);
+                    self.recompute_composite();
                 } else if ctx.input(|i| i.modifiers.alt) || ctx.input(|i| i.pointer.middle_down()) {
                     self.camera_yaw += delta.x * 0.4;
                     self.camera_pitch = (self.camera_pitch + delta.y * 0.4).clamp(-85.0, 85.0);
@@ -1345,8 +1333,7 @@ impl RemoainterApp {
                             }
                         };
                         self.last_painted_uv = Some(uv);
-                        self.layer_stack.composite_dirty(bbox);
-                        self.texture_needs_update = true;
+                        self.recompute_dirty(bbox);
                     }
                 }
             } else {
@@ -1443,12 +1430,14 @@ impl RemoainterApp {
                 let id = self.layer_stack.layers.len() + 1;
                 self.layer_stack.layers.push(Layer::new_paint(id, format!("Layer {}", id), self.layer_stack.width, self.layer_stack.height));
                 self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.recompute_composite();
                 self.status_message = "Added Paint Layer".into();
             }
             if ui.small_button("+ Fill").clicked() {
                 let id = self.layer_stack.layers.len() + 1;
                 self.layer_stack.layers.push(Layer::new_fill(id, format!("Fill {}", id), self.brush.color, self.brush.metallic, self.brush.roughness, self.layer_stack.width, self.layer_stack.height));
                 self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.recompute_composite();
                 self.status_message = "Added Fill Layer".into();
             }
             if ui.small_button("+ Black Mask").on_hover_text("Add Black Mask with Sub-Stack").clicked() {
@@ -1456,6 +1445,7 @@ impl RemoainterApp {
                     active.add_black_mask();
                     self.status_message = "Added Black Mask".into();
                 }
+                self.recompute_composite();
             }
             if ui.small_button("+ Anchor").on_hover_text("Add Anchor Point").clicked() {
                 if let Some(active) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
@@ -1582,18 +1572,28 @@ impl RemoainterApp {
             ui.add(egui::Slider::new(&mut self.camera_dist, 1.0..=10.0).text("Distance"));
         });
 
-        ui.collapsing("ENVIRONMENT LIGHTING", |ui| {
-            let presets = ["Neutral Studio", "Warm & Cool Studio", "Soft 3-Point Light", "Golden Hour Sun"];
-            egui::ComboBox::from_label("HDRI Preset")
+        ui.collapsing("ENVIRONMENT LIGHTING (GLOBAL ILLUMINATION)", |ui| {
+            let presets = ["Studio Tomoco", "Glazed Patio", "Panorama (Exterior)", "Warm & Cool Studio"];
+            let mut env_changed = false;
+            egui::ComboBox::from_label("HDRI Environment")
                 .selected_text(presets[self.env_preset.min(presets.len() - 1)])
                 .show_ui(ui, |ui| {
                     for (i, p) in presets.iter().enumerate() {
-                        ui.selectable_value(&mut self.env_preset, i, *p);
+                        if ui.selectable_value(&mut self.env_preset, i, *p).changed() {
+                            env_changed = true;
+                        }
                     }
                 });
 
-            ui.add(egui::Slider::new(&mut self.light_intensity, 0.1..=4.0).text("Exposure"));
-            ui.add(egui::Slider::new(&mut self.env_rotation, 0.0..=360.0).text("Rotation"));
+            if ui.add(egui::Slider::new(&mut self.light_intensity, 0.1..=4.0).text("Exposure / Intensity")).changed() {
+                env_changed = true;
+            }
+            if ui.add(egui::Slider::new(&mut self.env_rotation, 0.0..=360.0).text("Environment Rotation")).changed() {
+                env_changed = true;
+            }
+            if env_changed {
+                self.recompute_composite();
+            }
         });
     }
 
