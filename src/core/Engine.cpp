@@ -102,7 +102,10 @@ void Engine::initWindow() {
 
     // Set application window icon using REMoAINTER logo
     int iconW = 0, iconH = 0, iconCh = 0;
-    unsigned char* iconPixels = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &iconW, &iconH, &iconCh, 4);
+    unsigned char* iconPixels = stbi_load("/home/senju/Downloads/REMoAINTER logo.png", &iconW, &iconH, &iconCh, 4);
+    if (!iconPixels) {
+        iconPixels = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &iconW, &iconH, &iconCh, 4);
+    }
     if (!iconPixels) {
         iconPixels = stbi_load("assets/logo.png", &iconW, &iconH, &iconCh, 4);
     }
@@ -718,7 +721,10 @@ void Engine::initTextures() {
 
     // Load REMoAINTER logo for title bar, badge & About dialog
     int logoW = 0, logoH = 0, logoCh = 0;
-    unsigned char* logoData = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &logoW, &logoH, &logoCh, 4);
+    unsigned char* logoData = stbi_load("/home/senju/Downloads/REMoAINTER logo.png", &logoW, &logoH, &logoCh, 4);
+    if (!logoData) {
+        logoData = stbi_load("/mnt/shared/REMoAINTER/assets/logo.png", &logoW, &logoH, &logoCh, 4);
+    }
     if (!logoData) {
         logoData = stbi_load("assets/logo.png", &logoW, &logoH, &logoCh, 4);
     }

@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
-cd /mnt/shared/REMoAINTER
-exec /mnt/shared/REMoAINTER/build/remoainter "$@"
+# REMoAINTER v2.0.0 Launcher
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+exec "$DIR/rust/target/release/remoainter" "$@"

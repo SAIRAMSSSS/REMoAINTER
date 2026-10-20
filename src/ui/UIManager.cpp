@@ -317,6 +317,19 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
                 requestedMeshType = 2;
             }
             ImGui::Separator();
+            if (ImGui::MenuItem("Test Asset: Antique Lantern", nullptr, requestedOBJPath == "/mnt/shared/REMoAINTER/assets/test_models/lantern.obj")) {
+                requestedOBJPath = "/mnt/shared/REMoAINTER/assets/test_models/lantern.obj";
+                requestedMeshType = 3;
+                requestMeshChange = true;
+                statusMessage = "Loaded Test Asset: Antique Lantern";
+            }
+            if (ImGui::MenuItem("Test Asset: Retro Radio", nullptr, requestedOBJPath == "/mnt/shared/REMoAINTER/assets/test_models/radio.obj")) {
+                requestedOBJPath = "/mnt/shared/REMoAINTER/assets/test_models/radio.obj";
+                requestedMeshType = 3;
+                requestMeshChange = true;
+                statusMessage = "Loaded Test Asset: Retro Radio";
+            }
+            ImGui::Separator();
             static char objPathBuffer[256] = "";
             ImGui::TextDisabled("Load Custom Wavefront OBJ:");
             ImGui::InputText("##objPath", objPathBuffer, IM_ARRAYSIZE(objPathBuffer));
@@ -340,15 +353,15 @@ void UIManager::renderMainMenuBar(LayerStack& layerStack) {
         }
 
         if (ImGui::BeginMenu("Help")) {
-            if (ImGui::MenuItem("About Adobe Substance 3D Painter...")) {
+            if (ImGui::MenuItem("About REMoAINTER...")) {
                 showAboutModal = true;
             }
             ImGui::EndMenu();
         }
 
-        // Top-right brand watermark matching Substance Painter
-        ImGui::SameLine(ImGui::GetWindowWidth() - 320);
-        ImGui::TextColored(ImVec4(0.94f, 0.49f, 0.13f, 1.0f), "Substance 3D Painter");
+        // Top-right brand watermark matching reference UI
+        ImGui::SameLine(ImGui::GetWindowWidth() - 280);
+        ImGui::TextColored(ImVec4(0.94f, 0.49f, 0.13f, 1.0f), "REMoAINTER");
         ImGui::SameLine();
         ImGui::TextDisabled("| %s", statusMessage.c_str());
 
@@ -1663,7 +1676,7 @@ void UIManager::drawShelfMaterialThumbnail(ImDrawList* drawList, const ImVec2& c
 
 void UIManager::renderAboutDialog() {
     if (showAboutModal) {
-        ImGui::OpenPopup("About Adobe Substance 3D Painter##Modal");
+        ImGui::OpenPopup("About REMoAINTER##Modal");
         showAboutModal = false;
     }
 
@@ -1671,7 +1684,7 @@ void UIManager::renderAboutDialog() {
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(480, 420));
 
-    if (ImGui::BeginPopupModal("About Adobe Substance 3D Painter##Modal", nullptr, ImGuiWindowFlags_NoResize)) {
+    if (ImGui::BeginPopupModal("About REMoAINTER##Modal", nullptr, ImGuiWindowFlags_NoResize)) {
         if (logoTextureID) {
             float imgSize = 140.0f;
             ImGui::SetCursorPosX((480 - imgSize) * 0.5f);
@@ -1679,7 +1692,7 @@ void UIManager::renderAboutDialog() {
             ImGui::Spacing();
         }
 
-        const char* title = "Adobe Substance 3D Painter 11.0.0 (REMoAINTER Core)";
+        const char* title = "REMoAINTER 1.0 (Next-Gen PBR Painting Suite)";
         float titleW = ImGui::CalcTextSize(title).x;
         ImGui::SetCursorPosX((480 - titleW) * 0.5f);
         ImGui::TextColored(ImVec4(0.94f, 0.49f, 0.13f, 1.0f), "%s", title);
@@ -1695,7 +1708,7 @@ void UIManager::renderAboutDialog() {
 
         ImGui::BulletText("Vulkan 1.3 High-Performance Viewport Engine");
         ImGui::BulletText("5-Light Studio PBR Rig with Dual Softbox Reflections & ACES Tonemapping");
-        ImGui::BulletText("Substance 3D Painter Workflow & 40+ Pre-Configured PBR Smart Materials");
+        ImGui::BulletText("Calibrated 1-to-1 PBR Workflow & 40+ Pre-Configured Smart Materials");
         ImGui::BulletText("Continuous Anti-Aliased Stroke Interpolation & Toroidal UV Seam Wrapping");
         ImGui::BulletText("Zero-Stutter Persistent GPU Staging & Dirty-Rect Streaming");
         ImGui::BulletText("Linux & Windows High-Performance Native Support");
