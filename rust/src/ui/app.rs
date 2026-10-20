@@ -2,6 +2,7 @@ use crate::baker::{BakedMaps, BakerEngine, BakerOptions, MapType};
 use crate::graphics::Mesh;
 use crate::painting::brush::AlphaMaskData;
 use crate::painting::{AnchorPoint, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect};
+use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, Stroke, Ui};
 use std::collections::HashMap;
@@ -45,6 +46,12 @@ pub struct RemoainterApp {
     pub is_baking: bool,
     pub baking_progress: Arc<AtomicUsize>,
     pub show_baker_dialog: bool,
+    pub baker_selected_map: usize,
+    pub baker_subsampling: usize,
+    pub baker_use_low_as_high: bool,
+    pub baker_frontal_dist: f32,
+    pub baker_rear_dist: f32,
+    pub baker_curv_method: usize,
 
     // Viewport & Lighting
     pub display_channel: usize, // 0: Material, 1: Base Color, 2: Roughness, 3: Metallic, 4: Normal, 5: AO, 6: Curvature
@@ -186,14 +193,20 @@ impl Default for RemoainterApp {
             is_baking: false,
             baking_progress: Arc::new(AtomicUsize::new(0)),
             show_baker_dialog: false,
+            baker_selected_map: 0,
+            baker_subsampling: 0,
+            baker_use_low_as_high: true,
+            baker_frontal_dist: 0.08,
+            baker_rear_dist: 0.08,
+            baker_curv_method: 0,
 
             display_channel: 0,
             env_preset: 1, // Warm & Cool Studio
             env_rotation: 0.0,
             light_intensity: 1.0,
-            camera_yaw: 45.0,
-            camera_pitch: 25.0,
-            camera_dist: 3.2,
+            camera_yaw: 35.0,
+            camera_pitch: 18.0,
+            camera_dist: 2.4,
             symmetry_x: false,
 
             shelf_category: 0,
@@ -203,30 +216,39 @@ impl Default for RemoainterApp {
             logo_texture: None,
             active_right_panel: 2, // Layers panel open by default
 
-            selected_model_idx: 0,
+            selected_model_idx: 1, // Default to Antique Lantern (14,570 faces)
             status_message: "Ready".to_string(),
             history: vec![
-                "01  New Project (Head - 1024x1024)".into(),
-                "02  Load Mesh (Substance Material Sphere)".into(),
-                "03  Add Fill Layer (Base)".into(),
-                "04  Add Paint Layer (Layer 1)".into(),
-                "05  Add Folder (Scattering)".into(),
-                "06  Add Folder (Color)".into(),
-                "07  Add Folder (Roughness)".into(),
-                "08  Add Folder (Final Touches)".into(),
-                "09  Set Active Layer (Layer 1)".into(),
+                "01  New Project (Lantern - 1024x1024)".into(),
+                "02  Load Mesh (Antique Lantern)".into(),
+                "03  Add Base Layer (Painted Steel)".into(),
             ],
             logs: vec![
                 ("09:00:01".into(), "INFO".into(), "REMoAINTER v2.0.0 (High-Performance Rust Core) initialized.".into()),
                 ("09:00:02".into(), "INFO".into(), "Substance 3D Painter 1-to-1 Architecture & UI Active.".into()),
-                ("09:00:03".into(), "INFO".into(), "Loaded 40+ Allegorithmic PBR materials, Smart Masks & Alphas.".into()),
-                ("09:00:04".into(), "INFO".into(), "Zero-Stutter Dirty Rect Compositing Engine ready (60+ FPS).".into()),
+                ("09:00:03".into(), "INFO".into(), "Loaded 360+ Allegorithmic PBR materials, Smart Masks & Alphas.".into()),
+                ("09:00:04".into(), "INFO".into(), "Cook-Torrance / Blinn-Phong GGX Studio Lighting active.".into()),
             ],
             last_painted_uv: None,
             texture_handle: None,
             texture_needs_update: true,
-            viewport_view_mode: 2, // Default to Split 3D | 2D view (Substance Painter F1)
+            viewport_view_mode: 0, // 3D Viewport on startup
         };
+
+        // Load Antique Lantern by default on launch
+        let lantern_paths = [
+            "/mnt/shared/REMoAINTER/assets/test_models/lantern.obj",
+            "assets/test_models/lantern.obj",
+            "../assets/test_models/lantern.obj",
+            "/home/senju/Documents/env-port/lantern_low.obj",
+        ];
+        for p in &lantern_paths {
+            if let Ok(m) = Mesh::load_obj(p) {
+                app.mesh = m;
+                app.status_message = "Loaded Test Asset: Antique Lantern (14,570 faces)".to_string();
+                break;
+            }
+        }
 
         // Initialize default baked maps analytically (Instant startup, 0 CPU spike)
         let total = (1024 * 1024) as usize;
@@ -240,11 +262,39 @@ impl Default for RemoainterApp {
             thickness: Some(vec![0.5; total]),
             id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
         };
+
+        // Initialize with default Painted Steel fill layer
+        let steel_fill = Layer::new_fill(
+            1,
+            "Painted Metal Base".to_string(),
+            [0.22, 0.25, 0.28, 1.0], // Dark industrial gunmetal
+            0.65, // metallic
+            0.35, // roughness
+            1024,
+            1024,
+        );
+        app.layer_stack.layers.push(steel_fill);
+        app.layer_stack.composite(app.baked_maps.curvature.as_deref(), app.baked_maps.ambient_occlusion.as_deref());
+        app.texture_needs_update = true;
         app
     }
 }
 
 impl RemoainterApp {
+    pub fn channel_name(&self, channel: usize) -> &'static str {
+        match channel {
+            0 => "Material (M)",
+            1 => "Base Color (C)",
+            2 => "Roughness",
+            3 => "Metallic",
+            4 => "Normal",
+            5 => "Ambient Occlusion (B)",
+            6 => "Curvature",
+            7 => "Position",
+            8 => "Thickness",
+            _ => "Material",
+        }
+    }
     pub fn bake_mesh_maps(&mut self) {
         self.is_baking = true;
         self.baking_progress.store(0, Ordering::Relaxed);
@@ -266,6 +316,7 @@ impl RemoainterApp {
             format!("Baked mesh maps (AO, Curvature, Normals, Position) for {}", self.mesh.name),
         ));
         self.layer_stack.composite(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
+        self.texture_needs_update = true;
     }
 
     pub fn bake_single_map(&mut self, map_type: MapType) {
@@ -293,7 +344,13 @@ impl RemoainterApp {
         }
         self.is_baking = false;
         self.status_message = format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution);
+        self.logs.push((
+            chrono::Local::now().format("%H:%M:%S").to_string(),
+            "INFO".into(),
+            format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution),
+        ));
         self.layer_stack.composite(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
+        self.texture_needs_update = true;
     }
 
     pub fn load_model(&mut self, idx: usize) {
@@ -343,6 +400,53 @@ impl RemoainterApp {
 impl eframe::App for RemoainterApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_substance_theme(ctx);
+
+        // Global hotkey processing (Substance Painter standard)
+        if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::B)) {
+            self.show_baker_dialog = true;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::M)) {
+            self.display_channel = 0;
+            self.texture_needs_update = true;
+            self.status_message = "Channel: Material (Lit PBR)".to_string();
+        } else if ctx.input(|i| i.key_pressed(egui::Key::C)) {
+            self.display_channel = match self.display_channel {
+                0 => 1,
+                1 => 2,
+                2 => 3,
+                3 => 4,
+                _ => 0,
+            };
+            self.texture_needs_update = true;
+            self.status_message = format!("Solo Channel: {}", self.channel_name(self.display_channel));
+        } else if ctx.input(|i| i.key_pressed(egui::Key::B)) && !ctx.input(|i| i.modifiers.shift) {
+            self.display_channel = match self.display_channel {
+                5 => 6,
+                6 => 7,
+                7 => 8,
+                _ => 5,
+            };
+            self.texture_needs_update = true;
+            self.status_message = format!("Mesh Map: {}", self.channel_name(self.display_channel));
+        } else if ctx.input(|i| i.key_pressed(egui::Key::F)) {
+            self.camera_yaw = 35.0;
+            self.camera_pitch = 18.0;
+            self.camera_dist = 2.4;
+            self.status_message = "Framed 3D Mesh".to_string();
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num1)) {
+            self.active_tool = ToolMode::Paint;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num2)) {
+            self.active_tool = ToolMode::Eraser;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num3)) {
+            self.active_tool = ToolMode::Projection;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num4)) {
+            self.active_tool = ToolMode::PolygonFill;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num5)) {
+            self.active_tool = ToolMode::Smudge;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Num6)) {
+            self.active_tool = ToolMode::Clone;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::I)) {
+            self.active_tool = ToolMode::Eyedropper;
+        }
 
         // 1. TOP MENU BAR (with logo and Allegorithmic styling)
         egui::TopBottomPanel::top("top_menu_bar").show(ctx, |ui| {
@@ -396,6 +500,22 @@ impl eframe::App for RemoainterApp {
                         }
                     });
 
+                    ui.menu_button("Mode", |ui| {
+                        if ui.button("🎨 Painting (Edition)").clicked() {
+                            self.show_baker_dialog = false;
+                            self.status_message = "Mode: Painting".into();
+                            ui.close_menu();
+                        }
+                        if ui.button("⚡ Bake Mesh Maps (Studio)").clicked() {
+                            self.show_baker_dialog = true;
+                            ui.close_menu();
+                        }
+                        if ui.button("📷 Visualisation (Render)").clicked() {
+                            self.status_message = "Visualisation Mode (Interactive PBR GGX)".into();
+                            ui.close_menu();
+                        }
+                    });
+
                     ui.menu_button("Geometry", |ui| {
                         if ui.button("Substance Material Sphere").clicked() {
                             self.load_model(0);
@@ -412,13 +532,31 @@ impl eframe::App for RemoainterApp {
                     });
 
                     ui.menu_button("Viewport", |ui| {
-                        if ui.button("Material (Lit)").clicked() { self.display_channel = 0; ui.close_menu(); }
-                        if ui.button("Base Color (Solo)").clicked() { self.display_channel = 1; ui.close_menu(); }
-                        if ui.button("Roughness (Solo)").clicked() { self.display_channel = 2; ui.close_menu(); }
-                        if ui.button("Metallic (Solo)").clicked() { self.display_channel = 3; ui.close_menu(); }
-                        if ui.button("Normal (Solo)").clicked() { self.display_channel = 4; ui.close_menu(); }
-                        if ui.button("Ambient Occlusion (Baked)").clicked() { self.display_channel = 5; ui.close_menu(); }
-                        if ui.button("Curvature (Baked)").clicked() { self.display_channel = 6; ui.close_menu(); }
+                        let mut ch_changed = false;
+                        if ui.button("Material (Lit) [M]").clicked() { self.display_channel = 0; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Base Color (Solo) [C]").clicked() { self.display_channel = 1; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Roughness (Solo)").clicked() { self.display_channel = 2; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Metallic (Solo)").clicked() { self.display_channel = 3; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Normal (Solo)").clicked() { self.display_channel = 4; ch_changed = true; ui.close_menu(); }
+                        ui.separator();
+                        if ui.button("Ambient Occlusion [B]").clicked() { self.display_channel = 5; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Curvature").clicked() { self.display_channel = 6; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Position").clicked() { self.display_channel = 7; ch_changed = true; ui.close_menu(); }
+                        if ui.button("Thickness").clicked() { self.display_channel = 8; ch_changed = true; ui.close_menu(); }
+                        if ch_changed {
+                            self.texture_needs_update = true;
+                            self.status_message = format!("Channel: {}", self.channel_name(self.display_channel));
+                        }
+                    });
+
+                    ui.menu_button("Window", |ui| {
+                        if ui.button("Texture Set Settings").clicked() { self.active_right_panel = 0; ui.close_menu(); }
+                        if ui.button("Texture Set List").clicked() { self.active_right_panel = 1; ui.close_menu(); }
+                        if ui.button("Layers").clicked() { self.active_right_panel = 2; ui.close_menu(); }
+                        if ui.button("Display Settings").clicked() { self.active_right_panel = 3; ui.close_menu(); }
+                        if ui.button("Shader Settings").clicked() { self.active_right_panel = 4; ui.close_menu(); }
+                        if ui.button("History").clicked() { self.active_right_panel = 5; ui.close_menu(); }
+                        if ui.button("Log Console").clicked() { self.active_right_panel = 6; ui.close_menu(); }
                     });
 
                     ui.menu_button("Help", |ui| {
@@ -439,8 +577,14 @@ impl eframe::App for RemoainterApp {
         // 2. CONTEXT CONTROL BAR (36px below menu bar)
         egui::TopBottomPanel::top("control_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                let _ = ui.small_button("<");
-                let _ = ui.small_button(">");
+                // Mode Switcher Pills
+                let baking_mode = self.show_baker_dialog;
+                if ui.selectable_label(!baking_mode, "🎨 Painting").clicked() {
+                    self.show_baker_dialog = false;
+                }
+                if ui.selectable_label(baking_mode, "⚡ Bake Mesh Maps").clicked() {
+                    self.show_baker_dialog = true;
+                }
                 ui.separator();
 
                 ui.label("Size");
@@ -464,30 +608,29 @@ impl eframe::App for RemoainterApp {
                     self.brush.spacing = sp_pct / 100.0;
                 }
 
-                ui.checkbox(&mut self.brush.lazy_mouse, "Lazy Mouse");
+                ui.checkbox(&mut self.brush.lazy_mouse, "Lazy");
                 ui.checkbox(&mut self.symmetry_x, "Symmetry");
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let prev_channel = self.display_channel;
                     egui::ComboBox::from_id_salt("vp_channel_combo")
-                        .selected_text(match self.display_channel {
-                            0 => "Material",
-                            1 => "Base Color",
-                            2 => "Roughness",
-                            3 => "Metallic",
-                            4 => "Normal",
-                            5 => "Ambient Occlusion",
-                            6 => "Curvature",
-                            _ => "Material",
-                        })
+                        .selected_text(self.channel_name(self.display_channel))
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.display_channel, 0, "Material");
-                            ui.selectable_value(&mut self.display_channel, 1, "Base Color");
+                            ui.selectable_value(&mut self.display_channel, 0, "Material (M)");
+                            ui.selectable_value(&mut self.display_channel, 1, "Base Color (C)");
                             ui.selectable_value(&mut self.display_channel, 2, "Roughness");
                             ui.selectable_value(&mut self.display_channel, 3, "Metallic");
                             ui.selectable_value(&mut self.display_channel, 4, "Normal");
-                            ui.selectable_value(&mut self.display_channel, 5, "Ambient Occlusion");
+                            ui.separator();
+                            ui.selectable_value(&mut self.display_channel, 5, "Ambient Occlusion (B)");
                             ui.selectable_value(&mut self.display_channel, 6, "Curvature");
+                            ui.selectable_value(&mut self.display_channel, 7, "Position");
+                            ui.selectable_value(&mut self.display_channel, 8, "Thickness");
                         });
+                    if self.display_channel != prev_channel {
+                        self.texture_needs_update = true;
+                        self.status_message = format!("Channel: {}", self.channel_name(self.display_channel));
+                    }
                 });
             });
         });
@@ -503,28 +646,44 @@ impl eframe::App for RemoainterApp {
             });
         });
 
-        // 4. FAR-LEFT TOOLBAR (36px strip)
-        egui::SidePanel::left("left_tools").exact_width(36.0).resizable(false).show(ctx, |ui| {
+        // 4. FAR-LEFT TOOLBAR (38px strip with custom razor-sharp vector icons)
+        egui::SidePanel::left("left_tools").exact_width(38.0).resizable(false).show(ctx, |ui| {
             ui.vertical_centered(|ui| {
+                ui.add_space(4.0);
                 let tools = [
-                    (ToolMode::Paint, "🖌", "Paint Brush (1)"),
-                    (ToolMode::Eraser, "⌫", "Eraser (2)"),
-                    (ToolMode::Projection, "⧉", "Projection (3)"),
-                    (ToolMode::PolygonFill, "▧", "Polygon Fill (4)"),
-                    (ToolMode::Smudge, "〰", "Smudge (5)"),
-                    (ToolMode::Clone, "⚯", "Clone Stamp (6)"),
-                    (ToolMode::Eyedropper, "💉", "Color Eyedropper (I)"),
+                    (ToolMode::Paint, IconType::Brush, "Paint Brush (1)"),
+                    (ToolMode::Eraser, IconType::Eraser, "Eraser (2)"),
+                    (ToolMode::Projection, IconType::Projection, "Projection (3)"),
+                    (ToolMode::PolygonFill, IconType::PolygonFill, "Polygon Fill (4)"),
+                    (ToolMode::Smudge, IconType::Smudge, "Smudge (5)"),
+                    (ToolMode::Clone, IconType::CloneStamp, "Clone Stamp (6)"),
+                    (ToolMode::Eyedropper, IconType::Eyedropper, "Color Eyedropper (I)"),
                 ];
 
-                for (mode, icon, tip) in tools {
+                for (mode, icon_type, tip) in tools {
                     let active = self.active_tool == mode;
-                    let btn = egui::Button::new(egui::RichText::new(icon).size(16.0))
-                        .fill(if active { ACTIVE_ROW_FILL } else { PANEL_BG })
-                        .stroke(if active { Stroke::new(1.2_f32, ACTIVE_BLUE) } else { Stroke::NONE });
-
-                    if ui.add(btn).on_hover_text(tip).clicked() {
+                    let (rect, response) = ui.allocate_exact_size(vec2(28.0, 28.0), egui::Sense::click());
+                    if ui.is_rect_visible(rect) {
+                        let painter = ui.painter();
+                        if active {
+                            painter.rect_filled(rect, 4.0_f32, ACTIVE_ROW_FILL);
+                            painter.rect_stroke(rect, 4.0_f32, Stroke::new(1.2_f32, ACTIVE_BLUE));
+                        } else if response.hovered() {
+                            painter.rect_filled(rect, 4.0_f32, Color32::from_rgb(45, 45, 48));
+                        }
+                        let color = if active {
+                            Color32::WHITE
+                        } else if response.hovered() {
+                            Color32::from_rgb(220, 220, 220)
+                        } else {
+                            Color32::from_rgb(170, 170, 175)
+                        };
+                        draw_icon(painter, rect, icon_type, color);
+                    }
+                    if response.on_hover_text(tip).clicked() {
                         self.active_tool = mode;
                     }
+                    ui.add_space(3.0);
                 }
             });
         });
@@ -779,28 +938,44 @@ impl eframe::App for RemoainterApp {
                 }
             });
 
-        // 6. FAR-RIGHT DOCK STRIP (32px narrow strip)
-        egui::SidePanel::right("right_strip").exact_width(32.0).resizable(false).show(ctx, |ui| {
+        // 6. FAR-RIGHT DOCK STRIP (34px narrow strip with vector icons)
+        egui::SidePanel::right("right_strip").exact_width(34.0).resizable(false).show(ctx, |ui| {
             ui.vertical_centered(|ui| {
+                ui.add_space(4.0);
                 let strip = [
-                    (0, "⚙", "Texture Set Settings"),
-                    (1, "⧉", "Texture Set List"),
-                    (2, "☰", "Layers"),
-                    (3, "🖥", "Display Settings"),
-                    (4, "🌐", "Shader Settings"),
-                    (5, "⏱", "History"),
-                    (6, "💻", "Log"),
+                    (0, IconType::Settings, "Texture Set Settings"),
+                    (1, IconType::TextureSetList, "Texture Set List"),
+                    (2, IconType::Layers, "Layers (F4)"),
+                    (3, IconType::Display, "Display Settings"),
+                    (4, IconType::Shader, "Shader Settings"),
+                    (5, IconType::History, "History"),
+                    (6, IconType::Log, "Log Console"),
                 ];
 
-                for (idx, icon, tip) in strip {
+                for (idx, icon_type, tip) in strip {
                     let active = self.active_right_panel == idx;
-                    let btn = egui::Button::new(egui::RichText::new(icon).size(15.0))
-                        .fill(if active { ACTIVE_ROW_FILL } else { PANEL_BG })
-                        .stroke(if active { Stroke::new(1.5_f32, ACTIVE_BLUE) } else { Stroke::NONE });
-
-                    if ui.add(btn).on_hover_text(tip).clicked() {
+                    let (rect, response) = ui.allocate_exact_size(vec2(26.0, 26.0), egui::Sense::click());
+                    if ui.is_rect_visible(rect) {
+                        let painter = ui.painter();
+                        if active {
+                            painter.rect_filled(rect, 3.0_f32, ACTIVE_ROW_FILL);
+                            painter.rect_stroke(rect, 3.0_f32, Stroke::new(1.2_f32, ACTIVE_BLUE));
+                        } else if response.hovered() {
+                            painter.rect_filled(rect, 3.0_f32, Color32::from_rgb(45, 45, 48));
+                        }
+                        let color = if active {
+                            Color32::WHITE
+                        } else if response.hovered() {
+                            Color32::from_rgb(220, 220, 220)
+                        } else {
+                            Color32::from_rgb(170, 170, 175)
+                        };
+                        draw_icon(painter, rect, icon_type, color);
+                    }
+                    if response.on_hover_text(tip).clicked() {
                         self.active_right_panel = idx;
                     }
+                    ui.add_space(3.0);
                 }
             });
         });
@@ -849,6 +1024,16 @@ impl eframe::App for RemoainterApp {
                         cur.iter().map(|v| { let b = (v.clamp(0.0, 1.0) * 255.0) as u8; Color32::from_rgb(b, b, b) }).collect()
                     } else {
                         vec![Color32::from_gray(128); w * h]
+                    },
+                    7 => if let Some(ref pos) = self.baked_maps.position {
+                        pos.iter().map(|p| Color32::from_rgb((p[0].clamp(0.0, 1.0) * 255.0) as u8, (p[1].clamp(0.0, 1.0) * 255.0) as u8, (p[2].clamp(0.0, 1.0) * 255.0) as u8)).collect()
+                    } else {
+                        vec![Color32::from_gray(128); w * h]
+                    },
+                    8 => if let Some(ref thk) = self.baked_maps.thickness {
+                        thk.iter().map(|v| { let b = (v.clamp(0.0, 1.0) * 255.0) as u8; Color32::from_rgb(b, b, b) }).collect()
+                    } else {
+                        vec![Color32::WHITE; w * h]
                     },
                     _ => self.layer_stack.composite_color.iter().map(|c| {
                         Color32::from_rgba_premultiplied(
@@ -1000,9 +1185,36 @@ impl RemoainterApp {
         let pitch_rad = self.camera_pitch.to_radians();
         let view_scale = view_bounds.height().min(view_bounds.width()) * 1.35;
 
-        // Ambient ground shadow under 3D mesh
-        let shadow_r = (view_bounds.height().min(view_bounds.width()) * 0.32).max(32.0);
-        painter.circle_filled(pos2(center.x, center.y + shadow_r * 0.78), shadow_r * 0.88, Color32::from_black_alpha(160));
+        // Smooth camera zoom via mouse scroll wheel
+        if view_bounds.contains(ctx.pointer_latest_pos().unwrap_or_default()) {
+            let scroll = ctx.input(|i| i.raw_scroll_delta.y);
+            if scroll.abs() > 0.05 {
+                self.camera_dist = (self.camera_dist - scroll * 0.003).clamp(0.5, 6.0);
+            }
+        }
+
+        // Photorealistic soft contact shadow under 3D mesh (no harsh black circles)
+        let floor_y = center.y + view_scale * 0.42;
+        let shadow_rx = view_scale * 0.36;
+        let shadow_ry = view_scale * 0.09;
+        // Tier 1: Soft ambient floor falloff
+        painter.rect_filled(
+            Rect::from_center_size(pos2(center.x, floor_y), vec2(shadow_rx * 2.2, shadow_ry * 2.2)),
+            shadow_ry * 1.1,
+            Color32::from_black_alpha(15),
+        );
+        // Tier 2: Mid penumbra
+        painter.rect_filled(
+            Rect::from_center_size(pos2(center.x, floor_y), vec2(shadow_rx * 1.5, shadow_ry * 1.5)),
+            shadow_ry * 0.75,
+            Color32::from_black_alpha(32),
+        );
+        // Tier 3: Core ground contact
+        painter.rect_filled(
+            Rect::from_center_size(pos2(center.x, floor_y), vec2(shadow_rx * 0.95, shadow_ry * 0.95)),
+            shadow_ry * 0.45,
+            Color32::from_black_alpha(55),
+        );
 
         if let Some(ref handle) = self.texture_handle {
             // Project the real 3D mesh (Antique Lantern, Retro Radio, or Sphere) with lighting and depth sorting
@@ -1018,10 +1230,12 @@ impl RemoainterApp {
             // RENDER 3D MESH GEOMETRY DIRECTLY ON GPU
             painter.add(egui::Shape::Mesh(egui_mesh));
 
-            // Camera Orbit (Alt+LMB or MMB) & 3D Surface Painting
+            // Camera Orbit (Alt+LMB or MMB) / Zoom (Alt+RMB) & 3D Surface Painting
             if response.dragged() {
                 let delta = response.drag_delta();
-                if ctx.input(|i| i.modifiers.alt) || ctx.input(|i| i.pointer.middle_down()) {
+                if ctx.input(|i| i.modifiers.alt && i.pointer.button_down(egui::PointerButton::Secondary)) {
+                    self.camera_dist = (self.camera_dist + delta.y * 0.01).clamp(0.5, 6.0);
+                } else if ctx.input(|i| i.modifiers.alt) || ctx.input(|i| i.pointer.middle_down()) {
                     self.camera_yaw += delta.x * 0.4;
                     self.camera_pitch = (self.camera_pitch + delta.y * 0.4).clamp(-85.0, 85.0);
                 } else if let Some(pos) = response.interact_pointer_pos() {
@@ -1058,7 +1272,7 @@ impl RemoainterApp {
         }
 
         // Viewport navigation indicator
-        painter.text(pos2(center.x, view_bounds.bottom() - 18.0), Align2::CENTER_CENTER, "Alt + Drag: Orbit 3D Camera | Click & Drag: Paint Directly on 3D Mesh", egui::FontId::proportional(11.5), TEXT_DIMMED);
+        painter.text(pos2(center.x, view_bounds.bottom() - 18.0), Align2::CENTER_CENTER, "Alt + LMB / MMB: Orbit | Alt + RMB / Scroll: Zoom | Click & Drag: Paint on 3D Mesh", egui::FontId::proportional(11.5), TEXT_DIMMED);
     }
 
     fn ui_texture_set_list(&mut self, ui: &mut Ui) {
@@ -1185,13 +1399,19 @@ impl RemoainterApp {
                 let eye_icon = if layer.visible { "[O]" } else { "[-]" };
                 ui.painter().text(pos2(rect.left() + 6.0, rect.center().y), Align2::LEFT_CENTER, eye_icon, egui::FontId::monospace(11.0), TEXT_PRIMARY);
 
-                // Layer name
-                let type_icon = match layer.layer_type {
-                    LayerType::Paint => "🖌",
-                    LayerType::Fill => "▧",
-                    LayerType::Folder => "📁",
+                // Layer type badge & name
+                let type_badge = match layer.layer_type {
+                    LayerType::Paint => "[P]",
+                    LayerType::Fill => "[F]",
+                    LayerType::Folder => "[D]",
                 };
-                ui.painter().text(pos2(rect.left() + 32.0, rect.center().y), Align2::LEFT_CENTER, format!("{} {}", type_icon, layer.name), egui::FontId::proportional(12.0), Color32::WHITE);
+                let badge_color = match layer.layer_type {
+                    LayerType::Paint => Color32::from_rgb(100, 200, 255),
+                    LayerType::Fill => SMART_MAT_ORANGE,
+                    LayerType::Folder => Color32::from_rgb(255, 215, 0),
+                };
+                ui.painter().text(pos2(rect.left() + 28.0, rect.center().y), Align2::LEFT_CENTER, type_badge, egui::FontId::monospace(11.0), badge_color);
+                ui.painter().text(pos2(rect.left() + 50.0, rect.center().y), Align2::LEFT_CENTER, &layer.name, egui::FontId::proportional(12.0), Color32::WHITE);
 
                 // Mask badge
                 if layer.mask.is_some() {
@@ -1204,7 +1424,7 @@ impl RemoainterApp {
                 if layer.anchor_point.is_some() {
                     let a_rect = Rect::from_min_size(pos2(rect.right() - 65.0, rect.top() + 5.0), vec2(16.0, 16.0));
                     ui.painter().rect_filled(a_rect, 1.0, SMART_MAT_ORANGE);
-                    ui.painter().text(a_rect.center(), Align2::CENTER_CENTER, "⚓", egui::FontId::proportional(10.0), Color32::WHITE);
+                    ui.painter().text(a_rect.center(), Align2::CENTER_CENTER, "A", egui::FontId::proportional(10.0), Color32::WHITE);
                 }
 
                 // Opacity label
@@ -1220,7 +1440,7 @@ impl RemoainterApp {
                         ui.indent("mask_indent", |ui| {
                             ui.horizontal(|ui| {
                                 ui.colored_label(ACTIVE_BLUE, "↳ Mask Sub-Stack:");
-                                if ui.small_button("+ Add Generator").clicked() {
+                                if ui.small_button("+ Generator").clicked() {
                                     mask.effects.push(MaskEffect::Generator {
                                         name: "Metal Edge Wear".into(),
                                         wear_level: 0.8,
@@ -1247,10 +1467,10 @@ impl RemoainterApp {
                             for eff in &mask.effects {
                                 match eff {
                                     MaskEffect::Generator { name, wear_level, .. } => {
-                                        ui.label(format!("  ⚙ Generator: {} (Wear: {:.1})", name, wear_level));
+                                        ui.label(format!("  • Generator: {} (Wear: {:.1})", name, wear_level));
                                     }
                                     MaskEffect::Fill { value, .. } => {
-                                        ui.label(format!("  ▧ Fill Effect (Val: {:.2})", value));
+                                        ui.label(format!("  • Fill Effect (Val: {:.2})", value));
                                     }
                                     _ => {}
                                 }
@@ -1325,61 +1545,250 @@ impl RemoainterApp {
     }
 
     fn ui_baker_modal(&mut self, ctx: &egui::Context) {
-        egui::Window::new("Bake Mesh Maps (Raytraced & Geometric)")
-            .collapsible(false)
-            .resizable(false)
+        let mut show = self.show_baker_dialog;
+        egui::Window::new("Bake Mesh Maps — REMoAINTER Baking Studio")
+            .open(&mut show)
+            .default_width(740.0)
+            .default_height(540.0)
+            .resizable(true)
             .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.heading("Mesh Maps Baker");
-                ui.separator();
-
-                ui.label(format!("Target Mesh: {}", self.mesh.name));
-                ui.label(format!("Triangles: {}", self.mesh.indices.len() / 3));
-
-                ui.separator();
-                ui.label(egui::RichText::new("Select Individual Maps or All to Bake:").strong());
-
-                ui.checkbox(&mut self.baker_options.bake_ao, "Ambient Occlusion (Raytraced)");
-                ui.checkbox(&mut self.baker_options.bake_curvature, "Curvature (Convex Ridges & Concave Crevices)");
-                ui.checkbox(&mut self.baker_options.bake_normal, "Normal Map (Tangent Space)");
-                ui.checkbox(&mut self.baker_options.bake_world_space_normal, "World Space Normal");
-                ui.checkbox(&mut self.baker_options.bake_position, "Position Map (Normalized Bounding Box)");
-                ui.checkbox(&mut self.baker_options.bake_thickness, "Thickness Map (Subsurface Scattering)");
-                ui.checkbox(&mut self.baker_options.bake_id, "ID Map (Material Groups)");
-
-                ui.separator();
+                // Header Information
                 ui.horizontal(|ui| {
-                    ui.label("Resolution:");
-                    egui::ComboBox::from_id_salt("baker_res")
-                        .selected_text(format!("{}x{}", self.baker_options.resolution, self.baker_options.resolution))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.baker_options.resolution, 512, "512x512");
-                            ui.selectable_value(&mut self.baker_options.resolution, 1024, "1024x1024");
-                            ui.selectable_value(&mut self.baker_options.resolution, 2048, "2048x2048");
-                            ui.selectable_value(&mut self.baker_options.resolution, 4096, "4096x4096");
+                    ui.label(egui::RichText::new("Target Mesh:").strong());
+                    ui.colored_label(Color32::WHITE, &self.mesh.name);
+                    ui.label("|");
+                    ui.label(format!("Triangles: {}", self.mesh.indices.len() / 3));
+                    ui.label("|");
+                    ui.colored_label(Color32::from_rgb(58, 217, 115), "Rayon Multithreading Active");
+                });
+                ui.separator();
+
+                // Two-Column Layout (Substance Painter Architecture)
+                ui.columns(2, |columns| {
+                    // LEFT COLUMN: Texture Sets & Mesh Maps Checklist
+                    let left = &mut columns[0];
+                    left.heading(egui::RichText::new("Texture Sets").size(13.0));
+                    left.checkbox(&mut true, format!("● {} (Default)", self.mesh.name));
+                    left.add_space(8.0);
+
+                    left.horizontal(|ui| {
+                        ui.heading(egui::RichText::new("Mesh Maps").size(13.0));
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.small_button("Deselect All").clicked() {
+                                self.baker_options.bake_ao = false;
+                                self.baker_options.bake_curvature = false;
+                                self.baker_options.bake_normal = false;
+                                self.baker_options.bake_world_space_normal = false;
+                                self.baker_options.bake_position = false;
+                                self.baker_options.bake_thickness = false;
+                                self.baker_options.bake_id = false;
+                            }
+                            if ui.small_button("Select All").clicked() {
+                                self.baker_options.bake_ao = true;
+                                self.baker_options.bake_curvature = true;
+                                self.baker_options.bake_normal = true;
+                                self.baker_options.bake_world_space_normal = true;
+                                self.baker_options.bake_position = true;
+                                self.baker_options.bake_thickness = true;
+                                self.baker_options.bake_id = true;
+                            }
                         });
+                    });
+                    left.separator();
+
+                    let map_defs = [
+                        (0, "Ambient Occlusion", &mut self.baker_options.bake_ao, self.baked_maps.ambient_occlusion.is_some()),
+                        (1, "Curvature", &mut self.baker_options.bake_curvature, self.baked_maps.curvature.is_some()),
+                        (2, "Normal (Tangent)", &mut self.baker_options.bake_normal, self.baked_maps.normal.is_some()),
+                        (3, "World Space Normal", &mut self.baker_options.bake_world_space_normal, self.baked_maps.world_space_normal.is_some()),
+                        (4, "Position (XYZ)", &mut self.baker_options.bake_position, self.baked_maps.position.is_some()),
+                        (5, "Thickness (Subsurface)", &mut self.baker_options.bake_thickness, self.baked_maps.thickness.is_some()),
+                        (6, "ID Map", &mut self.baker_options.bake_id, self.baked_maps.id.is_some()),
+                    ];
+
+                    for (map_idx, label, enabled_ref, is_baked) in map_defs {
+                        let is_selected = self.baker_selected_map == map_idx;
+                        let (rect, resp) = left.allocate_exact_size(vec2(left.available_width(), 26.0), egui::Sense::click());
+                        if is_selected {
+                            left.painter().rect_filled(rect, 3.0_f32, ACTIVE_ROW_FILL);
+                            left.painter().rect_stroke(rect, 3.0_f32, Stroke::new(1.0_f32, ACTIVE_BLUE));
+                        } else if resp.hovered() {
+                            left.painter().rect_filled(rect, 3.0_f32, Color32::from_rgb(40, 40, 44));
+                        }
+
+                        // Checkbox on left
+                        let cb_rect = Rect::from_min_size(pos2(rect.left() + 6.0, rect.top() + 6.0), vec2(14.0, 14.0));
+                        left.painter().rect_filled(cb_rect, 2.0_f32, if *enabled_ref { ACTIVE_BLUE } else { Color32::from_rgb(30, 30, 32) });
+                        left.painter().rect_stroke(cb_rect, 2.0_f32, Stroke::new(1.0_f32, Color32::from_rgb(80, 80, 85)));
+                        if *enabled_ref {
+                            left.painter().text(cb_rect.center(), Align2::CENTER_CENTER, "✓", egui::FontId::monospace(11.0), Color32::WHITE);
+                        }
+
+                        // Map name
+                        left.painter().text(pos2(rect.left() + 26.0, rect.center().y), Align2::LEFT_CENTER, label, egui::FontId::proportional(12.0), Color32::WHITE);
+
+                        // Status badge (BAKED or READY)
+                        let badge_rect = Rect::from_min_size(pos2(rect.right() - 56.0, rect.top() + 5.0), vec2(50.0, 16.0));
+                        if is_baked {
+                            left.painter().rect_filled(badge_rect, 2.0, Color32::from_rgb(25, 75, 45));
+                            left.painter().text(badge_rect.center(), Align2::CENTER_CENTER, "BAKED", egui::FontId::monospace(9.5), Color32::from_rgb(100, 240, 150));
+                        } else {
+                            left.painter().rect_filled(badge_rect, 2.0, Color32::from_rgb(45, 45, 50));
+                            left.painter().text(badge_rect.center(), Align2::CENTER_CENTER, "READY", egui::FontId::monospace(9.5), TEXT_DIMMED);
+                        }
+
+                        if resp.clicked() {
+                            // If clicked on checkbox area, toggle enable
+                            if let Some(pos) = resp.interact_pointer_pos() {
+                                if pos.x < rect.left() + 24.0 {
+                                    *enabled_ref = !*enabled_ref;
+                                } else {
+                                    self.baker_selected_map = map_idx;
+                                }
+                            } else {
+                                self.baker_selected_map = map_idx;
+                            }
+                        }
+                    }
+
+                    left.add_space(12.0);
+                    let sel_map_type = match self.baker_selected_map {
+                        0 => MapType::AmbientOcclusion,
+                        1 => MapType::Curvature,
+                        2 => MapType::Normal,
+                        3 => MapType::WorldSpaceNormal,
+                        4 => MapType::Position,
+                        5 => MapType::Thickness,
+                        _ => MapType::Id,
+                    };
+                    if left.button(format!("⚡ Bake {:?} Only", sel_map_type)).on_hover_text("Bake only this individual map instantly").clicked() {
+                        self.bake_single_map(sel_map_type);
+                    }
+
+                    // RIGHT COLUMN: Parameters (Common + Map-Specific)
+                    let right = &mut columns[1];
+                    egui::ScrollArea::vertical().show(right, |right| {
+                        right.collapsing("Common Parameters", |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Output Size:");
+                                egui::ComboBox::from_id_salt("baker_out_size")
+                                    .selected_text(format!("{}x{}", self.baker_options.resolution, self.baker_options.resolution))
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(&mut self.baker_options.resolution, 512, "512x512");
+                                        ui.selectable_value(&mut self.baker_options.resolution, 1024, "1024x1024");
+                                        ui.selectable_value(&mut self.baker_options.resolution, 2048, "2048x2048");
+                                        ui.selectable_value(&mut self.baker_options.resolution, 4096, "4096x4096");
+                                    });
+                            });
+
+                            ui.horizontal(|ui| {
+                                ui.label("Antialiasing:");
+                                egui::ComboBox::from_id_salt("baker_subsampling")
+                                    .selected_text(match self.baker_subsampling {
+                                        0 => "Subsampling 1x (None)",
+                                        1 => "Subsampling 2x2",
+                                        2 => "Subsampling 4x4",
+                                        _ => "Subsampling 8x8",
+                                    })
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(&mut self.baker_subsampling, 0, "Subsampling 1x (None)");
+                                        ui.selectable_value(&mut self.baker_subsampling, 1, "Subsampling 2x2");
+                                        ui.selectable_value(&mut self.baker_subsampling, 2, "Subsampling 4x4");
+                                        ui.selectable_value(&mut self.baker_subsampling, 3, "Subsampling 8x8");
+                                    });
+                            });
+
+                            ui.checkbox(&mut self.baker_use_low_as_high, "Use Low Poly Mesh as High Poly Source");
+                            ui.add(egui::Slider::new(&mut self.baker_frontal_dist, 0.01..=0.50).text("Max Frontal Distance"));
+                            ui.add(egui::Slider::new(&mut self.baker_rear_dist, 0.01..=0.50).text("Max Rear Distance"));
+                        });
+
+                        right.add_space(8.0);
+                        match self.baker_selected_map {
+                            0 => {
+                                right.collapsing("Ambient Occlusion Parameters", |ui| {
+                                    ui.add(egui::Slider::new(&mut self.baker_options.ao_samples, 8..=128).text("Secondary Rays / Samples"));
+                                    ui.add(egui::Slider::new(&mut self.baker_options.ao_max_distance, 0.1..=5.0).text("Max Distance"));
+                                    ui.add(egui::Slider::new(&mut self.baker_options.ao_spread, 0.1..=1.0).text("Spread Angle"));
+                                    ui.label("Distribution: Cosine Weighted (Hemispherical)");
+                                    ui.label("Attenuation: Linear Falloff");
+                                });
+                            }
+                            1 => {
+                                right.collapsing("Curvature Parameters", |ui| {
+                                    ui.add(egui::Slider::new(&mut self.baker_options.curvature_intensity, 0.1..=3.0).text("Intensity / Contrast"));
+                                    ui.horizontal(|ui| {
+                                        ui.label("Method:");
+                                        egui::ComboBox::from_id_salt("baker_curv_method_combo")
+                                            .selected_text(if self.baker_curv_method == 0 { "From Mesh Geometry" } else { "From Normal Map" })
+                                            .show_ui(ui, |ui| {
+                                                ui.selectable_value(&mut self.baker_curv_method, 0, "From Mesh Geometry");
+                                                ui.selectable_value(&mut self.baker_curv_method, 1, "From Normal Map");
+                                            });
+                                    });
+                                    ui.label("Precision: High-Precision Quadric Surface");
+                                });
+                            }
+                            2 => {
+                                right.collapsing("Normal Map Parameters", |ui| {
+                                    ui.checkbox(&mut self.baker_options.invert_normal_y, "Invert Green Channel (DirectX Format)");
+                                    ui.label("Coordinate Space: Tangent Space (MikkTSpace standard)");
+                                });
+                            }
+                            3 => {
+                                right.collapsing("World Space Normal Parameters", |ui| {
+                                    ui.label("Up Vector: Y-Up (OpenGL Standard)");
+                                    ui.label("Normal Distribution: Normalized World Vectors");
+                                });
+                            }
+                            4 => {
+                                right.collapsing("Position Map Parameters", |ui| {
+                                    ui.label("Bounding Box Normalization: Full (0.0 to 1.0)");
+                                    ui.label("Format: RGB 16-bit Floating Point Precision");
+                                });
+                            }
+                            5 => {
+                                right.collapsing("Thickness Map Parameters", |ui| {
+                                    ui.label("Subsurface Scattering: Inverted Normal Raymarch");
+                                    ui.label("Search Distance: 1.5 units");
+                                });
+                            }
+                            _ => {
+                                right.collapsing("ID Map Parameters", |ui| {
+                                    ui.label("Color Source: Mesh Sub-Object & Material Groups");
+                                    ui.label("Palette: High-Contrast Unique Color IDs");
+                                });
+                            }
+                        }
+                    });
                 });
 
-                ui.add(egui::Slider::new(&mut self.baker_options.ao_samples, 8..=128).text("AO Rays/Pixel"));
-
                 ui.separator();
+
+                // Modal Footer Actions
                 ui.horizontal(|ui| {
-                    if ui.button(egui::RichText::new("Bake All Selected Maps").strong().color(Color32::WHITE)).clicked() {
-                        self.bake_mesh_maps();
-                        self.show_baker_dialog = false;
-                    }
-                    if ui.button("Bake AO Only").clicked() {
-                        self.bake_single_map(MapType::AmbientOcclusion);
-                        self.show_baker_dialog = false;
-                    }
-                    if ui.button("Bake Curvature Only").clicked() {
-                        self.bake_single_map(MapType::Curvature);
-                        self.show_baker_dialog = false;
-                    }
                     if ui.button("Cancel").clicked() {
                         self.show_baker_dialog = false;
                     }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let btn = egui::Button::new(
+                            egui::RichText::new("⚡ Bake Selected Mesh Maps")
+                                .strong()
+                                .color(Color32::WHITE)
+                                .size(13.0),
+                        )
+                        .fill(ACTIVE_BLUE)
+                        .min_size(vec2(180.0, 30.0));
+
+                        if ui.add(btn).clicked() {
+                            self.bake_mesh_maps();
+                            self.show_baker_dialog = false;
+                        }
+                    });
                 });
             });
+        self.show_baker_dialog = show;
     }
 }

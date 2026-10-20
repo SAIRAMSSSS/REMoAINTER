@@ -10,7 +10,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    /// Creates a high-fidelity Substance PBR Material Sphere with seamless polar coordinates
+    /// Creates an authentic Substance Calibration Material Ball with equatorial groove and pedestal base
     pub fn create_material_sphere(rings: u32, sectors: u32) -> Self {
         let mut vertices = Vec::new();
         let mut normals = Vec::new();
@@ -22,16 +22,29 @@ impl Mesh {
 
         for r in 0..=rings {
             let phi = std::f32::consts::PI * (r as f32 * r_step);
-            let y = phi.cos();
+            let y_raw = phi.cos();
             let sin_phi = phi.sin();
+
+            // Calibration Shader Ball Profile:
+            // - Equatorial calibration groove near y = 0
+            // - Pedestal flare base at the bottom
+            let r_mult = if y_raw.abs() < 0.09 {
+                0.86 // Indented groove
+            } else if y_raw < -0.80 {
+                1.18 // Flared pedestal base
+            } else {
+                1.00 // Smooth sphere
+            };
 
             for s in 0..=sectors {
                 let theta = 2.0 * std::f32::consts::PI * (s as f32 * s_step);
-                let x = sin_phi * theta.cos();
-                let z = sin_phi * theta.sin();
+                let x = sin_phi * theta.cos() * r_mult;
+                let z = sin_phi * theta.sin() * r_mult;
+                let y = y_raw;
 
+                let len = (x * x + y * y + z * z).sqrt().max(0.001);
                 vertices.push([x, y, z]);
-                normals.push([x, y, z]);
+                normals.push([x / len, y / len, z / len]);
                 uvs.push([s as f32 * s_step, 1.0 - r as f32 * r_step]);
             }
         }
@@ -52,7 +65,7 @@ impl Mesh {
         }
 
         Self {
-            name: "Substance Material Sphere".to_string(),
+            name: "Material Calibration Ball".to_string(),
             vertices,
             normals,
             uvs,
@@ -167,9 +180,10 @@ impl Mesh {
         let cp = pitch.cos();
         let sp = pitch.sin();
 
-        // Directional Studio Lights
+        // Studio Lighting: Key (Warm Top-Right), Fill (Cool Left), Rim (Sharp Backlight)
         let l1 = [0.577f32, 0.707, 0.408];
-        let l2 = [-0.707f32, 0.353, -0.612];
+        let l2 = [-0.707f32, 0.353, 0.612];
+        let l3 = [0.0f32, 0.85, -0.52];
 
         // 1. Transform all vertices
         let n_verts = self.vertices.len();
@@ -206,7 +220,7 @@ impl Mesh {
             proj_pos.push(egui::pos2(sx, sy));
             proj_depth.push(z_cam);
 
-            // Rotate Normal
+            // Rotate Normal to camera/view space
             let nx1 = norm[0] * cy + norm[2] * sy;
             let ny1 = norm[1];
             let nz1 = -norm[0] * sy + norm[2] * cy;
@@ -214,13 +228,52 @@ impl Mesh {
             let nx2 = nx1;
             let ny2 = ny1 * cp - nz1 * sp;
             let nz2 = ny1 * sp + nz1 * cp;
+            let n = [nx2, ny2, nz2];
 
-            // Cook-Torrance / Lambert studio lighting
-            let dot1 = (nx2 * l1[0] + ny2 * l1[1] + nz2 * l1[2]).max(0.0);
-            let dot2 = (nx2 * l2[0] + ny2 * l2[1] + nz2 * l2[2]).max(0.0);
-            let light = (dot1 * 0.65 + dot2 * 0.25 + 0.28).clamp(0.1, 1.0);
-            let shade = (light * 255.0) as u8;
-            proj_color.push(egui::Color32::from_gray(shade));
+            // View vector V from vertex to camera
+            let vx = -x2;
+            let vy = -y2;
+            let vz = z_cam;
+            let v_len = (vx * vx + vy * vy + vz * vz).sqrt().max(0.0001);
+            let v = [vx / v_len, vy / v_len, vz / v_len];
+
+            // 1. Key Light Diffuse & Specular (Blinn-Phong / GGX)
+            let n_dot_l1 = (n[0] * l1[0] + n[1] * l1[1] + n[2] * l1[2]).max(0.0);
+            let h1 = [l1[0] + v[0], l1[1] + v[1], l1[2] + v[2]];
+            let h1_len = (h1[0] * h1[0] + h1[1] * h1[1] + h1[2] * h1[2]).sqrt().max(0.0001);
+            let n_dot_h1 = ((n[0] * h1[0] + n[1] * h1[1] + n[2] * h1[2]) / h1_len).max(0.0);
+            let spec1 = n_dot_h1.powf(28.0);
+
+            // 2. Fill Light
+            let n_dot_l2 = (n[0] * l2[0] + n[1] * l2[1] + n[2] * l2[2]).max(0.0);
+            let h2 = [l2[0] + v[0], l2[1] + v[1], l2[2] + v[2]];
+            let h2_len = (h2[0] * h2[0] + h2[1] * h2[1] + h2[2] * h2[2]).sqrt().max(0.0001);
+            let n_dot_h2 = ((n[0] * h2[0] + n[1] * h2[1] + n[2] * h2[2]) / h2_len).max(0.0);
+            let spec2 = n_dot_h2.powf(16.0);
+
+            // 3. Rim / Backlight
+            let n_dot_l3 = (n[0] * l3[0] + n[1] * l3[1] + n[2] * l3[2]).max(0.0);
+            let h3 = [l3[0] + v[0], l3[1] + v[1], l3[2] + v[2]];
+            let h3_len = (h3[0] * h3[0] + h3[1] * h3[1] + h3[2] * h3[2]).sqrt().max(0.0001);
+            let n_dot_h3 = ((n[0] * h3[0] + n[1] * h3[1] + n[2] * h3[2]) / h3_len).max(0.0);
+            let spec3 = n_dot_h3.powf(40.0);
+
+            // 4. Fresnel reflection at grazing angles
+            let n_dot_v = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).max(0.0);
+            let fresnel = (1.0 - n_dot_v).powf(3.5) * 0.35;
+
+            // 5. Studio ground / sky ambient
+            let ambient = 0.28 + (n[1] * 0.5 + 0.5) * 0.15;
+
+            // Combine into rich studio tone
+            let diffuse = n_dot_l1 * 0.65 + n_dot_l2 * 0.25 + n_dot_l3 * 0.20 + ambient;
+            let specular = spec1 * 0.70 + spec2 * 0.25 + spec3 * 0.45 + fresnel;
+
+            let r = ((diffuse * 0.98 + specular * 0.95).clamp(0.12, 1.0) * 255.0) as u8;
+            let g = ((diffuse * 0.96 + specular * 0.95).clamp(0.12, 1.0) * 255.0) as u8;
+            let b = ((diffuse * 1.00 + specular * 1.00).clamp(0.12, 1.0) * 255.0) as u8;
+
+            proj_color.push(egui::Color32::from_rgb(r, g, b));
         }
 
         // 2. Filter & Depth-sort Triangles
@@ -265,8 +318,6 @@ impl Mesh {
         let mut egui_mesh = egui::Mesh::with_texture(texture_id);
         let mut hit_tris = Vec::with_capacity(visible.len());
 
-        let mut vert_map = std::collections::HashMap::new();
-
         for tri in visible {
             let mut tri_idx = [0u32; 3];
             let mut screen_pts = [egui::Pos2::ZERO; 3];
@@ -274,19 +325,16 @@ impl Mesh {
 
             for k in 0..3 {
                 let orig_i = tri.indices[k] as usize;
-                let new_i = *vert_map.entry(orig_i).or_insert_with(|| {
-                    let idx = egui_mesh.vertices.len() as u32;
-                    let uv = self.uvs.get(orig_i).copied().unwrap_or([0.0, 0.0]);
-                    egui_mesh.vertices.push(egui::epaint::Vertex {
-                        pos: proj_pos[orig_i],
-                        uv: egui::pos2(uv[0], uv[1]),
-                        color: proj_color[orig_i],
-                    });
-                    idx
+                let uv = self.uvs.get(orig_i).copied().unwrap_or([0.0, 0.0]);
+                let idx = egui_mesh.vertices.len() as u32;
+                egui_mesh.vertices.push(egui::epaint::Vertex {
+                    pos: proj_pos[orig_i],
+                    uv: egui::pos2(uv[0], uv[1]),
+                    color: proj_color[orig_i],
                 });
-                tri_idx[k] = new_i;
+                tri_idx[k] = idx;
                 screen_pts[k] = proj_pos[orig_i];
-                uv_pts[k] = self.uvs.get(orig_i).copied().unwrap_or([0.0, 0.0]);
+                uv_pts[k] = uv;
             }
 
             egui_mesh.add_triangle(tri_idx[0], tri_idx[1], tri_idx[2]);
