@@ -163,18 +163,27 @@ impl Layer {
                     let norm_dist = dist / radius;
 
                     // Evaluate alpha falloff
-                    let alpha = match brush.alpha_shape {
-                        AlphaShape::Circle => (1.0 - norm_dist).clamp(0.0, 1.0),
-                        AlphaShape::SoftRound => (1.0 - norm_dist).powf(1.8).clamp(0.0, 1.0),
-                        AlphaShape::Gaussian => (-norm_dist * norm_dist * 3.0).exp(),
-                        AlphaShape::Square => 1.0,
-                        AlphaShape::Dirt | AlphaShape::Grunge => {
-                            let noise = ((dx as f32 * 0.4).sin() * (dy as f32 * 0.4).cos()).abs();
-                            (1.0 - norm_dist) * (0.6 + noise * 0.4)
-                        }
-                        AlphaShape::Concrete | AlphaShape::Scratches => {
-                            let n = ((dx as f32 * 0.8).sin() + (dy as f32 * 0.2).cos()).abs();
-                            (1.0 - norm_dist) * (0.4 + n * 0.6)
+                    let alpha = if let Some(ref custom) = brush.custom_alpha {
+                        let u_norm = ((dx as f32 / radius) * 0.5 + 0.5).clamp(0.0, 1.0);
+                        let v_norm = ((dy as f32 / radius) * 0.5 + 0.5).clamp(0.0, 1.0);
+                        let mx = (u_norm * (custom.width.saturating_sub(1)) as f32) as usize;
+                        let my = (v_norm * (custom.height.saturating_sub(1)) as f32) as usize;
+                        let val = custom.data.get(my * custom.width as usize + mx).copied().unwrap_or(0) as f32 / 255.0;
+                        val * (1.0 - (norm_dist - 0.7).max(0.0) / 0.3).clamp(0.0, 1.0)
+                    } else {
+                        match brush.alpha_shape {
+                            AlphaShape::Circle => (1.0 - norm_dist).clamp(0.0, 1.0),
+                            AlphaShape::SoftRound => (1.0 - norm_dist).powf(1.8).clamp(0.0, 1.0),
+                            AlphaShape::Gaussian => (-norm_dist * norm_dist * 3.0).exp(),
+                            AlphaShape::Square => 1.0,
+                            AlphaShape::Dirt | AlphaShape::Grunge => {
+                                let noise = ((dx as f32 * 0.4).sin() * (dy as f32 * 0.4).cos()).abs();
+                                (1.0 - norm_dist) * (0.6 + noise * 0.4)
+                            }
+                            AlphaShape::Concrete | AlphaShape::Scratches => {
+                                let n = ((dx as f32 * 0.8).sin() + (dy as f32 * 0.2).cos()).abs();
+                                (1.0 - norm_dist) * (0.4 + n * 0.6)
+                            }
                         }
                     } * brush.flow * brush.opacity;
 

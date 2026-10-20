@@ -17,7 +17,8 @@ fn main() -> eframe::Result<()> {
         .with_min_inner_size([1024.0, 700.0])
         .with_title("REMoAINTER 2026.1 (v2.0.0) - [PBR Metal-Roughness]");
 
-    if let Ok(img) = image::open("/home/senju/Downloads/REMoAINTER logo.png") {
+    let logo_bytes = include_bytes!("../../assets/logo_icon.png");
+    if let Ok(img) = image::load_from_memory(logo_bytes) {
         let rgba = img.to_rgba8();
         let (width, height) = rgba.dimensions();
         viewport = viewport.with_icon(egui::IconData {

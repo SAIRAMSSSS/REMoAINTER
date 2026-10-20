@@ -1,8 +1,11 @@
 use crate::baker::{BakedMaps, BakerEngine, BakerOptions, MapType};
 use crate::graphics::Mesh;
+use crate::painting::brush::AlphaMaskData;
 use crate::painting::{AnchorPoint, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect};
 use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, Stroke, Ui};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -15,6 +18,19 @@ pub enum ToolMode {
     Smudge,
     Clone,
     Eyedropper,
+}
+
+#[derive(Clone, Debug)]
+pub struct ShelfAsset {
+    pub name: String,
+    pub category: usize, // 1: Smart Materials, 2: Materials, 3: Smart Masks, 4: Alphas
+    pub path: PathBuf,
+    pub thumb_path: PathBuf,
+    pub badge: &'static str,
+    pub badge_color: Color32,
+    pub pbr_color: [f32; 4],
+    pub pbr_metallic: f32,
+    pub pbr_roughness: f32,
 }
 
 pub struct RemoainterApp {
@@ -41,8 +57,11 @@ pub struct RemoainterApp {
     pub symmetry_x: bool,
 
     // Shelf & Asset Filter
-    pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Alphas, 4: Brushes
+    pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas
     pub search_query: String,
+    pub shelf_assets: Vec<ShelfAsset>,
+    pub shelf_textures: HashMap<PathBuf, egui::TextureHandle>,
+    pub logo_texture: Option<egui::TextureHandle>,
 
     // Right Strip Active Panel
     pub active_right_panel: usize, // 0: Settings, 1: Texture Sets, 2: Layers, 3: Display, 4: Shaders, 5: History, 6: Log
@@ -59,6 +78,100 @@ pub struct RemoainterApp {
     pub texture_handle: Option<egui::TextureHandle>,
     pub texture_needs_update: bool,
     pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 3D | 2D
+}
+
+fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
+    let lower = name.to_lowercase();
+    if lower.contains("gold") {
+        ([1.0, 0.84, 0.25, 1.0], 1.0, 0.20)
+    } else if lower.contains("copper") {
+        ([0.95, 0.64, 0.54, 1.0], 1.0, 0.25)
+    } else if lower.contains("bronze") || lower.contains("brass") {
+        ([0.85, 0.65, 0.35, 1.0], 0.95, 0.30)
+    } else if lower.contains("chrome") {
+        ([0.95, 0.95, 0.98, 1.0], 1.0, 0.08)
+    } else if lower.contains("steel") || lower.contains("iron") || lower.contains("aluminium") || lower.contains("aluminum") || lower.contains("metal") {
+        ([0.75, 0.76, 0.78, 1.0], 0.95, 0.35)
+    } else if lower.contains("cobalt") {
+        ([0.28, 0.45, 0.78, 1.0], 0.85, 0.28)
+    } else if lower.contains("rubber") {
+        ([0.15, 0.15, 0.16, 1.0], 0.0, 0.75)
+    } else if lower.contains("plastic") {
+        ([0.85, 0.18, 0.18, 1.0], 0.0, 0.28)
+    } else if lower.contains("wood") {
+        ([0.55, 0.35, 0.20, 1.0], 0.0, 0.45)
+    } else if lower.contains("concrete") || lower.contains("asphalt") || lower.contains("stone") {
+        ([0.52, 0.52, 0.52, 1.0], 0.0, 0.82)
+    } else if lower.contains("fabric") || lower.contains("leather") {
+        ([0.45, 0.38, 0.32, 1.0], 0.0, 0.65)
+    } else if lower.contains("paint") {
+        ([0.75, 0.20, 0.20, 1.0], 0.05, 0.35)
+    } else {
+        ([0.70, 0.70, 0.72, 1.0], 0.5, 0.4)
+    }
+}
+
+fn find_shelf_dir() -> PathBuf {
+    let candidates = [
+        PathBuf::from("/mnt/shared/REMoAINTER/assets/shelf"),
+        PathBuf::from("assets/shelf"),
+        PathBuf::from("../assets/shelf"),
+        std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.join("../assets/shelf"))).unwrap_or_default(),
+    ];
+    for c in &candidates {
+        if c.exists() && c.join("smart_materials").exists() {
+            return c.clone();
+        }
+    }
+    PathBuf::from("/mnt/shared/REMoAINTER/assets/shelf")
+}
+
+fn scan_shelf_assets() -> Vec<ShelfAsset> {
+    let shelf_dir = find_shelf_dir();
+    let mut assets = Vec::new();
+
+    let categories = [
+        (1, "smart_materials", "SM", SMART_MAT_ORANGE),
+        (2, "materials", "M", ACTIVE_BLUE),
+        (3, "smart_masks", "MSK", Color32::from_rgb(160, 60, 220)),
+        (4, "alphas", "A", Color32::from_rgb(46, 180, 110)),
+    ];
+
+    for (cat_id, sub_folder, badge, badge_color) in categories {
+        let folder = shelf_dir.join(sub_folder);
+        let thumb_sub = shelf_dir.join("thumbnails").join(sub_folder);
+
+        if let Ok(entries) = std::fs::read_dir(&folder) {
+            let mut list: Vec<_> = entries.filter_map(|e| e.ok()).collect();
+            list.sort_by_key(|e| e.file_name());
+
+            for entry in list {
+                let p = entry.path();
+                if p.is_file() {
+                    let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
+                    if ext == "webp" || ext == "png" || ext == "sbsar" || ext == "spmsk" {
+                        let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                        let thumb_p = thumb_sub.join(format!("{}.png", stem));
+                        let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&stem);
+
+                        assets.push(ShelfAsset {
+                            name: stem,
+                            category: cat_id,
+                            path: p,
+                            thumb_path: thumb_p,
+                            badge,
+                            badge_color,
+                            pbr_color,
+                            pbr_metallic,
+                            pbr_roughness,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    assets
 }
 
 impl Default for RemoainterApp {
@@ -85,6 +198,9 @@ impl Default for RemoainterApp {
 
             shelf_category: 0,
             search_query: String::new(),
+            shelf_assets: scan_shelf_assets(),
+            shelf_textures: HashMap::new(),
+            logo_texture: None,
             active_right_panel: 2, // Layers panel open by default
 
             selected_model_idx: 0,
@@ -185,24 +301,36 @@ impl RemoainterApp {
         match idx {
             0 => {
                 self.mesh = Mesh::create_material_sphere(64, 64);
-                self.status_message = "Loaded Substance Material Sphere".to_string();
+                self.status_message = "Loaded Calibration Material Sphere".to_string();
             }
             1 => {
-                if let Ok(m) = Mesh::load_obj("/mnt/shared/REMoAINTER/assets/test_models/lantern.obj") {
-                    self.mesh = m;
-                    self.status_message = "Loaded Test Asset: Antique Lantern".to_string();
-                } else if let Ok(m) = Mesh::load_obj("/home/senju/Documents/env-port/lantern_low.obj") {
-                    self.mesh = m;
-                    self.status_message = "Loaded Test Asset: Antique Lantern".to_string();
+                let paths = [
+                    "/mnt/shared/REMoAINTER/assets/test_models/lantern.obj",
+                    "assets/test_models/lantern.obj",
+                    "../assets/test_models/lantern.obj",
+                    "/home/senju/Documents/env-port/lantern_low.obj",
+                ];
+                for p in &paths {
+                    if let Ok(m) = Mesh::load_obj(p) {
+                        self.mesh = m;
+                        self.status_message = "Loaded Test Asset: Antique Lantern".to_string();
+                        break;
+                    }
                 }
             }
             2 => {
-                if let Ok(m) = Mesh::load_obj("/mnt/shared/REMoAINTER/assets/test_models/radio.obj") {
-                    self.mesh = m;
-                    self.status_message = "Loaded Test Asset: Retro Radio".to_string();
-                } else if let Ok(m) = Mesh::load_obj("/home/senju/Pictures/radio-model/radio.obj") {
-                    self.mesh = m;
-                    self.status_message = "Loaded Test Asset: Retro Radio".to_string();
+                let paths = [
+                    "/mnt/shared/REMoAINTER/assets/test_models/radio.obj",
+                    "assets/test_models/radio.obj",
+                    "../assets/test_models/radio.obj",
+                    "/home/senju/Pictures/radio-model/radio.obj",
+                ];
+                for p in &paths {
+                    if let Ok(m) = Mesh::load_obj(p) {
+                        self.mesh = m;
+                        self.status_message = "Loaded Test Asset: Retro Radio".to_string();
+                        break;
+                    }
                 }
             }
             _ => {}
@@ -218,9 +346,26 @@ impl eframe::App for RemoainterApp {
 
         // 1. TOP MENU BAR (with logo and Allegorithmic styling)
         egui::TopBottomPanel::top("top_menu_bar").show(ctx, |ui| {
+            if self.logo_texture.is_none() {
+                let logo_bytes = include_bytes!("../../../assets/logo_icon.png");
+                if let Ok(img) = image::load_from_memory(logo_bytes) {
+                    let rgba = img.to_rgba8();
+                    let (w, h) = rgba.dimensions();
+                    let color_img = egui::ColorImage::from_rgba_unmultiplied(
+                        [w as usize, h as usize],
+                        &rgba.into_raw(),
+                    );
+                    self.logo_texture = Some(ctx.load_texture("remoainter_logo", color_img, egui::TextureOptions::LINEAR));
+                }
+            }
+
             ui.horizontal(|ui| {
                 // Application Logo / Brand
-                ui.colored_label(SMART_MAT_ORANGE, "Pt");
+                if let Some(ref logo) = self.logo_texture {
+                    ui.image(egui::load::SizedTexture::new(logo.id(), vec2(20.0, 20.0)));
+                } else {
+                    ui.colored_label(SMART_MAT_ORANGE, "RM");
+                }
                 ui.label(egui::RichText::new("REMoAINTER").strong().color(Color32::WHITE));
 
                 ui.separator();
@@ -384,88 +529,255 @@ impl eframe::App for RemoainterApp {
             });
         });
 
-        // 5. ASSET SHELF (`ASSETS`) (270px)
-        egui::SidePanel::left("asset_shelf").default_width(270.0).width_range(200.0..=400.0).show(ctx, |ui| {
-            ui.heading(egui::RichText::new("ASSETS").size(14.0).strong());
+        // 5. ASSET SHELF (`ASSETS`) (280px resizable)
+        egui::SidePanel::left("asset_shelf")
+            .default_width(280.0)
+            .width_range(220.0..=480.0)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading(egui::RichText::new("ASSETS").size(14.0).strong());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(
+                            egui::RichText::new(format!("{} items", self.shelf_assets.len()))
+                                .size(11.0)
+                                .color(TEXT_DIMMED),
+                        );
+                    });
+                });
 
-            // Category filter chips
-            ui.horizontal_wrapped(|ui| {
-                let cats = ["All", "Smart Mats", "Materials", "Alphas", "Brushes"];
-                for (i, c) in cats.iter().enumerate() {
-                    let active = self.shelf_category == i;
-                    let btn = egui::Button::new(*c)
-                        .fill(if active { ACTIVE_BLUE } else { Color32::from_rgb(45, 45, 48) });
-                    if ui.add(btn).clicked() {
-                        self.shelf_category = i;
-                    }
-                }
-            });
-
-            ui.add(egui::TextEdit::singleline(&mut self.search_query).hint_text("Search materials, alphas..."));
-            ui.separator();
-
-            // Materials Grid
-            egui::ScrollArea::vertical().show(ui, |ui| {
+                // Category filter chips
                 ui.horizontal_wrapped(|ui| {
-                    let presets = [
-                        ("Steel Rough", [0.75, 0.75, 0.78, 1.0], 1.0, 0.45, 0),
-                        ("Gold Pure", [1.00, 0.84, 0.00, 1.0], 1.0, 0.20, 0),
-                        ("Copper Worn", [0.95, 0.64, 0.54, 1.0], 0.9, 0.35, 1),
-                        ("Gunmetal Dark", [0.35, 0.35, 0.38, 1.0], 0.95, 0.28, 1),
-                        ("Plastic Red", [0.90, 0.15, 0.15, 1.0], 0.0, 0.25, 0),
-                        ("Rubber Black", [0.12, 0.12, 0.14, 1.0], 0.0, 0.70, 0),
-                        ("Concrete Edges", [0.55, 0.55, 0.54, 1.0], 0.0, 0.85, 1),
-                        ("Wood Varnish", [0.60, 0.35, 0.20, 1.0], 0.0, 0.30, 0),
+                    let cats = [
+                        (0, "All"),
+                        (1, "Smart Mats"),
+                        (2, "Materials"),
+                        (3, "Smart Masks"),
+                        (4, "Alphas"),
                     ];
-
-                    for (name, col, met, rough, badge) in presets {
-                        let (rect, response) = ui.allocate_exact_size(vec2(76.0, 92.0), egui::Sense::click());
-                        let painter = ui.painter();
-
-                        // 3D Sphere Preview
-                        let center = pos2(rect.center().x, rect.top() + 38.0);
-                        let radius = 28.0;
-
-                        // Ambient shadow
-                        painter.circle_filled(pos2(center.x + 3.0, center.y + 4.0), radius, Color32::from_black_alpha(100));
-                        // Base color
-                        painter.circle_filled(center, radius, Color32::from_rgba_premultiplied(
-                            (col[0] * 255.0) as u8, (col[1] * 255.0) as u8, (col[2] * 255.0) as u8, 255
-                        ));
-                        // Key highlight
-                        let spec_alpha = ((1.0 - rough) * 200.0) as u8;
-                        painter.circle_filled(pos2(center.x - 9.0, center.y - 9.0), 7.0, Color32::from_white_alpha(spec_alpha));
-                        // Edge ring
-                        painter.circle_stroke(center, radius, Stroke::new(1.0_f32, Color32::from_rgb(60, 60, 60)));
-
-                        // Badge
-                        let badge_rect = Rect::from_min_size(pos2(center.x + 8.0, center.y + 8.0), vec2(16.0, 14.0));
-                        if badge == 1 {
-                            painter.rect_filled(badge_rect, 2.0, SMART_MAT_ORANGE);
-                            painter.text(badge_rect.center(), Align2::CENTER_CENTER, "SM", egui::FontId::proportional(9.0), Color32::WHITE);
+                    for (i, c) in cats {
+                        let active = self.shelf_category == i;
+                        let btn = egui::Button::new(c).fill(if active {
+                            ACTIVE_BLUE
                         } else {
-                            painter.rect_filled(badge_rect, 2.0, ACTIVE_BLUE);
-                            painter.text(badge_rect.center(), Align2::CENTER_CENTER, "M", egui::FontId::proportional(9.0), Color32::WHITE);
-                        }
-
-                        // Label
-                        let text_rect = Rect::from_min_size(pos2(rect.left(), rect.top() + 72.0), vec2(76.0, 16.0));
-                        painter.text(text_rect.center(), Align2::CENTER_CENTER, name, egui::FontId::proportional(10.5), TEXT_PRIMARY);
-
-                        if response.hovered() {
-                            painter.rect_stroke(rect, 2.0_f32, Stroke::new(1.5_f32, ACTIVE_BLUE));
-                        }
-
-                        if response.clicked() {
-                            self.brush.color = col;
-                            self.brush.metallic = met;
-                            self.brush.roughness = rough;
-                            self.status_message = format!("Loaded Material: {}", name);
+                            Color32::from_rgb(45, 45, 48)
+                        });
+                        if ui.add(btn).clicked() {
+                            self.shelf_category = i;
                         }
                     }
                 });
+
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.search_query)
+                        .hint_text("Search 360+ materials, masks, alphas..."),
+                );
+                ui.separator();
+
+                let active_cat = self.shelf_category;
+                let query = self.search_query.trim().to_lowercase();
+
+                let matching_indices: Vec<usize> = self
+                    .shelf_assets
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, asset)| {
+                        if active_cat != 0 && asset.category != active_cat {
+                            return None;
+                        }
+                        if !query.is_empty() && !asset.name.to_lowercase().contains(&query) {
+                            return None;
+                        }
+                        Some(idx)
+                    })
+                    .collect();
+
+                let mut clicked_asset: Option<(usize, String, PathBuf, PathBuf, [f32; 4], f32, f32)> = None;
+
+                // Materials & Alphas Grid
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for &idx in &matching_indices {
+                            let asset = &self.shelf_assets[idx];
+                            let (rect, response) =
+                                ui.allocate_exact_size(vec2(76.0, 96.0), egui::Sense::click());
+                            let painter = ui.painter();
+
+                            if ui.is_rect_visible(rect) {
+                                // Load thumbnail into GPU texture handle if needed
+                                if !self.shelf_textures.contains_key(&asset.thumb_path) {
+                                    if let Ok(img) = image::open(&asset.thumb_path) {
+                                        let rgba = img.to_rgba8();
+                                        let (w, h) = rgba.dimensions();
+                                        let color_img = egui::ColorImage::from_rgba_unmultiplied(
+                                            [w as usize, h as usize],
+                                            &rgba.into_raw(),
+                                        );
+                                        let handle = ctx.load_texture(
+                                            format!("thumb_{}", asset.name),
+                                            color_img,
+                                            egui::TextureOptions::LINEAR,
+                                        );
+                                        self.shelf_textures.insert(asset.thumb_path.clone(), handle);
+                                    }
+                                }
+
+                                painter.rect_filled(rect, 4.0_f32, Color32::from_rgb(26, 26, 26));
+
+                                let preview_rect = Rect::from_min_size(
+                                    pos2(rect.left() + 4.0, rect.top() + 4.0),
+                                    vec2(68.0, 68.0),
+                                );
+
+                                if let Some(tex) = self.shelf_textures.get(&asset.thumb_path) {
+                                    painter.image(
+                                        tex.id(),
+                                        preview_rect,
+                                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                                        Color32::WHITE,
+                                    );
+                                } else {
+                                    let center = preview_rect.center();
+                                    let col = Color32::from_rgba_premultiplied(
+                                        (asset.pbr_color[0] * 255.0) as u8,
+                                        (asset.pbr_color[1] * 255.0) as u8,
+                                        (asset.pbr_color[2] * 255.0) as u8,
+                                        255,
+                                    );
+                                    painter.circle_filled(center, 28.0, col);
+                                }
+
+                                // Badge
+                                let badge_rect = Rect::from_min_size(
+                                    pos2(preview_rect.right() - 20.0, preview_rect.bottom() - 13.0),
+                                    vec2(18.0, 12.0),
+                                );
+                                painter.rect_filled(badge_rect, 2.0_f32, asset.badge_color);
+                                painter.text(
+                                    badge_rect.center(),
+                                    Align2::CENTER_CENTER,
+                                    asset.badge,
+                                    egui::FontId::proportional(8.5),
+                                    Color32::WHITE,
+                                );
+
+                                // Label
+                                let text_rect = Rect::from_min_size(
+                                    pos2(rect.left() + 2.0, rect.top() + 74.0),
+                                    vec2(72.0, 18.0),
+                                );
+                                let mut display_name = asset.name.clone();
+                                if display_name.len() > 11 {
+                                    display_name.truncate(9);
+                                    display_name.push_str("..");
+                                }
+                                painter.text(
+                                    text_rect.center(),
+                                    Align2::CENTER_CENTER,
+                                    display_name,
+                                    egui::FontId::proportional(10.0),
+                                    TEXT_PRIMARY,
+                                );
+
+                                if response.hovered() {
+                                    painter.rect_stroke(rect, 4.0_f32, Stroke::new(1.5_f32, ACTIVE_BLUE));
+                                }
+                            }
+
+                            if response.on_hover_text(&asset.name).clicked() {
+                                clicked_asset = Some((
+                                    asset.category,
+                                    asset.name.clone(),
+                                    asset.path.clone(),
+                                    asset.thumb_path.clone(),
+                                    asset.pbr_color,
+                                    asset.pbr_metallic,
+                                    asset.pbr_roughness,
+                                ));
+                            }
+                        }
+                    });
+                });
+
+                if let Some((cat, name, _path, thumb, color, metallic, roughness)) = clicked_asset {
+                    match cat {
+                        1 => {
+                            self.brush.color = color;
+                            self.brush.metallic = metallic;
+                            self.brush.roughness = roughness;
+                            let id = self.layer_stack.layers.len();
+                            let fill = Layer::new_fill(
+                                id,
+                                format!("SM: {}", name),
+                                color,
+                                metallic,
+                                roughness,
+                                self.layer_stack.width,
+                                self.layer_stack.height,
+                            );
+                            self.layer_stack.layers.push(fill);
+                            self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                            self.layer_stack.composite(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                            );
+                            self.texture_needs_update = true;
+                            self.status_message = format!("Applied Smart Material: {}", name);
+                            self.history.push(format!("{:02}  Apply Smart Material ({})", self.history.len() + 1, name));
+                        }
+                        2 => {
+                            self.brush.color = color;
+                            self.brush.metallic = metallic;
+                            self.brush.roughness = roughness;
+                            let id = self.layer_stack.layers.len();
+                            let fill = Layer::new_fill(
+                                id,
+                                format!("Mat: {}", name),
+                                color,
+                                metallic,
+                                roughness,
+                                self.layer_stack.width,
+                                self.layer_stack.height,
+                            );
+                            self.layer_stack.layers.push(fill);
+                            self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                            self.layer_stack.composite(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                            );
+                            self.texture_needs_update = true;
+                            self.status_message = format!("Applied Material: {}", name);
+                            self.history.push(format!("{:02}  Apply Material ({})", self.history.len() + 1, name));
+                        }
+                        3 => {
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                                active_layer.add_black_mask();
+                                self.status_message = format!("Applied Smart Mask ({}) to Layer: {}", name, active_layer.name);
+                                self.history.push(format!("{:02}  Add Mask ({})", self.history.len() + 1, name));
+                            }
+                            self.layer_stack.composite(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                            );
+                            self.texture_needs_update = true;
+                        }
+                        4 => {
+                            self.brush.alpha_name = name.clone();
+                            if let Ok(img) = image::open(&thumb) {
+                                let gray = img.to_luma8();
+                                let (w, h) = gray.dimensions();
+                                self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
+                                    width: w,
+                                    height: h,
+                                    data: gray.into_raw(),
+                                }));
+                            }
+                            self.status_message = format!("Selected Alpha: {}", name);
+                            self.history.push(format!("{:02}  Select Alpha ({})", self.history.len() + 1, name));
+                        }
+                        _ => {}
+                    }
+                }
             });
-        });
 
         // 6. FAR-RIGHT DOCK STRIP (32px narrow strip)
         egui::SidePanel::right("right_strip").exact_width(32.0).resizable(false).show(ctx, |ui| {

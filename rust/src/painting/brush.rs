@@ -1,4 +1,13 @@
 #![allow(dead_code)]
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+pub struct AlphaMaskData {
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlphaShape {
     Circle,
@@ -39,6 +48,7 @@ pub struct Brush {
 
     pub alpha_shape: AlphaShape,
     pub alpha_name: String,
+    pub custom_alpha: Option<Arc<AlphaMaskData>>,
 }
 
 impl Default for Brush {
@@ -68,6 +78,7 @@ impl Default for Brush {
 
             alpha_shape: AlphaShape::Circle,
             alpha_name: "Basic Shape".to_string(),
+            custom_alpha: None,
         }
     }
 }
