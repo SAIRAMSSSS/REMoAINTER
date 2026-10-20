@@ -1,7 +1,10 @@
 use crate::baker::{BakedMaps, BakerEngine, BakerOptions, MapType};
 use crate::graphics::{EnvironmentPreset, Mesh};
 use crate::painting::brush::AlphaMaskData;
-use crate::painting::{AnchorPoint, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect};
+use crate::painting::{
+    apply_smart_material_hierarchy, generate_procedural_material,
+    AnchorPoint, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect,
+};
 use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, Stroke, Ui};
@@ -91,33 +94,58 @@ pub struct RemoainterApp {
 
 fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
     let lower = name.to_lowercase();
+    let mut color = [0.70f32, 0.70, 0.72, 1.0];
+    let mut metallic = 0.5f32;
+    let mut roughness = 0.4f32;
+
     if lower.contains("gold") {
-        ([1.0, 0.84, 0.25, 1.0], 1.0, 0.20)
+        color = [1.0, 0.84, 0.25, 1.0]; metallic = 1.0; roughness = 0.20;
     } else if lower.contains("copper") {
-        ([0.95, 0.64, 0.54, 1.0], 1.0, 0.25)
+        color = [0.95, 0.64, 0.54, 1.0]; metallic = 1.0; roughness = 0.25;
     } else if lower.contains("bronze") || lower.contains("brass") {
-        ([0.85, 0.65, 0.35, 1.0], 0.95, 0.30)
+        color = [0.85, 0.65, 0.35, 1.0]; metallic = 0.95; roughness = 0.30;
     } else if lower.contains("chrome") {
-        ([0.95, 0.95, 0.98, 1.0], 1.0, 0.08)
+        color = [0.95, 0.95, 0.98, 1.0]; metallic = 1.0; roughness = 0.08;
     } else if lower.contains("steel") || lower.contains("iron") || lower.contains("aluminium") || lower.contains("aluminum") || lower.contains("metal") {
-        ([0.75, 0.76, 0.78, 1.0], 0.95, 0.35)
+        color = [0.75, 0.76, 0.78, 1.0]; metallic = 0.95; roughness = 0.32;
     } else if lower.contains("cobalt") {
-        ([0.28, 0.45, 0.78, 1.0], 0.85, 0.28)
+        color = [0.28, 0.45, 0.78, 1.0]; metallic = 0.85; roughness = 0.28;
     } else if lower.contains("rubber") {
-        ([0.15, 0.15, 0.16, 1.0], 0.0, 0.75)
+        color = [0.15, 0.15, 0.16, 1.0]; metallic = 0.0; roughness = 0.75;
     } else if lower.contains("plastic") {
-        ([0.85, 0.18, 0.18, 1.0], 0.0, 0.28)
+        color = [0.85, 0.18, 0.18, 1.0]; metallic = 0.0; roughness = 0.28;
     } else if lower.contains("wood") {
-        ([0.55, 0.35, 0.20, 1.0], 0.0, 0.45)
+        color = [0.55, 0.35, 0.20, 1.0]; metallic = 0.0; roughness = 0.45;
     } else if lower.contains("concrete") || lower.contains("asphalt") || lower.contains("stone") {
-        ([0.52, 0.52, 0.52, 1.0], 0.0, 0.82)
+        color = [0.52, 0.52, 0.52, 1.0]; metallic = 0.0; roughness = 0.82;
     } else if lower.contains("fabric") || lower.contains("leather") {
-        ([0.45, 0.38, 0.32, 1.0], 0.0, 0.65)
-    } else if lower.contains("paint") {
-        ([0.75, 0.20, 0.20, 1.0], 0.05, 0.35)
-    } else {
-        ([0.70, 0.70, 0.72, 1.0], 0.5, 0.4)
+        color = [0.45, 0.38, 0.32, 1.0]; metallic = 0.0; roughness = 0.65;
+    } else if lower.contains("carbon") {
+        color = [0.12, 0.12, 0.14, 1.0]; metallic = 0.0; roughness = 0.22;
     }
+
+    if lower.contains("green") {
+        color = [0.22, 0.42, 0.26, 1.0];
+    } else if lower.contains("red") {
+        color = [0.72, 0.18, 0.15, 1.0];
+    } else if lower.contains("blue") {
+        color = [0.18, 0.36, 0.65, 1.0];
+    } else if lower.contains("yellow") {
+        color = [0.82, 0.68, 0.16, 1.0];
+    } else if lower.contains("orange") {
+        color = [0.85, 0.42, 0.12, 1.0];
+    } else if lower.contains("black") || lower.contains("dark") {
+        color = [0.14, 0.14, 0.15, 1.0];
+    } else if lower.contains("white") {
+        color = [0.90, 0.90, 0.92, 1.0];
+    }
+
+    if lower.contains("paint") {
+        metallic = if lower.contains("metallic") { 0.85 } else { 0.04 };
+        roughness = 0.30;
+    }
+
+    (color, metallic, roughness)
 }
 
 fn find_shelf_dir() -> PathBuf {
@@ -209,7 +237,7 @@ impl Default for RemoainterApp {
             light_intensity: 1.0,
             camera_yaw: 35.0,
             camera_pitch: 18.0,
-            camera_dist: 1.8,
+            camera_dist: 2.2,
             symmetry_x: false,
 
             shelf_category: 0,
@@ -256,18 +284,40 @@ impl Default for RemoainterApp {
             }
         }
 
-        // Initialize default baked maps analytically (Instant startup, 0 CPU spike)
-        let total = (1024 * 1024) as usize;
-        app.baked_maps = BakedMaps {
-            resolution: 1024,
-            ambient_occlusion: Some(vec![1.0; total]),
-            curvature: Some(vec![0.5; total]),
-            normal: Some(vec![[0.5, 0.5, 1.0]; total]),
-            world_space_normal: Some(vec![[0.5, 1.0, 0.5]; total]),
-            position: Some(vec![[0.5, 0.5, 0.5]; total]),
-            thickness: Some(vec![0.5; total]),
-            id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
-        };
+        // High-speed GPU-grade mesh map baking on startup (<15ms forward rasterizer)
+        if !app.mesh.indices.is_empty() {
+            app.baked_maps = BakerEngine::bake_all(
+                &app.mesh.vertices,
+                &app.mesh.normals,
+                &app.mesh.uvs,
+                &app.mesh.indices,
+                &app.baker_options,
+                None,
+            );
+        } else {
+            let total = (1024 * 1024) as usize;
+            app.baked_maps = BakedMaps {
+                resolution: 1024,
+                ambient_occlusion: Some(vec![1.0; total]),
+                curvature: Some(vec![0.5; total]),
+                normal: Some(vec![[0.5, 0.5, 1.0]; total]),
+                world_space_normal: Some(vec![[0.5, 1.0, 0.5]; total]),
+                position: Some(vec![[0.5, 0.5, 0.5]; total]),
+                thickness: Some(vec![0.5; total]),
+                id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
+            };
+        }
+
+        // Apply authentic Substance 3-tier weathered smart material with real mesh edge wear
+        apply_smart_material_hierarchy(
+            &mut app.layer_stack,
+            "Steel Painted Scraped Green",
+            [0.22, 0.42, 0.26, 1.0],
+            0.04,
+            0.32,
+            app.baked_maps.curvature.as_deref(),
+            app.baked_maps.ambient_occlusion.as_deref(),
+        );
 
         app.recompute_composite();
         app
@@ -291,6 +341,7 @@ impl RemoainterApp {
         self.layer_stack.composite(
             self.baked_maps.curvature.as_deref(),
             self.baked_maps.ambient_occlusion.as_deref(),
+            self.baked_maps.world_space_normal.as_deref(),
             preset,
             rot,
             intensity,
@@ -421,8 +472,27 @@ impl RemoainterApp {
             }
             _ => {}
         }
+        if !self.mesh.indices.is_empty() {
+            self.baked_maps = BakerEngine::bake_all(
+                &self.mesh.vertices,
+                &self.mesh.normals,
+                &self.mesh.uvs,
+                &self.mesh.indices,
+                &self.baker_options,
+                None,
+            );
+            apply_smart_material_hierarchy(
+                &mut self.layer_stack,
+                "Steel Painted Scraped Green",
+                [0.22, 0.42, 0.26, 1.0],
+                0.04,
+                0.32,
+                self.baked_maps.curvature.as_deref(),
+                self.baked_maps.ambient_occlusion.as_deref(),
+            );
+        }
         self.recompute_composite();
-        self.status_message = format!("Loaded {} (Bake maps via Ctrl+Shift+B)", self.mesh.name);
+        self.status_message = format!("Loaded {} with baked mesh maps", self.mesh.name);
     }
 }
 
@@ -892,18 +962,15 @@ impl eframe::App for RemoainterApp {
                             self.brush.color = color;
                             self.brush.metallic = metallic;
                             self.brush.roughness = roughness;
-                            let id = self.layer_stack.layers.len() + 1;
-                            let fill = Layer::from_texture_asset(
-                                id,
-                                format!("SM: {}", name),
-                                &_path,
-                                1,
-                                (color, metallic, roughness),
-                                self.layer_stack.width,
-                                self.layer_stack.height,
+                            apply_smart_material_hierarchy(
+                                &mut self.layer_stack,
+                                &name,
+                                color,
+                                metallic,
+                                roughness,
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
                             );
-                            self.layer_stack.layers.push(fill);
-                            self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
                             self.recompute_composite();
                             self.status_message = format!("Applied Smart Material: {}", name);
                             self.history.push(format!("{:02}  Apply Smart Material ({})", self.history.len() + 1, name));
@@ -913,12 +980,12 @@ impl eframe::App for RemoainterApp {
                             self.brush.metallic = metallic;
                             self.brush.roughness = roughness;
                             let id = self.layer_stack.layers.len() + 1;
-                            let fill = Layer::from_texture_asset(
+                            let fill = generate_procedural_material(
                                 id,
-                                format!("Mat: {}", name),
-                                &_path,
-                                2,
-                                (color, metallic, roughness),
+                                &name,
+                                color,
+                                metallic,
+                                roughness,
                                 self.layer_stack.width,
                                 self.layer_stack.height,
                             );

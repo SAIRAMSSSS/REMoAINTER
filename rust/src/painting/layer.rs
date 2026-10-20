@@ -199,31 +199,18 @@ impl Layer {
         baked_curvature: Option<&[f32]>,
         baked_ao: Option<&[f32]>,
     ) {
-        if let Ok(img) = image::open(mask_path) {
-            let grey = img.to_luma8();
-            let (img_w, img_h) = grey.dimensions();
-
-            let mut mask = LayerMask::new(MaskType::Black, self.width, self.height);
-            for y in 0..self.height {
-                let sy = ((y as f64 / self.height as f64) * (img_h as f64)) as u32 % img_h;
-                for x in 0..self.width {
-                    let sx = ((x as f64 / self.width as f64) * (img_w as f64)) as u32 % img_w;
-                    let p = grey.get_pixel(sx, sy);
-                    let val = p[0] as f32 / 255.0;
-                    let idx = (y * self.width + x) as usize;
-
-                    let curv = baked_curvature.and_then(|c| c.get(idx)).copied().unwrap_or(0.5);
-                    let ao = baked_ao.and_then(|a| a.get(idx)).copied().unwrap_or(1.0);
-
-                    let edge_factor = ((curv - 0.5).abs() * 2.0).clamp(0.0, 1.0);
-                    let cavity_factor = (1.0 - ao).clamp(0.0, 1.0);
-
-                    let combined = (val * 0.70 + edge_factor * 0.20 + cavity_factor * 0.10).clamp(0.0, 1.0);
-                    mask.buffer[idx] = combined;
-                }
-            }
-            self.mask = Some(mask);
-        }
+        let mask_name = mask_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Smart Mask");
+        let mask = super::material_gen::generate_smart_mask(
+            mask_name,
+            baked_curvature,
+            baked_ao,
+            self.width,
+            self.height,
+        );
+        self.mask = Some(mask);
     }
 
     pub fn new_folder(id: usize, name: impl Into<String>, width: u32, height: u32) -> Self {
@@ -425,25 +412,20 @@ impl LayerStack {
             composite_lit: vec![[0.4, 0.4, 0.45, 1.0]; total],
         };
 
-        // Initialize with authentic Substance starter material if available
-        let starter_mat = Path::new("/mnt/shared/REMoAINTER/assets/shelf/smart_materials/Steel Painted Scraped Green.webp");
-        if starter_mat.exists() {
-            stack.layers.push(Layer::from_texture_asset(
-                1,
-                "Base (Steel Painted Scraped)",
-                starter_mat,
-                1,
-                ([0.28, 0.42, 0.32, 1.0], 0.75, 0.35),
-                width,
-                height,
-            ));
-        } else {
-            stack.layers.push(Layer::new_fill(1, "Base Steel", [0.45, 0.48, 0.52, 1.0], 0.8, 0.3, width, height));
-        }
-
+        // Initialize with authentic procedural PBR base layer
+        let base_metal = super::material_gen::generate_procedural_material(
+            1,
+            "Base Metal (Steel)",
+            [0.65, 0.68, 0.72, 1.0],
+            0.92,
+            0.28,
+            width,
+            height,
+        );
+        stack.layers.push(base_metal);
         stack.layers.push(Layer::new_paint(2, "Paint Layer 1", width, height));
         stack.active_layer_index = 1;
-        stack.composite(None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
         stack
     }
 
@@ -469,7 +451,7 @@ impl LayerStack {
                 mask.resize(new_w, new_h);
             }
         }
-        self.composite(None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        self.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
     }
 
     /// Full PBR Stack Composite with Blend Modes, Channel Masking, and Rayon Multi-threaded Global Illumination
@@ -477,6 +459,7 @@ impl LayerStack {
         &mut self,
         baked_curvature: Option<&[f32]>,
         baked_ao: Option<&[f32]>,
+        baked_wsn: Option<&[[f32; 3]]>,
         env_preset: EnvironmentPreset,
         env_rotation_rad: f32,
         light_intensity: f32,
@@ -569,14 +552,25 @@ impl LayerStack {
                 let r = rgh[i];
                 let n_ts = nrm[i];
 
-                let nx = n_ts[0] * 2.0 - 1.0;
-                let ny = n_ts[1] * 2.0 - 1.0;
-                let nz = (n_ts[2] * 2.0 - 1.0).max(0.1);
+                let nx_ts = n_ts[0] * 2.0 - 1.0;
+                let ny_ts = n_ts[1] * 2.0 - 1.0;
+                let nz_ts = n_ts[2] * 2.0 - 1.0;
+
+                let (nx, ny, nz) = if let Some(wsn_map) = baked_wsn {
+                    let w = wsn_map.get(i).copied().unwrap_or([0.5, 0.5, 1.0]);
+                    let wx = w[0] * 2.0 - 1.0;
+                    let wy = w[1] * 2.0 - 1.0;
+                    let wz = w[2] * 2.0 - 1.0;
+                    (wx + nx_ts * 0.35, wy + ny_ts * 0.35, wz + (nz_ts - 1.0) * 0.35)
+                } else {
+                    (nx_ts, ny_ts, nz_ts.max(0.1))
+                };
+
                 let n_len = (nx * nx + ny * ny + nz * nz).sqrt().max(0.001);
                 let n_vec = [nx / n_len, ny / n_len, nz / n_len];
 
                 let ao = baked_ao.and_then(|a| a.get(i)).copied().unwrap_or(1.0);
-                let view_dir = [0.0f32, 0.0, 1.0];
+                let view_dir = [0.35f32, 0.35, 0.87];
 
                 *out_pixel = pbr_shade(
                     base_c,
@@ -696,7 +690,7 @@ impl LayerStack {
             return;
         }
         if (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
-            self.composite(None, baked_ao, env_preset, env_rotation_rad, light_intensity);
+            self.composite(None, baked_ao, None, env_preset, env_rotation_rad, light_intensity);
             return;
         }
 
