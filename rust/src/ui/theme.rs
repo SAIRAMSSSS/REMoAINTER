@@ -10,6 +10,29 @@ pub const BORDER_COLOR: Color32 = Color32::from_rgb(56, 56, 56);
 pub const TEXT_PRIMARY: Color32 = Color32::from_rgb(215, 215, 215);
 pub const TEXT_DIMMED: Color32 = Color32::from_rgb(140, 140, 140);
 
+pub fn configure_substance_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // Embed authentic OpenSans fonts into the binary (Standalone on Linux & Windows)
+    fonts.font_data.insert(
+        "OpenSans-Regular".to_owned(),
+        egui::FontData::from_static(include_bytes!("../../../assets/fonts/OpenSans-Regular.ttf")),
+    );
+    fonts.font_data.insert(
+        "OpenSans-SemiBold".to_owned(),
+        egui::FontData::from_static(include_bytes!("../../../assets/fonts/OpenSans-SemiBold.ttf")),
+    );
+
+    if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+        family.insert(0, "OpenSans-Regular".to_owned());
+    }
+    if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+        family.insert(0, "OpenSans-Regular".to_owned());
+    }
+
+    ctx.set_fonts(fonts);
+}
+
 pub fn apply_substance_theme(ctx: &egui::Context) {
     let mut style = Style::default();
     let mut visuals = Visuals::dark();

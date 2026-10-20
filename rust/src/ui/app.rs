@@ -684,77 +684,69 @@ impl RemoainterApp {
 
     fn render_3d_viewport(&mut self, painter: &egui::Painter, view_bounds: Rect, response: &egui::Response, ctx: &egui::Context) {
         let center = view_bounds.center();
-        let view_radius = (view_bounds.height().min(view_bounds.width()) * 0.32).max(32.0);
+        let yaw_rad = self.camera_yaw.to_radians();
+        let pitch_rad = self.camera_pitch.to_radians();
+        let view_scale = view_bounds.height().min(view_bounds.width()) * 1.35;
 
-        // Camera Orbit Controls (Alt + LMB or MMB)
-        if response.dragged() {
-            let delta = response.drag_delta();
-            if ctx.input(|i| i.modifiers.alt) || ctx.input(|i| i.pointer.middle_down()) {
-                self.camera_yaw += delta.x * 0.4;
-                self.camera_pitch = (self.camera_pitch + delta.y * 0.4).clamp(-85.0, 85.0);
-            } else if let Some(pos) = response.interact_pointer_pos() {
-                // Drag on 3D sphere surface to paint in 3D
-                let dist = pos.distance(center);
-                if dist <= view_radius {
-                    let nx = (pos.x - center.x) / view_radius;
-                    let ny = (pos.y - center.y) / view_radius;
-                    let nz = (1.0 - nx * nx - ny * ny).max(0.0).sqrt();
+        // Ambient ground shadow under 3D mesh
+        let shadow_r = (view_bounds.height().min(view_bounds.width()) * 0.32).max(32.0);
+        painter.circle_filled(pos2(center.x, center.y + shadow_r * 0.78), shadow_r * 0.88, Color32::from_black_alpha(160));
 
-                    let u = (nx.atan2(nz) / (2.0 * std::f32::consts::PI) + 0.5 + self.camera_yaw * 0.005).rem_euclid(1.0);
-                    let v = (ny * 0.5 + 0.5).clamp(0.0, 1.0);
-                    let uv = [u, v];
+        if let Some(ref handle) = self.texture_handle {
+            // Project the real 3D mesh (Antique Lantern, Retro Radio, or Sphere) with lighting and depth sorting
+            let (egui_mesh, hit_tris) = self.mesh.project_to_egui_mesh(
+                center,
+                view_scale,
+                yaw_rad,
+                pitch_rad,
+                self.camera_dist,
+                handle.id(),
+            );
 
-                    let bbox = if let Some(last_uv) = self.last_painted_uv {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                            active_layer.paint_line(last_uv, uv, &self.brush, false)
+            // RENDER 3D MESH GEOMETRY DIRECTLY ON GPU
+            painter.add(egui::Shape::Mesh(egui_mesh));
+
+            // Camera Orbit (Alt+LMB or MMB) & 3D Surface Painting
+            if response.dragged() {
+                let delta = response.drag_delta();
+                if ctx.input(|i| i.modifiers.alt) || ctx.input(|i| i.pointer.middle_down()) {
+                    self.camera_yaw += delta.x * 0.4;
+                    self.camera_pitch = (self.camera_pitch + delta.y * 0.4).clamp(-85.0, 85.0);
+                } else if let Some(pos) = response.interact_pointer_pos() {
+                    // Raycast into 3D mesh triangles and interpolate exact UV
+                    if let Some(uv) = Mesh::hit_test_uv(&hit_tris, pos) {
+                        let bbox = if let Some(last_uv) = self.last_painted_uv {
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                                active_layer.paint_line(last_uv, uv, &self.brush, false)
+                            } else {
+                                [0, 0, 0, 0]
+                            }
                         } else {
-                            [0, 0, 0, 0]
-                        }
-                    } else {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                            active_layer.paint_stamp(uv, &self.brush, false)
-                        } else {
-                            [0, 0, 0, 0]
-                        }
-                    };
-                    self.last_painted_uv = Some(uv);
-                    self.layer_stack.composite_dirty(bbox);
-                    self.texture_needs_update = true;
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                                active_layer.paint_stamp(uv, &self.brush, false)
+                            } else {
+                                [0, 0, 0, 0]
+                            }
+                        };
+                        self.last_painted_uv = Some(uv);
+                        self.layer_stack.composite_dirty(bbox);
+                        self.texture_needs_update = true;
+                    }
+                }
+            } else {
+                self.last_painted_uv = None;
+            }
+
+            // Brush cursor on 3D surface
+            if let Some(pos) = ctx.pointer_hover_pos() {
+                if Mesh::hit_test_uv(&hit_tris, pos).is_some() {
+                    painter.circle_stroke(pos, (self.brush.size * 0.5).max(3.0), Stroke::new(1.2_f32, ACTIVE_BLUE));
                 }
             }
         }
 
-        // Ambient ground shadow
-        painter.circle_filled(pos2(center.x, center.y + view_radius * 0.3), view_radius * 0.95, Color32::from_black_alpha(150));
-
-        // Live surface material sampling from center of painted texture
-        let mid_idx = (self.layer_stack.height / 2 * self.layer_stack.width + self.layer_stack.width / 2) as usize;
-        let base_c = self.layer_stack.composite_color.get(mid_idx).copied().unwrap_or([0.82, 0.82, 0.84, 1.0]);
-        let met = self.layer_stack.composite_metallic.get(mid_idx).copied().unwrap_or(0.0);
-        let rough = self.layer_stack.composite_roughness.get(mid_idx).copied().unwrap_or(0.45);
-
-        let sphere_col = Color32::from_rgba_premultiplied(
-            (base_c[0].clamp(0.0, 1.0) * 255.0) as u8,
-            (base_c[1].clamp(0.0, 1.0) * 255.0) as u8,
-            (base_c[2].clamp(0.0, 1.0) * 255.0) as u8,
-            255,
-        );
-        painter.circle_filled(center, view_radius, sphere_col);
-
-        // Specular highlight from key studio light
-        let spec_col = if met > 0.5 { sphere_col } else { Color32::WHITE };
-        let spec_alpha = ((1.0 - rough) * 230.0).clamp(20.0, 250.0) as u8;
-        painter.circle_filled(pos2(center.x - view_radius * 0.32, center.y - view_radius * 0.32), view_radius * 0.28, Color32::from_rgba_premultiplied(spec_col.r(), spec_col.g(), spec_col.b(), spec_alpha));
-        painter.circle_stroke(center, view_radius, Stroke::new(1.2_f32, Color32::from_rgb(50, 50, 50)));
-
-        // Brush cursor on 3D surface
-        if let Some(pos) = ctx.pointer_hover_pos() {
-            if pos.distance(center) <= view_radius {
-                painter.circle_stroke(pos, (self.brush.size * 0.5).max(3.0), Stroke::new(1.2_f32, ACTIVE_BLUE));
-            }
-        }
-
-        painter.text(pos2(center.x, center.y + view_radius + 20.0), Align2::CENTER_CENTER, "Alt + Drag: Orbit 3D | Click: Paint Surface", egui::FontId::proportional(11.0), TEXT_DIMMED);
+        // Viewport navigation indicator
+        painter.text(pos2(center.x, view_bounds.bottom() - 18.0), Align2::CENTER_CENTER, "Alt + Drag: Orbit 3D Camera | Click & Drag: Paint Directly on 3D Mesh", egui::FontId::proportional(11.5), TEXT_DIMMED);
     }
 
     fn ui_texture_set_list(&mut self, ui: &mut Ui) {

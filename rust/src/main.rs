@@ -36,6 +36,7 @@ fn main() -> eframe::Result<()> {
         "REMoAINTER",
         native_options,
         Box::new(|cc| {
+            ui::configure_substance_fonts(&cc.egui_ctx);
             ui::apply_substance_theme(&cc.egui_ctx);
             Ok(Box::new(RemoainterApp::default()))
         }),
