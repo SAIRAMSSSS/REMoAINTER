@@ -171,6 +171,9 @@ impl Mesh {
         pitch: f32,
         cam_dist: f32,
         texture_id: egui::TextureId,
+        is_lit: bool,
+        light_intensity: f32,
+        env_rotation: f32,
     ) -> (egui::Mesh, Vec<([egui::Pos2; 3], [[f32; 2]; 3])>) {
         let (center, radius) = self.compute_bounds();
         let inv_r = 1.0 / radius;
@@ -180,10 +183,45 @@ impl Mesh {
         let cp = pitch.cos();
         let sp = pitch.sin();
 
-        // Studio Lighting: Key (Warm Top-Right), Fill (Cool Left), Rim (Sharp Backlight)
-        let l1 = [0.577f32, 0.707, 0.408];
-        let l2 = [-0.707f32, 0.353, 0.612];
-        let l3 = [0.0f32, 0.85, -0.52];
+        // Environment Studio Lighting in World Space (rotates with env_rotation)
+        let env_rad = env_rotation.to_radians();
+        let e_cos = env_rad.cos();
+        let e_sin = env_rad.sin();
+
+        // 1. Key Light: Warm Golden Studio Key Light (from top-right-front in world space)
+        let w_l1 = [
+            0.577f32 * e_cos - 0.408f32 * e_sin,
+            0.707f32,
+            0.577f32 * e_sin + 0.408f32 * e_cos,
+        ];
+        // 2. Fill Light: Cool Sky Blue Fill Light (from left in world space)
+        let w_l2 = [
+            -0.707f32 * e_cos - 0.353f32 * e_sin,
+            0.400f32,
+            -0.707f32 * e_sin + 0.353f32 * e_cos,
+        ];
+        // 3. Rim Light: Sharp Specular Backlight (grazing rim from rear-top)
+        let w_l3 = [
+            0.0f32 * e_cos - (-0.75f32) * e_sin,
+            0.650f32,
+            0.0f32 * e_sin + (-0.75f32) * e_cos,
+        ];
+
+        // Transform world lights into camera space so orbit keeps lights stationary in scene
+        let transform_light = |l: [f32; 3]| -> [f32; 3] {
+            let x1 = l[0] * cy + l[2] * sy;
+            let y1 = l[1];
+            let z1 = -l[0] * sy + l[2] * cy;
+            let x2 = x1;
+            let y2 = y1 * cp - z1 * sp;
+            let z2 = y1 * sp + z1 * cp;
+            let len = (x2 * x2 + y2 * y2 + z2 * z2).sqrt().max(0.0001);
+            [x2 / len, y2 / len, z2 / len]
+        };
+
+        let l1 = transform_light(w_l1);
+        let l2 = transform_light(w_l2);
+        let l3 = transform_light(w_l3);
 
         // 1. Transform all vertices
         let n_verts = self.vertices.len();
@@ -220,6 +258,12 @@ impl Mesh {
             proj_pos.push(egui::pos2(sx, sy));
             proj_depth.push(z_cam);
 
+            if !is_lit {
+                // Solo channel mode: Pure unmodulated texture display
+                proj_color.push(egui::Color32::WHITE);
+                continue;
+            }
+
             // Rotate Normal to camera/view space
             let nx1 = norm[0] * cy + norm[2] * sy;
             let ny1 = norm[1];
@@ -242,36 +286,39 @@ impl Mesh {
             let h1 = [l1[0] + v[0], l1[1] + v[1], l1[2] + v[2]];
             let h1_len = (h1[0] * h1[0] + h1[1] * h1[1] + h1[2] * h1[2]).sqrt().max(0.0001);
             let n_dot_h1 = ((n[0] * h1[0] + n[1] * h1[1] + n[2] * h1[2]) / h1_len).max(0.0);
-            let spec1 = n_dot_h1.powf(28.0);
+            let spec1 = n_dot_h1.powf(36.0);
 
             // 2. Fill Light
             let n_dot_l2 = (n[0] * l2[0] + n[1] * l2[1] + n[2] * l2[2]).max(0.0);
             let h2 = [l2[0] + v[0], l2[1] + v[1], l2[2] + v[2]];
             let h2_len = (h2[0] * h2[0] + h2[1] * h2[1] + h2[2] * h2[2]).sqrt().max(0.0001);
             let n_dot_h2 = ((n[0] * h2[0] + n[1] * h2[1] + n[2] * h2[2]) / h2_len).max(0.0);
-            let spec2 = n_dot_h2.powf(16.0);
+            let spec2 = n_dot_h2.powf(20.0);
 
             // 3. Rim / Backlight
             let n_dot_l3 = (n[0] * l3[0] + n[1] * l3[1] + n[2] * l3[2]).max(0.0);
             let h3 = [l3[0] + v[0], l3[1] + v[1], l3[2] + v[2]];
             let h3_len = (h3[0] * h3[0] + h3[1] * h3[1] + h3[2] * h3[2]).sqrt().max(0.0001);
             let n_dot_h3 = ((n[0] * h3[0] + n[1] * h3[1] + n[2] * h3[2]) / h3_len).max(0.0);
-            let spec3 = n_dot_h3.powf(40.0);
+            let spec3 = n_dot_h3.powf(44.0);
 
             // 4. Fresnel reflection at grazing angles
             let n_dot_v = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]).max(0.0);
-            let fresnel = (1.0 - n_dot_v).powf(3.5) * 0.35;
+            let fresnel = (1.0 - n_dot_v).powf(3.5) * 0.40;
 
             // 5. Studio ground / sky ambient
-            let ambient = 0.28 + (n[1] * 0.5 + 0.5) * 0.15;
+            let ambient = 0.32 + (n[1] * 0.5 + 0.5) * 0.18;
 
-            // Combine into rich studio tone
-            let diffuse = n_dot_l1 * 0.65 + n_dot_l2 * 0.25 + n_dot_l3 * 0.20 + ambient;
-            let specular = spec1 * 0.70 + spec2 * 0.25 + spec3 * 0.45 + fresnel;
+            // Combine into rich studio tone with realistic highlights
+            let diff_r = (n_dot_l1 * 0.70 * 1.05 + n_dot_l2 * 0.20 * 0.85 + n_dot_l3 * 0.15 + ambient * 0.95) * light_intensity;
+            let diff_g = (n_dot_l1 * 0.70 * 0.98 + n_dot_l2 * 0.20 * 0.95 + n_dot_l3 * 0.15 + ambient * 0.95) * light_intensity;
+            let diff_b = (n_dot_l1 * 0.70 * 0.90 + n_dot_l2 * 0.20 * 1.10 + n_dot_l3 * 0.15 + ambient * 1.00) * light_intensity;
 
-            let r = ((diffuse * 0.98 + specular * 0.95).clamp(0.12, 1.0) * 255.0) as u8;
-            let g = ((diffuse * 0.96 + specular * 0.95).clamp(0.12, 1.0) * 255.0) as u8;
-            let b = ((diffuse * 1.00 + specular * 1.00).clamp(0.12, 1.0) * 255.0) as u8;
+            let spec = (spec1 * 0.85 + spec2 * 0.25 + spec3 * 0.65 + fresnel) * light_intensity;
+
+            let r = ((diff_r + spec).clamp(0.18, 1.0) * 255.0) as u8;
+            let g = ((diff_g + spec).clamp(0.18, 1.0) * 255.0) as u8;
+            let b = ((diff_b + spec).clamp(0.18, 1.0) * 255.0) as u8;
 
             proj_color.push(egui::Color32::from_rgb(r, g, b));
         }
@@ -298,10 +345,10 @@ impl Mesh {
             let p1 = proj_pos[i1];
             let p2 = proj_pos[i2];
 
-            // 2D screen cross product for backface culling
+            // 2D screen cross product for backface culling (in screen space where Y goes down, front faces have cross < 0.0)
             let cross = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-            if cross <= 0.0 {
-                continue; // Back-facing
+            if cross >= 0.0 {
+                continue; // Cull back-facing triangles
             }
 
             let avg_z = proj_depth[i0] + proj_depth[i1] + proj_depth[i2];
@@ -377,5 +424,44 @@ impl Mesh {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_lantern() {
+        let m = Mesh::load_obj("/mnt/shared/REMoAINTER/assets/test_models/lantern.obj").expect("Load lantern");
+        println!("Lantern: {} verts, {} normals, {} uvs, {} indices ({} tris)",
+            m.vertices.len(), m.normals.len(), m.uvs.len(), m.indices.len(), m.indices.len() / 3);
+        if !m.uvs.is_empty() {
+            let mut min_u = f32::MAX;
+            let mut max_u = f32::MIN;
+            let mut min_v = f32::MAX;
+            let mut max_v = f32::MIN;
+            for uv in &m.uvs {
+                min_u = min_u.min(uv[0]);
+                max_u = max_u.max(uv[0]);
+                min_v = min_v.min(uv[1]);
+                max_v = max_v.max(uv[1]);
+            }
+            println!("UV bounds: U [{:.3}, {:.3}], V [{:.3}, {:.3}]", min_u, max_u, min_v, max_v);
+        }
+
+        let (egui_mesh, hit_tris) = m.project_to_egui_mesh(
+            egui::pos2(500.0, 500.0),
+            600.0,
+            35.0f32.to_radians(),
+            18.0f32.to_radians(),
+            2.4,
+            egui::TextureId::default(),
+            true,
+            1.0,
+            0.0,
+        );
+        println!("Projected egui_mesh vertices: {}, indices: {} ({} tris), hit_tris: {}",
+            egui_mesh.vertices.len(), egui_mesh.indices.len(), egui_mesh.indices.len() / 3, hit_tris.len());
     }
 }

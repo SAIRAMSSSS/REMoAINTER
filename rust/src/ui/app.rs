@@ -85,6 +85,8 @@ pub struct RemoainterApp {
     pub texture_handle: Option<egui::TextureHandle>,
     pub texture_needs_update: bool,
     pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 3D | 2D
+    pub show_wireframe: bool,
+    pub show_uv_wireframe: bool,
 }
 
 fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
@@ -206,7 +208,7 @@ impl Default for RemoainterApp {
             light_intensity: 1.0,
             camera_yaw: 35.0,
             camera_pitch: 18.0,
-            camera_dist: 2.4,
+            camera_dist: 1.8,
             symmetry_x: false,
 
             shelf_category: 0,
@@ -233,6 +235,8 @@ impl Default for RemoainterApp {
             texture_handle: None,
             texture_needs_update: true,
             viewport_view_mode: 0, // 3D Viewport on startup
+            show_wireframe: false,
+            show_uv_wireframe: true,
         };
 
         // Load Antique Lantern by default on launch
@@ -263,17 +267,49 @@ impl Default for RemoainterApp {
             id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
         };
 
-        // Initialize with default Painted Steel fill layer
-        let steel_fill = Layer::new_fill(
+        // Initialize with Substance PBR UV Calibration & Checker material
+        let mut base_layer = Layer::new_fill(
             1,
-            "Painted Metal Base".to_string(),
-            [0.22, 0.25, 0.28, 1.0], // Dark industrial gunmetal
-            0.65, // metallic
-            0.35, // roughness
+            "Substance UV Calibration".to_string(),
+            [0.35, 0.38, 0.42, 1.0],
+            0.55,
+            0.30,
             1024,
             1024,
         );
-        app.layer_stack.layers.push(steel_fill);
+
+        for y in 0..1024 {
+            for x in 0..1024 {
+                let idx = y * 1024 + x;
+                let u = x as f32 / 1024.0;
+                let v = y as f32 / 1024.0;
+
+                // 16x16 UV tile grid
+                let gx = (u * 16.0) as usize;
+                let gy = (v * 16.0) as usize;
+                let is_dark = (gx + gy) % 2 == 0;
+
+                // Sub-grid lines (every 64px, and major every 256px)
+                let is_border = (x % 64 == 0) || (y % 64 == 0);
+                let is_major = (x % 256 == 0) || (y % 256 == 0);
+
+                let (col, met, rough) = if is_major {
+                    ([0.95f32, 0.65, 0.15, 1.0], 0.20f32, 0.35f32) // Substance Orange major grid
+                } else if is_border {
+                    ([0.20f32, 0.70, 0.95, 1.0], 0.15f32, 0.40f32) // Cyan UV border
+                } else if is_dark {
+                    ([0.26f32, 0.29, 0.33, 1.0], 0.75f32, 0.25f32) // Gunmetal steel
+                } else {
+                    ([0.44f32, 0.48, 0.54, 1.0], 0.70f32, 0.28f32) // Brushed steel
+                };
+
+                base_layer.color_buffer[idx] = col;
+                base_layer.metallic_buffer[idx] = met;
+                base_layer.roughness_buffer[idx] = rough;
+            }
+        }
+
+        app.layer_stack.layers.push(base_layer);
         app.layer_stack.composite(app.baked_maps.curvature.as_deref(), app.baked_maps.ambient_occlusion.as_deref());
         app.texture_needs_update = true;
         app
@@ -430,7 +466,7 @@ impl eframe::App for RemoainterApp {
         } else if ctx.input(|i| i.key_pressed(egui::Key::F)) {
             self.camera_yaw = 35.0;
             self.camera_pitch = 18.0;
-            self.camera_dist = 2.4;
+            self.camera_dist = 1.8;
             self.status_message = "Framed 3D Mesh".to_string();
         } else if ctx.input(|i| i.key_pressed(egui::Key::Num1)) {
             self.active_tool = ToolMode::Paint;
@@ -1060,14 +1096,18 @@ impl eframe::App for RemoainterApp {
             painter.rect_filled(rect, 0.0_f32, Color32::from_rgb(26, 26, 28));
 
             // Top Floating Overlay Bar
-            let overlay_rect = Rect::from_min_size(pos2(rect.left() + 16.0, rect.top() + 12.0), vec2(500.0, 32.0));
+            let overlay_rect = Rect::from_min_size(pos2(rect.left() + 16.0, rect.top() + 12.0), vec2(580.0, 32.0));
             painter.rect_filled(overlay_rect, 4.0_f32, Color32::from_black_alpha(200));
             painter.text(pos2(overlay_rect.left() + 10.0, overlay_rect.center().y), Align2::LEFT_CENTER, format!("{} | Persp 50mm | Lit", self.mesh.name), egui::FontId::proportional(12.0), Color32::WHITE);
 
-            // View mode switchers (F1: 3D|2D, F2: 3D, F3: 2D)
+            // View mode switchers (Wire: F4, F1: 3D|2D, F2: 3D, F3: 2D)
+            let vm_wire = Rect::from_min_size(pos2(overlay_rect.right() - 280.0, overlay_rect.top() + 4.0), vec2(66.0, 24.0));
             let vm_3d = Rect::from_min_size(pos2(overlay_rect.right() - 210.0, overlay_rect.top() + 4.0), vec2(62.0, 24.0));
             let vm_2d = Rect::from_min_size(pos2(overlay_rect.right() - 142.0, overlay_rect.top() + 4.0), vec2(62.0, 24.0));
             let vm_split = Rect::from_min_size(pos2(overlay_rect.right() - 74.0, overlay_rect.top() + 4.0), vec2(70.0, 24.0));
+
+            painter.rect_filled(vm_wire, 3.0_f32, if self.show_wireframe { ACTIVE_ROW_FILL } else { PANEL_BG });
+            painter.text(vm_wire.center(), Align2::CENTER_CENTER, "Wire (F4)", egui::FontId::proportional(10.5), if self.show_wireframe { Color32::WHITE } else { TEXT_DIMMED });
 
             painter.rect_filled(vm_3d, 3.0_f32, if self.viewport_view_mode == 0 { ACTIVE_ROW_FILL } else { PANEL_BG });
             painter.text(vm_3d.center(), Align2::CENTER_CENTER, "3D (F2)", egui::FontId::proportional(10.5), Color32::WHITE);
@@ -1080,12 +1120,17 @@ impl eframe::App for RemoainterApp {
 
             if response.clicked() {
                 if let Some(pos) = response.interact_pointer_pos() {
-                    if vm_3d.contains(pos) { self.viewport_view_mode = 0; }
+                    if vm_wire.contains(pos) { self.show_wireframe = !self.show_wireframe; self.show_uv_wireframe = !self.show_uv_wireframe; }
+                    else if vm_3d.contains(pos) { self.viewport_view_mode = 0; }
                     else if vm_2d.contains(pos) { self.viewport_view_mode = 1; }
                     else if vm_split.contains(pos) { self.viewport_view_mode = 2; }
                 }
             }
 
+            if ctx.input(|i| i.key_pressed(egui::Key::F4)) {
+                self.show_wireframe = !self.show_wireframe;
+                self.show_uv_wireframe = !self.show_uv_wireframe;
+            }
             if ctx.input(|i| i.key_pressed(egui::Key::F1)) { self.viewport_view_mode = 2; }
             if ctx.input(|i| i.key_pressed(egui::Key::F2)) { self.viewport_view_mode = 0; }
             if ctx.input(|i| i.key_pressed(egui::Key::F3)) { self.viewport_view_mode = 1; }
@@ -1137,8 +1182,39 @@ impl RemoainterApp {
             );
         }
 
+        // Draw UV Mesh Wireframe Overlay (Substance Painter 2D UV Layout)
+        if self.show_uv_wireframe {
+            let num_tris = self.mesh.indices.len() / 3;
+            let wire_color = Color32::from_rgba_unmultiplied(65, 175, 245, 140);
+            let wire_stroke = Stroke::new(0.85_f32, wire_color);
+            for t in 0..num_tris {
+                let i0 = self.mesh.indices[t * 3] as usize;
+                let i1 = self.mesh.indices[t * 3 + 1] as usize;
+                let i2 = self.mesh.indices[t * 3 + 2] as usize;
+                if i0 < self.mesh.uvs.len() && i1 < self.mesh.uvs.len() && i2 < self.mesh.uvs.len() {
+                    let uv0 = self.mesh.uvs[i0];
+                    let uv1 = self.mesh.uvs[i1];
+                    let uv2 = self.mesh.uvs[i2];
+
+                    let p0 = pos2(canvas_rect.left() + uv0[0] * canvas_rect.width(), canvas_rect.top() + uv0[1] * canvas_rect.height());
+                    let p1 = pos2(canvas_rect.left() + uv1[0] * canvas_rect.width(), canvas_rect.top() + uv1[1] * canvas_rect.height());
+                    let p2 = pos2(canvas_rect.left() + uv2[0] * canvas_rect.width(), canvas_rect.top() + uv2[1] * canvas_rect.height());
+
+                    painter.line_segment([p0, p1], wire_stroke);
+                    painter.line_segment([p1, p2], wire_stroke);
+                    painter.line_segment([p2, p0], wire_stroke);
+                }
+            }
+        }
+
         // Texture border & UV grid indicator
-        painter.text(pos2(canvas_rect.left() + 8.0, canvas_rect.top() + 8.0), Align2::LEFT_TOP, format!("UV Texture ({}x{})", self.layer_stack.width, self.layer_stack.height), egui::FontId::monospace(10.5), TEXT_DIMMED);
+        painter.text(
+            pos2(canvas_rect.left() + 8.0, canvas_rect.top() + 8.0),
+            Align2::LEFT_TOP,
+            format!("UV Layout ({}x{}) | Wire: {}", self.layer_stack.width, self.layer_stack.height, if self.show_uv_wireframe { "ON (F4)" } else { "OFF" }),
+            egui::FontId::monospace(10.5),
+            TEXT_DIMMED,
+        );
 
         // Brush cursor preview
         if let Some(pos) = ctx.pointer_hover_pos() {
@@ -1217,6 +1293,7 @@ impl RemoainterApp {
         );
 
         if let Some(ref handle) = self.texture_handle {
+            let is_lit = self.display_channel == 0;
             // Project the real 3D mesh (Antique Lantern, Retro Radio, or Sphere) with lighting and depth sorting
             let (egui_mesh, hit_tris) = self.mesh.project_to_egui_mesh(
                 center,
@@ -1225,10 +1302,23 @@ impl RemoainterApp {
                 pitch_rad,
                 self.camera_dist,
                 handle.id(),
+                is_lit,
+                self.light_intensity,
+                self.env_rotation,
             );
 
             // RENDER 3D MESH GEOMETRY DIRECTLY ON GPU
             painter.add(egui::Shape::Mesh(egui_mesh));
+
+            // 3D Wireframe Overlay
+            if self.show_wireframe {
+                let wire_stroke = Stroke::new(0.8_f32, Color32::from_rgba_unmultiplied(65, 175, 245, 110));
+                for (pts, _) in &hit_tris {
+                    painter.line_segment([pts[0], pts[1]], wire_stroke);
+                    painter.line_segment([pts[1], pts[2]], wire_stroke);
+                    painter.line_segment([pts[2], pts[0]], wire_stroke);
+                }
+            }
 
             // Camera Orbit (Alt+LMB or MMB) / Zoom (Alt+RMB) & 3D Surface Painting
             if response.dragged() {
