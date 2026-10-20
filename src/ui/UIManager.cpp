@@ -1523,7 +1523,7 @@ void UIManager::renderStatusBar() {
     ImGui::TextDisabled("| View: Material");
 
     ImGui::SameLine(ImGui::GetWindowWidth() - 440);
-    ImGui::TextDisabled("Cache Disk Usage: 58% | Version: 7.2.0 (Substance 3D Engine)");
+    ImGui::TextDisabled("Cache Disk Usage: 58% | Version: 2.0.0 (REMoAINTER PBR Engine)");
 
     ImGui::End();
     ImGui::PopStyleVar();

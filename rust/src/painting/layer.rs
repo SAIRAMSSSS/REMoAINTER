@@ -143,13 +143,17 @@ impl Layer {
     }
 
     /// Continuous Anti-Aliased Brush Splat with Toroidal UV Seam Wrapping
-    pub fn paint_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) {
+    pub fn paint_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
         let cx = (uv[0] * w as f32) as i32;
         let cy = (uv[1] * h as f32) as i32;
         let radius = brush.size * 0.5;
         let r_int = (radius + 1.0).ceil() as i32;
+        let mut min_x = w;
+        let mut min_y = h;
+        let mut max_x = 0;
+        let mut max_y = 0;
 
         for dy in -r_int..=r_int {
             for dx in -r_int..=r_int {
@@ -180,6 +184,10 @@ impl Layer {
                         if px < 0 { px += w; }
                         let mut py = (cy + dy) % h;
                         if py < 0 { py += h; }
+                        min_x = min_x.min(px);
+                        max_x = max_x.max(px);
+                        min_y = min_y.min(py);
+                        max_y = max_y.max(py);
                         let idx = (py * w + px) as usize;
 
                         if on_mask {
@@ -221,10 +229,15 @@ impl Layer {
                 }
             }
         }
+        if min_x <= max_x && min_y <= max_y {
+            [min_x, min_y, max_x, max_y]
+        } else {
+            [0, 0, 0, 0]
+        }
     }
 
     /// Continuous line interpolation with Shortest-Path Toroidal UV wrapping
-    pub fn paint_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) {
+    pub fn paint_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
         // Compute delta with toroidal wrap
         let mut dx = to_uv[0] - from_uv[0];
         let mut dy = to_uv[1] - from_uv[1];
@@ -239,6 +252,7 @@ impl Layer {
         let step_size = (brush.size * brush.spacing).max(1.0);
         let steps = (pixel_dist / step_size).ceil().max(1.0) as usize;
 
+        let mut bbox = [self.width as i32, self.height as i32, 0, 0];
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
             let mut u = from_uv[0] + dx * t;
@@ -248,8 +262,15 @@ impl Layer {
             u = u.rem_euclid(1.0);
             v = v.rem_euclid(1.0);
 
-            self.paint_stamp([u, v], brush, on_mask);
+            let s_box = self.paint_stamp([u, v], brush, on_mask);
+            if s_box[2] >= s_box[0] && s_box[3] >= s_box[1] {
+                bbox[0] = bbox[0].min(s_box[0]);
+                bbox[1] = bbox[1].min(s_box[1]);
+                bbox[2] = bbox[2].max(s_box[2]);
+                bbox[3] = bbox[3].max(s_box[3]);
+            }
         }
+        bbox
     }
 }
 
@@ -385,6 +406,92 @@ impl LayerStack {
                         ];
                     }
                 }
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn composite_pixel_at(&mut self, i: usize) {
+        let mut base_c = [0.15f32, 0.15, 0.16, 1.0];
+        let mut base_met = 0.0f32;
+        let mut base_rough = 0.5f32;
+        let mut base_norm = [0.5f32, 0.5, 1.0];
+
+        for layer in &self.layers {
+            if !layer.visible {
+                continue;
+            }
+            let mask_val = if let Some(ref mask) = layer.mask {
+                mask.buffer.get(i).copied().unwrap_or(1.0)
+            } else {
+                1.0
+            };
+            let effective_alpha = (layer.color_buffer[i][3] * layer.opacity * mask_val).clamp(0.0, 1.0);
+            if effective_alpha > 0.001 {
+                let top_c = layer.color_buffer[i];
+                let blended_c = match layer.blend_mode {
+                    BlendMode::Normal | BlendMode::PassThrough => top_c,
+                    BlendMode::Multiply => [base_c[0] * top_c[0], base_c[1] * top_c[1], base_c[2] * top_c[2], top_c[3]],
+                    BlendMode::Screen => [
+                        1.0 - (1.0 - base_c[0]) * (1.0 - top_c[0]),
+                        1.0 - (1.0 - base_c[1]) * (1.0 - top_c[1]),
+                        1.0 - (1.0 - base_c[2]) * (1.0 - top_c[2]),
+                        top_c[3],
+                    ],
+                    BlendMode::Overlay => [
+                        if base_c[0] < 0.5 { 2.0 * base_c[0] * top_c[0] } else { 1.0 - 2.0 * (1.0 - base_c[0]) * (1.0 - top_c[0]) },
+                        if base_c[1] < 0.5 { 2.0 * base_c[1] * top_c[1] } else { 1.0 - 2.0 * (1.0 - base_c[1]) * (1.0 - top_c[1]) },
+                        if base_c[2] < 0.5 { 2.0 * base_c[2] * top_c[2] } else { 1.0 - 2.0 * (1.0 - base_c[2]) * (1.0 - top_c[2]) },
+                        top_c[3],
+                    ],
+                };
+
+                base_c = [
+                    base_c[0] * (1.0 - effective_alpha) + blended_c[0] * effective_alpha,
+                    base_c[1] * (1.0 - effective_alpha) + blended_c[1] * effective_alpha,
+                    base_c[2] * (1.0 - effective_alpha) + blended_c[2] * effective_alpha,
+                    1.0,
+                ];
+                base_met = base_met * (1.0 - effective_alpha) + layer.metallic_buffer[i] * effective_alpha;
+                base_rough = base_rough * (1.0 - effective_alpha) + layer.roughness_buffer[i] * effective_alpha;
+
+                if layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
+                    let top_n = layer.normal_buffer[i];
+                    base_norm = [
+                        base_norm[0] * (1.0 - effective_alpha) + top_n[0] * effective_alpha,
+                        base_norm[1] * (1.0 - effective_alpha) + top_n[1] * effective_alpha,
+                        base_norm[2] * (1.0 - effective_alpha) + top_n[2] * effective_alpha,
+                    ];
+                }
+            }
+        }
+
+        self.composite_color[i] = base_c;
+        self.composite_metallic[i] = base_met;
+        self.composite_roughness[i] = base_rough;
+        self.composite_normal[i] = base_norm;
+    }
+
+    pub fn composite_dirty(&mut self, bbox: [i32; 4]) {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        if bbox[2] < bbox[0] || bbox[3] < bbox[1] {
+            return;
+        }
+        if (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
+            self.composite(None, None);
+            return;
+        }
+
+        let x0 = bbox[0].clamp(0, w - 1) as usize;
+        let x1 = (bbox[2] + 1).clamp(0, w) as usize;
+        let y0 = bbox[1].clamp(0, h - 1) as usize;
+        let y1 = (bbox[3] + 1).clamp(0, h) as usize;
+
+        for y in y0..y1 {
+            let row_offset = y * self.width as usize;
+            for x in x0..x1 {
+                self.composite_pixel_at(row_offset + x);
             }
         }
     }

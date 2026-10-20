@@ -7,4 +7,10 @@ while [ -h "$SOURCE" ]; do
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-exec "$DIR/rust/target/release/remoainter" "$@"
+
+if [[ "$1" == "--vulkan" || "$1" == "--cpp" ]]; then
+  shift
+  exec "$DIR/build/remoainter" "$@"
+else
+  exec "$DIR/rust/target/release/remoainter" "$@"
+fi

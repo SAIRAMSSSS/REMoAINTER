@@ -223,11 +223,17 @@ void main() {
     vec3 geomB = cross(geomN, geomT);
     mat3 TBN = mat3(geomT, geomB, geomN);
 
-    // Unpack normal map
+    // Unpack normal map with smooth silhouette transition to eliminate grazing-angle shading artifacts
     vec3 normalSample = texture(normalMap, inTexCoord).rgb * 2.0 - 1.0;
     vec3 N = normalize(TBN * normalSample);
-    if (!gl_FrontFacing || dot(N, normalize(ubo.cameraPos - inWorldPos)) < 0.0) {
-        N = geomN;
+    vec3 viewDir = normalize(ubo.cameraPos - inWorldPos);
+    float NdotView = dot(N, viewDir);
+    if (!gl_FrontFacing) {
+        N = -N;
+    } else if (NdotView < 0.1) {
+        // Smoothly blend toward geometric normal near grazing angles to prevent back-facing normal pop
+        float blendFactor = clamp((0.1 - NdotView) * 5.0, 0.0, 1.0);
+        N = normalize(mix(N, geomN, blendFactor));
     }
 
     // ==========================================
