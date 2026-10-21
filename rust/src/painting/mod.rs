@@ -5,6 +5,7 @@ pub mod layer;
 pub mod mask;
 pub mod material_gen;
 pub mod texture_importer;
+pub mod texture_set;
 
 pub use anchor::*;
 pub use brush::*;
@@ -14,3 +15,4 @@ pub use mask::*;
 pub use material_gen::*;
 #[allow(unused_imports)]
 pub use texture_importer::*;
+pub use texture_set::*;
