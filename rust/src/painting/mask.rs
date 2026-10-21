@@ -129,6 +129,28 @@ impl LayerMask {
         baked_thickness: Option<&[f32]>,
         baked_id: Option<&[[f32; 4]]>,
     ) {
+        self.recompute_with_anchors(
+            baked_curvature,
+            baked_ao,
+            baked_wsn,
+            baked_pos,
+            baked_thickness,
+            baked_id,
+            None,
+        );
+    }
+
+    /// Evaluates the mask effects stack with optional Anchor Points referenced across layers
+    pub fn recompute_with_anchors(
+        &mut self,
+        baked_curvature: Option<&[f32]>,
+        baked_ao: Option<&[f32]>,
+        baked_wsn: Option<&[[f32; 3]]>,
+        baked_pos: Option<&[[f32; 3]]>,
+        baked_thickness: Option<&[f32]>,
+        baked_id: Option<&[[f32; 4]]>,
+        anchor_maps: Option<&std::collections::HashMap<String, Vec<f32>>>,
+    ) {
         let _total = (self.width * self.height) as usize;
         let initial = match self.mask_type {
             MaskType::White => 1.0f32,
@@ -189,6 +211,7 @@ impl LayerMask {
                     tolerance,
                     blend_mode,
                     opacity,
+                    anchor_name,
                     ..
                 } => {
                     let gen_lower = name.to_lowercase();
@@ -311,6 +334,17 @@ impl LayerMask {
                                         if idx < ao.len() {
                                             let a = ao[idx];
                                             gen_val *= a;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Anchor Point modulation / injection if referenced
+                            if let Some(ref aname) = anchor_name {
+                                if let Some(anchors) = anchor_maps {
+                                    if let Some(abuf) = anchors.get(aname) {
+                                        if let Some(&asig) = abuf.get(idx) {
+                                            gen_val = (gen_val + asig * wear_level).clamp(0.0, 1.0);
                                         }
                                     }
                                 }
@@ -520,5 +554,37 @@ mod tests {
         id_mask.recompute(None, None, None, None, None, Some(&id_map));
         assert_eq!(id_mask.buffer[0], 1.0, "Pixel 0 matches red target exactly");
         assert_eq!(id_mask.buffer[1], 0.0, "Pixel 1 is green, should not match");
+    }
+
+    #[test]
+    fn test_anchor_point_generator_referencing() {
+        let mut mask = LayerMask::new(MaskType::Black, 2, 2);
+        mask.effects.push(MaskEffect::Generator {
+            name: "Metal Edge Wear".into(),
+            wear_level: 1.0,
+            contrast: 1.0,
+            dirt_amount: 0.0,
+            invert: false,
+            use_ao: false,
+            use_curvature: false,
+            anchor_name: Some("MyDecalAnchor".into()),
+            blend_mode: MaskBlendMode::Normal,
+            opacity: 1.0,
+            grunge_amount: 0.0,
+            grunge_scale: 1.0,
+            axis: 1,
+            normal_direction: [0.0, 1.0, 0.0],
+            target_color: [1.0, 0.0, 0.0, 1.0],
+            tolerance: 0.1,
+        });
+
+        let mut anchors = std::collections::HashMap::new();
+        anchors.insert("MyDecalAnchor".to_string(), vec![0.8, 0.0, 0.5, 1.0]);
+
+        mask.recompute_with_anchors(None, None, None, None, None, None, Some(&anchors));
+        assert!((mask.buffer[0] - 0.8).abs() < 1e-4);
+        assert!((mask.buffer[1] - 0.0).abs() < 1e-4);
+        assert!((mask.buffer[2] - 0.5).abs() < 1e-4);
+        assert!((mask.buffer[3] - 1.0).abs() < 1e-4);
     }
 }
