@@ -47,6 +47,7 @@ pub struct ShelfAsset {
 pub struct TextureChannel {
     pub name: String,
     pub format: String,
+    #[allow(dead_code)]
     pub enabled: bool,
 }
 
@@ -78,6 +79,7 @@ pub struct RemoainterApp {
     pub baker_use_low_as_high: bool,
     pub baker_frontal_dist: f32,
     pub baker_rear_dist: f32,
+    #[allow(dead_code)]
     pub baker_curv_method: usize,
     pub baker_high_poly_path: String,
     pub baker_high_poly_mesh: Option<Mesh>,

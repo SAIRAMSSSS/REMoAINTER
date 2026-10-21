@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REMoAINTER — Multi-Texture Set & UDIM Tile Architecture (Substance Painter Parity)
 // Features:
