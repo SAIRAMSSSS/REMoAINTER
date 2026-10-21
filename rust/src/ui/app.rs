@@ -14,7 +14,7 @@ use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, RichText, Stroke, Ui};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +60,8 @@ pub struct RemoainterApp {
     pub baked_maps: BakedMaps,
     pub is_baking: bool,
     pub baking_progress: Arc<AtomicUsize>,
+    pub cancel_baking: Arc<AtomicBool>,
+    pub baking_receiver: Option<std::sync::mpsc::Receiver<BakedMaps>>,
     pub show_baker_dialog: bool,
     pub baker_selected_map: usize,
     pub baker_subsampling: usize,
@@ -337,6 +339,8 @@ impl Default for RemoainterApp {
             baked_maps: BakedMaps::default(),
             is_baking: false,
             baking_progress: Arc::new(AtomicUsize::new(0)),
+            cancel_baking: Arc::new(AtomicBool::new(false)),
+            baking_receiver: None,
             show_baker_dialog: false,
             baker_selected_map: 99, // Default to Common settings (High-Poly parameters & Output)
             baker_subsampling: 0,
@@ -459,7 +463,9 @@ impl Default for RemoainterApp {
                 &app.mesh.normals,
                 &app.mesh.uvs,
                 &app.mesh.indices,
+                &app.mesh.submeshes,
                 &app.baker_options,
+                None,
                 None,
                 None,
             );
@@ -474,6 +480,7 @@ impl Default for RemoainterApp {
                 position: Some(vec![[0.5, 0.5, 0.5]; total]),
                 thickness: Some(vec![0.5; total]),
                 id: Some(vec![[0.8, 0.8, 0.8, 1.0]; total]),
+                is_cancelled: false,
             };
         }
 
@@ -610,32 +617,91 @@ impl RemoainterApp {
         }
     }
     pub fn bake_mesh_maps(&mut self) {
+        if self.is_baking {
+            return;
+        }
         self.is_baking = true;
+        self.cancel_baking.store(false, Ordering::Relaxed);
         self.baking_progress.store(0, Ordering::Relaxed);
-        let progress = Arc::clone(&self.baking_progress);
 
-        self.baked_maps = BakerEngine::bake_all(
-            &self.mesh.vertices,
-            &self.mesh.normals,
-            &self.mesh.uvs,
-            &self.mesh.indices,
-            &self.baker_options,
-            Some(progress),
-            self.baker_high_poly_mesh.as_ref(),
-        );
-        self.is_baking = false;
-        self.status_message = format!("Successfully baked mesh maps at {}x{}", self.baker_options.resolution, self.baker_options.resolution);
+        let progress = Arc::clone(&self.baking_progress);
+        let cancel = Arc::clone(&self.cancel_baking);
+
+        // Sync baker options from UI state
+        self.baker_options.max_frontal_distance = self.baker_frontal_dist;
+        self.baker_options.max_rear_distance = self.baker_rear_dist;
+        self.baker_options.low_poly_suffix = self.baker_low_suffix.clone();
+        self.baker_options.high_poly_suffix = self.baker_high_suffix.clone();
+        self.baker_options.relative_to_bbox = self.baker_relative_to_bbox;
+        self.baker_options.average_normals = self.baker_average_normals;
+        self.baker_options.ignore_backfaces = self.baker_ignore_backfaces;
+        self.baker_options.anti_aliasing = match self.baker_subsampling {
+            1 => 2,
+            2 => 4,
+            _ => 1,
+        };
+
+        let verts = self.mesh.vertices.clone();
+        let norms = self.mesh.normals.clone();
+        let uvs = self.mesh.uvs.clone();
+        let inds = self.mesh.indices.clone();
+        let subms = self.mesh.submeshes.clone();
+        let opts = self.baker_options.clone();
+        let hp_mesh = if !self.baker_use_low_as_high {
+            self.baker_high_poly_mesh.clone()
+        } else {
+            None
+        };
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.baking_receiver = Some(rx);
+
+        std::thread::spawn(move || {
+            let result = BakerEngine::bake_all(
+                &verts,
+                &norms,
+                &uvs,
+                &inds,
+                &subms,
+                &opts,
+                Some(progress),
+                Some(cancel),
+                hp_mesh.as_ref(),
+            );
+            let _ = tx.send(result);
+        });
+
+        self.status_message = format!("Baking mesh maps ({}x{})...", self.baker_options.resolution, self.baker_options.resolution);
         self.logs.push((
             chrono::Local::now().format("%H:%M:%S").to_string(),
             "INFO".into(),
-            format!("Baked mesh maps (AO, Curvature, Normals, Position) for {}", self.mesh.name),
+            format!("Started background bake (res={}, AA={}x) for {}", self.baker_options.resolution, self.baker_options.anti_aliasing, self.mesh.name),
         ));
-        self.recompute_composite();
     }
 
     pub fn bake_single_map(&mut self, map_type: MapType) {
         self.is_baking = true;
+        self.cancel_baking.store(false, Ordering::Relaxed);
+        self.baking_progress.store(0, Ordering::Relaxed);
+
         let progress = Arc::clone(&self.baking_progress);
+        let cancel = Arc::clone(&self.cancel_baking);
+
+        self.baker_options.max_frontal_distance = self.baker_frontal_dist;
+        self.baker_options.max_rear_distance = self.baker_rear_dist;
+        self.baker_options.low_poly_suffix = self.baker_low_suffix.clone();
+        self.baker_options.high_poly_suffix = self.baker_high_suffix.clone();
+        self.baker_options.anti_aliasing = match self.baker_subsampling {
+            1 => 2,
+            2 => 4,
+            _ => 1,
+        };
+
+        let hp_mesh = if !self.baker_use_low_as_high {
+            self.baker_high_poly_mesh.as_ref()
+        } else {
+            None
+        };
 
         let single = BakerEngine::bake_single(
             map_type,
@@ -643,27 +709,34 @@ impl RemoainterApp {
             &self.mesh.normals,
             &self.mesh.uvs,
             &self.mesh.indices,
+            &self.mesh.submeshes,
             &self.baker_options,
             Some(progress),
+            Some(cancel),
+            hp_mesh,
         );
 
-        match map_type {
-            MapType::AmbientOcclusion => self.baked_maps.ambient_occlusion = single.ambient_occlusion,
-            MapType::Curvature => self.baked_maps.curvature = single.curvature,
-            MapType::Normal => self.baked_maps.normal = single.normal,
-            MapType::WorldSpaceNormal => self.baked_maps.world_space_normal = single.world_space_normal,
-            MapType::Position => self.baked_maps.position = single.position,
-            MapType::Thickness => self.baked_maps.thickness = single.thickness,
-            MapType::Id => self.baked_maps.id = single.id,
+        if !single.is_cancelled {
+            match map_type {
+                MapType::AmbientOcclusion => self.baked_maps.ambient_occlusion = single.ambient_occlusion,
+                MapType::Curvature => self.baked_maps.curvature = single.curvature,
+                MapType::Normal => self.baked_maps.normal = single.normal,
+                MapType::WorldSpaceNormal => self.baked_maps.world_space_normal = single.world_space_normal,
+                MapType::Position => self.baked_maps.position = single.position,
+                MapType::Thickness => self.baked_maps.thickness = single.thickness,
+                MapType::Id => self.baked_maps.id = single.id,
+            }
+            self.status_message = format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution);
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution),
+            ));
+            self.recompute_composite();
+        } else {
+            self.status_message = format!("Cancelled baking {:?}", map_type);
         }
         self.is_baking = false;
-        self.status_message = format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution);
-        self.logs.push((
-            chrono::Local::now().format("%H:%M:%S").to_string(),
-            "INFO".into(),
-            format!("Baked {:?} map at {}x{}", map_type, self.baker_options.resolution, self.baker_options.resolution),
-        ));
-        self.recompute_composite();
     }
 
     pub fn load_model(&mut self, idx: usize) {
@@ -719,7 +792,9 @@ impl RemoainterApp {
                 &self.mesh.normals,
                 &self.mesh.uvs,
                 &self.mesh.indices,
+                &self.mesh.submeshes,
                 &self.baker_options,
+                None,
                 None,
                 None,
             );
@@ -766,7 +841,9 @@ impl RemoainterApp {
                     &self.mesh.normals,
                     &self.mesh.uvs,
                     &self.mesh.indices,
+                    &self.mesh.submeshes,
                     &self.baker_options,
+                    None,
                     None,
                     None,
                 );
@@ -1017,7 +1094,9 @@ impl RemoainterApp {
                             &self.mesh.normals,
                             &self.mesh.uvs,
                             &self.mesh.indices,
+                            &self.mesh.submeshes,
                             &self.baker_options,
+                            None,
                             None,
                             None,
                         );
@@ -1151,6 +1230,34 @@ impl RemoainterApp {
 impl eframe::App for RemoainterApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_substance_theme(ctx);
+
+        // Handle background asynchronous baking
+        if self.is_baking {
+            ctx.request_repaint();
+            if let Some(ref rx) = self.baking_receiver {
+                if let Ok(baked) = rx.try_recv() {
+                    self.is_baking = false;
+                    self.baking_receiver = None;
+                    if baked.is_cancelled {
+                        self.status_message = "Mesh map baking cancelled by user".to_string();
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "WARN".into(),
+                            "Mesh map baking cancelled by user".into(),
+                        ));
+                    } else {
+                        self.baked_maps = baked;
+                        self.status_message = format!("Successfully baked mesh maps at {}×{}", self.baker_options.resolution, self.baker_options.resolution);
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "INFO".into(),
+                            format!("Completed mesh map bake (AO, Curvature, Normals, Position, Thickness) for {}", self.mesh.name),
+                        ));
+                        self.recompute_composite();
+                    }
+                }
+            }
+        }
 
         // Automatic background autosave
         if self.project_is_dirty && self.last_autosave_time.elapsed().as_secs() >= self.autosave_interval_secs {
@@ -4765,6 +4872,25 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                                 let _ = ui.selectable_value(&mut self.baker_subsampling, 3, "Subsampling 8x8");
                             });
                         ui.end_row();
+
+                        ui.label("Match");
+                        egui::ComboBox::from_id_salt("baker_match_combo")
+                            .selected_text(if self.baker_options.match_by_name { "By Mesh Name" } else { "Always" })
+                            .show_ui(ui, |ui| {
+                                let _ = ui.selectable_value(&mut self.baker_options.match_by_name, false, "Always");
+                                let _ = ui.selectable_value(&mut self.baker_options.match_by_name, true, "By Mesh Name");
+                            });
+                        ui.end_row();
+
+                        if self.baker_options.match_by_name {
+                            ui.label("Low poly mesh suffix");
+                            ui.text_edit_singleline(&mut self.baker_low_suffix);
+                            ui.end_row();
+
+                            ui.label("High poly mesh suffix");
+                            ui.text_edit_singleline(&mut self.baker_high_suffix);
+                            ui.end_row();
+                        }
                     });
                 } else {
                     // MAP-SPECIFIC PARAMETERS
@@ -4913,17 +5039,36 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                 return_hovered = return_btn_rect.contains(pos);
             }
 
-            painter.rect_filled(bake_btn_rect, 3.0, if bake_hovered { Color32::from_rgb(65, 135, 235) } else { ACTIVE_BLUE });
+            let is_baking = self.is_baking;
+            let current_prog = self.baking_progress.load(Ordering::Relaxed);
+
+            let bake_fill = if is_baking {
+                if bake_hovered { Color32::from_rgb(240, 70, 70) } else { Color32::from_rgb(200, 50, 50) }
+            } else if bake_hovered {
+                Color32::from_rgb(65, 135, 235)
+            } else {
+                ACTIVE_BLUE
+            };
+
+            painter.rect_filled(bake_btn_rect, 3.0, bake_fill);
             painter.rect_filled(return_btn_rect, 3.0, if return_hovered { Color32::from_rgb(55, 55, 60) } else { Color32::from_rgb(40, 40, 45) });
 
-            painter.text(bake_btn_rect.center(), Align2::CENTER_CENTER, "⚡ Bake Selected Textures", egui::FontId::proportional(12.0), Color32::WHITE);
+            let bake_label = if is_baking {
+                format!("⏹ Cancel Bake ({}%)", current_prog)
+            } else {
+                "⚡ Bake Selected Textures".to_string()
+            };
+            painter.text(bake_btn_rect.center(), Align2::CENTER_CENTER, bake_label, egui::FontId::proportional(12.0), Color32::WHITE);
             painter.text(return_btn_rect.center(), Align2::CENTER_CENTER, "Return to painting mode", egui::FontId::proportional(11.5), Color32::WHITE);
 
             if response.clicked() {
                 if let Some(pos) = response.interact_pointer_pos() {
                     if bake_btn_rect.contains(pos) {
-                        self.bake_mesh_maps();
-                        self.show_baker_dialog = false;
+                        if is_baking {
+                            self.cancel_baking.store(true, Ordering::Relaxed);
+                        } else {
+                            self.bake_mesh_maps();
+                        }
                     } else if return_btn_rect.contains(pos) {
                         self.show_baker_dialog = false;
                     }
@@ -5471,7 +5616,9 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                     &self.mesh.normals,
                     &self.mesh.uvs,
                     &self.mesh.indices,
+                    &self.mesh.submeshes,
                     &self.baker_options,
+                    None,
                     None,
                     None,
                 );
