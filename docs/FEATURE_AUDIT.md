@@ -86,7 +86,7 @@ Status Legend:
 | **Camera Bookmarks** | `Ctrl+1..9` / `Alt+1..9` | **Implemented** | `src/ui/app.rs`: 9 camera bookmark slots with keyboard shortcuts and UI Recall/Save/Clear controls. |
 | **Turntable Animation** | `Y` | **Implemented** | `src/ui/app.rs`: Continuous turntable animation loop with speed control and `Y` toggle key. |
 | **Post-Processing (Bloom/DoF/SSAO)** | — | **Implemented** | `src/graphics/viewport_gl.rs`: Bloom highlights extraction, Depth of Field defocusing, and SSAO contact shadow enhancements integrated in PBR shader. |
-| **Grid & World Axes** | — | **Missing** | 3D ground plane grid and coordinate gizmo missing. |
+| **Grid & World Axes** | — | **Implemented** | GPU ground-plane grid with world axes lines (`GpuGrid` in `src/graphics/viewport_gl.rs`, feature branch merged). |
 
 ---
 
@@ -148,7 +148,7 @@ Status Legend:
 | **Mask Effects Stack** | **Implemented** | Sub-stack supporting sequential evaluation of Fill, Generator, Levels, and Invert effects. |
 | **Procedural Generators** | **Implemented** | `Metal Edge Wear`, `Dirt Crevices`, `Dust Accumulation`, `Position Gradient`, `World Normal Orientation`, `Thickness / Subsurface`, and `Color / ID Selection` with grunge FBM noise, tolerance, and axis controls. |
 | **Filters Stack** | **Implemented** | Non-destructive `FilterEffect` stack supporting Levels, Gaussian Blur, Sharpen, HSL adjustment, Invert, and Gradient Map with dynamic inspector controls. |
-| **Anchor Points** | **Partial** | `AnchorPoint` struct and creation UI implemented; referencing anchor points from generators in other layers is partial. |
+| **Anchor Points** | **Implemented** | `AnchorPoint` struct + creation UI; full cross-layer routing in mask evaluation (`mask.rs::recompute_with_anchors` injects anchor maps into generators in other layers). |
 
 ---
 
@@ -207,12 +207,21 @@ Status Legend:
 
 ## Summary Scorecard
 
+> Counted directly from the feature-table rows in this document (2026-10-21, post-tool-engine/baker session).
+
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Menu Items** | 32 | 31 | 1 | 0 | 0 |
-| **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
-| **Layer Stack & System** | 11 | 10 | 1 | 0 | 0 |
-| **Mesh Map Baking** | 14 | 11 | 1 | 0 | 2 |
+| **Menu Items** | 56 | 55 | 1 | 0 | 0 |
+| **Tools & Brush Engine** | 15 | 15 | 0 | 0 | 0 |
+| **Layer Stack & System** | 11 | 11 | 0 | 0 | 0 |
+| **Mesh Map Baking** | 15 | 15 | 0 | 0 | 0 |
 | **Viewport & Shaders** | 10 | 10 | 0 | 0 | 0 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **90** | **81 (90.0%)** | **5 (5.6%)** | **1 (1.1%)** | **3 (3.3%)** |
+| **Total** | **115** | **114 (99.1%)** | **1 (0.9%)** | **0** | **0** |
+
+### Depth qualifications (v1 / simplified implementations)
+- **Visualisation (Render) — Partial**: offline path-traced (Iray-class) renderer is the one remaining audit gap.
+- **Text / Decal Tool — Implemented (v1)**: embedded bitmap font rasterizer; TTF/OTF font selection pending.
+- **Skew Correction — Implemented**: sheared-ray-origin approximation of Substance's `USE_SKEW_MAP`; geometry-preserving skew-mesh painting pending.
+- **Smudge / Clone projection semantics**: 3D stamps honor tangent-space alpha shapes; per-stamp jitter/spacing dynamics on the 3D path are simplified relative to Substance's stamp-page pipeline.
+- **Grid & World Axes / Anchor routing**: implemented in earlier merged branches; rows were stale until this sync.
