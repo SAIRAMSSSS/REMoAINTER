@@ -140,14 +140,14 @@ Status Legend:
 | :--- | :--- | :--- |
 | **Paint Layer** | **Implemented** | Dynamic channel buffers (`color`, `metallic`, `roughness`, `normal`, `height`). |
 | **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). |
-| **Folder / Group** | **Partial** | `LayerType::Folder` exists with `folder_expanded`, but nested hierarchy rendering in `ui_layers_panel` needs tree indentation. |
-| **Blend Modes** | **Partial** | `Normal`, `Multiply`, `Screen`, `Overlay`, `PassThrough` implemented. Missing `Add`, `Subtract`, `Linear Light`, `Color`, `Luminosity`. |
-| **Per-Channel Blend Modes** | **Missing** | Currently one blend mode applies across all channels of a layer. Substance Painter allows e.g. Normal mode for Color and Multiply for Roughness. |
+| **Folder / Group** | **Implemented** | `LayerType::Folder` with nested tree rendering, parent/child hierarchy, recursive opacity & visibility cascading, and Ctrl+G hotkey. |
+| **Blend Modes** | **Implemented** | All 18 Substance Painter blend modes: Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, Color, Luminosity. |
+| **Per-Channel Blend Modes** | **Implemented** | `channel_color_blend`, `channel_metallic_blend`, etc. with per-channel routing toggles and opacities in UI and compositor. |
 | **Mask Stack** | **Implemented** | `LayerMask` supports White, Black, and Bitmap masks. |
-| **Mask Paint-in-Mask** | **Partial** | Mask painting works when mask is selected, but requires dedicated mask viewport solo mode. |
+| **Mask Paint-in-Mask** | **Implemented** | Dual thumbnail workflow (Content & Mask), click-to-activate mask editing mode with 2D & 3D real-time grayscale brush painting. |
 | **Mask Effects Stack** | **Implemented** | Sub-stack supporting sequential evaluation of Fill, Generator, Levels, and Invert effects. |
 | **Procedural Generators** | **Partial** | `Metal Edge Wear` and `Dirt Crevices` implemented using baked AO and Curvature. Missing Position gradient, World Normal top/bottom, Thickness, and ID generators. |
-| **Filters Stack** | **Partial** | `Levels` and `Invert` implemented. Missing Gaussian Blur, Sharpen, HSL adjustment, Gradient Map. |
+| **Filters Stack** | **Implemented** | Non-destructive `FilterEffect` stack supporting Levels, Gaussian Blur, Sharpen, HSL adjustment, Invert, and Gradient Map with dynamic inspector controls. |
 | **Anchor Points** | **Partial** | `AnchorPoint` struct and creation UI implemented; referencing anchor points from generators in other layers is partial. |
 
 ---
@@ -211,8 +211,8 @@ Status Legend:
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **Menu Items** | 32 | 20 | 3 | 0 | 9 |
 | **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
-| **Layer Stack & System** | 11 | 4 | 5 | 0 | 2 |
+| **Layer Stack & System** | 11 | 9 | 2 | 0 | 0 |
 | **Mesh Map Baking** | 14 | 8 | 4 | 0 | 2 |
 | **Viewport & Shaders** | 10 | 6 | 0 | 0 | 4 |
 | **Texture Export** | 8 | 7 | 1 | 0 | 0 |
-| **Total** | **90** | **56 (62.2%)** | **15 (16.7%)** | **1 (1.1%)** | **18 (20.0%)** |
+| **Total** | **90** | **61 (67.8%)** | **12 (13.3%)** | **1 (1.1%)** | **16 (17.8%)** |

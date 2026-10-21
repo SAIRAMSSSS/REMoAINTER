@@ -7,6 +7,7 @@ use crate::painting::{
     apply_smart_material_hierarchy, load_real_pbr_material,
     AnchorPoint, BlendMode, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect,
     ExportPreset, TextureExportContext, OutputFormat, BitDepth,
+    FilterEffect, FilterTargetChannel,
 };
 use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
@@ -90,6 +91,7 @@ pub struct RemoainterApp {
     pub history_manager: crate::painting::HistoryManager,
     pub lazy_mouse_tracker: crate::painting::brush::LazyMouseTracker,
     pub is_in_stroke: bool,
+    pub paint_target_mask: bool,
 
     // Shelf & Asset Filter
     pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas
@@ -385,6 +387,7 @@ impl Default for RemoainterApp {
                 ("09:00:04".into(), "INFO".into(), "Cook-Torrance / Blinn-Phong GGX Studio Lighting active.".into()),
             ],
             last_painted_uv: None,
+            paint_target_mask: false,
             layer_clipboard: None,
             texture_handle: None,
             texture_needs_update: true,
@@ -1168,6 +1171,17 @@ impl eframe::App for RemoainterApp {
             self.show_new_project_dialog = true;
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::B)) {
             self.show_baker_dialog = true;
+        } else if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::G)) {
+            let id = self.layer_stack.layers.len() + 1;
+            let folder = Layer::new_folder(id, format!("Folder {}", id), self.layer_stack.width, self.layer_stack.height);
+            let active_idx = self.layer_stack.active_layer_index;
+            if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                active.parent_folder_id = Some(id);
+            }
+            self.layer_stack.layers.insert(active_idx + 1, folder);
+            self.layer_stack.active_layer_index = active_idx + 1;
+            self.recompute_composite();
+            self.status_message = format!("Created Group Folder {}", id);
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::E)) {
             self.show_export_dialog = true;
         } else if ctx.input(|i| i.key_pressed(egui::Key::F1)) {
@@ -1672,8 +1686,12 @@ impl eframe::App for RemoainterApp {
         // 3. BOTTOM STATUS BAR
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.colored_label(Color32::from_rgb(58, 217, 115), "● Ready");
-                ui.label(format!("| Tool: {:?} | Mesh: {} | Stack: {} layers", self.active_tool, self.mesh.name, self.layer_stack.layers.len()));
+                if self.paint_target_mask {
+                    ui.colored_label(Color32::from_rgb(100, 230, 255), "❚ MASK EDITING MODE (Grayscale)");
+                } else {
+                    ui.colored_label(Color32::from_rgb(58, 217, 115), "● Ready");
+                }
+                ui.label(format!("| Tool: {:?} | Mesh: {} | Stack: {} layers | {}", self.active_tool, self.mesh.name, self.layer_stack.layers.len(), self.status_message));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label("Disk Cache: 42% | REMoAINTER v2.0.0 (Rust Core)");
                 });
@@ -2336,41 +2354,42 @@ impl RemoainterApp {
                                 clone_brush.roughness = self.layer_stack.composite_roughness[idx];
                             }
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                                active_layer.paint_stamp(uv, &clone_brush, false, Some(&mut self.history_manager))
+                                active_layer.paint_stamp(uv, &clone_brush, self.paint_target_mask, Some(&mut self.history_manager))
                             } else {
                                 [0, 0, 0, 0]
                             }
                         }
                     } else {
                         let is_eraser = self.active_tool == ToolMode::Eraser;
+                        let on_mask = self.paint_target_mask;
                         if let Some(last_uv) = self.last_painted_uv {
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
                                 let mut b = if is_eraser {
-                                    active_layer.erase_line(last_uv, uv, &self.brush, false, Some(&mut self.history_manager))
+                                    active_layer.erase_line(last_uv, uv, &self.brush, on_mask, Some(&mut self.history_manager))
                                 } else {
-                                    active_layer.paint_line(last_uv, uv, &self.brush, false, Some(&mut self.history_manager))
+                                    active_layer.paint_line(last_uv, uv, &self.brush, on_mask, Some(&mut self.history_manager))
                                 };
                                 if self.symmetry_x {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
                                 if self.symmetry_y {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
                                 if self.symmetry_z {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
@@ -2381,31 +2400,31 @@ impl RemoainterApp {
                         } else {
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
                                 let mut b = if is_eraser {
-                                    active_layer.erase_stamp(uv, &self.brush, false, Some(&mut self.history_manager))
+                                    active_layer.erase_stamp(uv, &self.brush, on_mask, Some(&mut self.history_manager))
                                 } else {
-                                    active_layer.paint_stamp(uv, &self.brush, false, Some(&mut self.history_manager))
+                                    active_layer.paint_stamp(uv, &self.brush, on_mask, Some(&mut self.history_manager))
                                 };
                                 if self.symmetry_x {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_stamp([1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_stamp([1.0 - uv[0], uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_stamp([1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_stamp([1.0 - uv[0], uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
                                 if self.symmetry_y {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_stamp([uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_stamp([uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_stamp([uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_stamp([uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
                                 if self.symmetry_z {
                                     let b_sym = if is_eraser {
-                                        active_layer.erase_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.erase_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     } else {
-                                        active_layer.paint_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                        active_layer.paint_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, on_mask, Some(&mut self.history_manager))
                                     };
                                     b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
@@ -2613,7 +2632,7 @@ impl RemoainterApp {
                                 clone_brush.roughness = self.layer_stack.composite_roughness[idx];
                             }
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                                active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &clone_brush, false, false, Some(&mut self.history_manager))
+                                active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &clone_brush, false, self.paint_target_mask, Some(&mut self.history_manager))
                             } else {
                                 [0, 0, 0, 0]
                             }
@@ -2621,8 +2640,9 @@ impl RemoainterApp {
                     } else {
                         // Paint (1), Eraser (2), Projection (3)
                         let is_eraser = self.active_tool == ToolMode::Eraser;
+                        let on_mask = self.paint_target_mask;
                         let mut b = if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                            active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager))
+                            active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush, is_eraser, on_mask, Some(&mut self.history_manager))
                         } else {
                             [0, 0, 0, 0]
                         };
@@ -2630,7 +2650,7 @@ impl RemoainterApp {
                             let sym_pos = [-hit.pos[0], hit.pos[1], hit.pos[2]];
                             let sym_norm = [-hit.normal[0], hit.normal[1], hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, on_mask, Some(&mut self.history_manager));
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
                                     b[1] = b[1].min(b_sym[1]);
@@ -2643,7 +2663,7 @@ impl RemoainterApp {
                             let sym_pos = [hit.pos[0], -hit.pos[1], hit.pos[2]];
                             let sym_norm = [hit.normal[0], -hit.normal[1], hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, on_mask, Some(&mut self.history_manager));
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
                                     b[1] = b[1].min(b_sym[1]);
@@ -2656,7 +2676,7 @@ impl RemoainterApp {
                             let sym_pos = [hit.pos[0], hit.pos[1], -hit.pos[2]];
                             let sym_norm = [hit.normal[0], hit.normal[1], -hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
-                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, on_mask, Some(&mut self.history_manager));
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
                                     b[1] = b[1].min(b_sym[1]);
@@ -3076,6 +3096,7 @@ impl RemoainterApp {
                 let id = self.layer_stack.layers.len() + 1;
                 self.layer_stack.layers.push(Layer::new_paint(id, format!("Layer {}", id), self.layer_stack.width, self.layer_stack.height));
                 self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.paint_target_mask = false;
                 self.recompute_composite();
                 self.status_message = "Added Paint Layer".into();
             }
@@ -3083,8 +3104,17 @@ impl RemoainterApp {
                 let id = self.layer_stack.layers.len() + 1;
                 self.layer_stack.layers.push(Layer::new_fill(id, format!("Fill {}", id), self.brush.color, self.brush.metallic, self.brush.roughness, self.layer_stack.width, self.layer_stack.height));
                 self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.paint_target_mask = false;
                 self.recompute_composite();
                 self.status_message = "Added Fill Layer".into();
+            }
+            if ui.small_button("+ Folder").on_hover_text("Add Folder Group (Ctrl+G)").clicked() {
+                let id = self.layer_stack.layers.len() + 1;
+                self.layer_stack.layers.push(Layer::new_folder(id, format!("Folder {}", id), self.layer_stack.width, self.layer_stack.height));
+                self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.paint_target_mask = false;
+                self.recompute_composite();
+                self.status_message = "Added Folder".into();
             }
             if ui.small_button("+ Black Mask").on_hover_text("Add Black Mask with Sub-Stack").clicked() {
                 if let Some(active) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
@@ -3093,6 +3123,56 @@ impl RemoainterApp {
                 }
                 self.recompute_composite();
             }
+            if ui.small_button("+ White Mask").on_hover_text("Add White Mask").clicked() {
+                if let Some(active) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                    active.add_white_mask();
+                    self.status_message = "Added White Mask".into();
+                }
+                self.recompute_composite();
+            }
+            ui.menu_button("+ Filter", |ui| {
+                let active_idx = self.layer_stack.active_layer_index;
+                if ui.button("Levels").clicked() {
+                    if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                        active.effects.push(FilterEffect::Levels { min_in: 0.0, max_in: 1.0, gamma: 1.0, min_out: 0.0, max_out: 1.0, channel: FilterTargetChannel::All });
+                        active.apply_effects();
+                    }
+                    self.recompute_composite();
+                    ui.close_menu();
+                }
+                if ui.button("Gaussian Blur").clicked() {
+                    if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                        active.effects.push(FilterEffect::Blur { radius: 3.0, channel: FilterTargetChannel::All });
+                        active.apply_effects();
+                    }
+                    self.recompute_composite();
+                    ui.close_menu();
+                }
+                if ui.button("Sharpen").clicked() {
+                    if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                        active.effects.push(FilterEffect::Sharpen { strength: 1.5, channel: FilterTargetChannel::All });
+                        active.apply_effects();
+                    }
+                    self.recompute_composite();
+                    ui.close_menu();
+                }
+                if ui.button("HSL Adjustment").clicked() {
+                    if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                        active.effects.push(FilterEffect::HSL { hue_shift: 0.0, sat_mult: 1.0, light_offset: 0.0 });
+                        active.apply_effects();
+                    }
+                    self.recompute_composite();
+                    ui.close_menu();
+                }
+                if ui.button("Invert").clicked() {
+                    if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                        active.effects.push(FilterEffect::Invert { channel: FilterTargetChannel::All });
+                        active.apply_effects();
+                    }
+                    self.recompute_composite();
+                    ui.close_menu();
+                }
+            });
             if ui.small_button("+ Anchor").on_hover_text("Add Anchor Point").clicked() {
                 if let Some(active) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
                     active.anchor_point = Some(AnchorPoint::new(
@@ -3112,8 +3192,9 @@ impl RemoainterApp {
         ui.separator();
 
         enum LayerListAction {
-            Select(usize),
+            Select(usize, bool), // (idx, is_mask)
             ToggleVisibility(usize),
+            ToggleFolder(usize),
             AddBlackMask(usize),
             AddWhiteMask(usize),
             AddBitmapMask(usize, PathBuf),
@@ -3123,6 +3204,7 @@ impl RemoainterApp {
             AddGenerator(usize, String),
             AddFillEffect(usize),
             AddLevels(usize),
+            AddFilter(usize, FilterEffect),
             AddAnchor(usize),
             Duplicate(usize),
             ClearLayer(usize),
@@ -3143,9 +3225,20 @@ impl RemoainterApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for i in (0..self.layer_stack.layers.len()).rev() {
                 let layer_id = self.layer_stack.layers[i].id;
+                let is_folder = self.layer_stack.layers[i].layer_type == LayerType::Folder;
+                let parent_id = self.layer_stack.layers[i].parent_folder_id;
+
+                // Hide child layers if parent folder is collapsed
+                let is_hidden = parent_id.map_or(false, |pid| {
+                    self.layer_stack.layers.iter().find(|l| l.id == pid).map_or(false, |p| !p.folder_expanded)
+                });
+                if is_hidden {
+                    continue;
+                }
+
                 ui.push_id(format!("layer_row_id_{}_{}", layer_id, i), |ui| {
                     let is_active = self.layer_stack.active_layer_index == i;
-                    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 26.0), egui::Sense::click_and_drag());
+                    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 28.0), egui::Sense::click_and_drag());
 
                     if is_active {
                         ui.painter().rect_filled(rect, 2.0_f32, ACTIVE_ROW_FILL);
@@ -3156,6 +3249,12 @@ impl RemoainterApp {
                     let has_mask = layer.mask.is_some();
                     let layer_name = layer.name.clone();
                     let layer_type = layer.layer_type;
+                    let num_effects = layer.effects.len();
+                    let folder_expanded = layer.folder_expanded;
+                    let has_anchor = layer.anchor_point.is_some();
+                    let layer_opacity = layer.opacity;
+
+                    let indent = if parent_id.is_some() { 16.0 } else { 0.0 };
 
                     // Color tag indicator (Substance Painter color tags)
                     if let Some(tag) = layer.color_tag {
@@ -3174,40 +3273,73 @@ impl RemoainterApp {
 
                     // Eye toggle
                     let eye_icon = if layer.visible { "[O]" } else { "[-]" };
-                    ui.painter().text(pos2(rect.left() + 8.0, rect.center().y), Align2::LEFT_CENTER, eye_icon, egui::FontId::monospace(11.0), TEXT_PRIMARY);
+                    let eye_rect = Rect::from_min_size(pos2(rect.left() + indent + 6.0, rect.top() + 6.0), vec2(16.0, 16.0));
+                    ui.painter().text(eye_rect.center(), Align2::CENTER_CENTER, eye_icon, egui::FontId::monospace(11.0), TEXT_PRIMARY);
 
-                    // Layer type badge & name
-                    let type_badge = match layer.layer_type {
-                        LayerType::Paint => "[P]",
-                        LayerType::Fill => "[F]",
-                        LayerType::Folder => "[D]",
-                    };
-                    let badge_color = match layer.layer_type {
-                        LayerType::Paint => Color32::from_rgb(100, 200, 255),
-                        LayerType::Fill => SMART_MAT_ORANGE,
-                        LayerType::Folder => Color32::from_rgb(255, 215, 0),
-                    };
-                    ui.painter().text(pos2(rect.left() + 30.0, rect.center().y), Align2::LEFT_CENTER, type_badge, egui::FontId::monospace(11.0), badge_color);
-                    ui.painter().text(pos2(rect.left() + 52.0, rect.center().y), Align2::LEFT_CENTER, &layer.name, egui::FontId::proportional(12.0), Color32::WHITE);
+                    let mut cur_x = rect.left() + indent + 24.0;
 
-                    // Mask badge
-                    if layer.mask.is_some() {
-                        let m_rect = Rect::from_min_size(pos2(rect.right() - 85.0, rect.top() + 5.0), vec2(16.0, 16.0));
-                        ui.painter().rect_filled(m_rect, 1.0_f32, Color32::BLACK);
-                        ui.painter().rect_stroke(m_rect, 1.0_f32, Stroke::new(1.0_f32, Color32::WHITE));
+                    // If folder, render expand/collapse arrow
+                    if is_folder {
+                        let arrow = if folder_expanded { "▼" } else { "▶" };
+                        let arrow_rect = Rect::from_min_size(pos2(cur_x, rect.top() + 6.0), vec2(14.0, 16.0));
+                        ui.painter().text(arrow_rect.center(), Align2::CENTER_CENTER, arrow, egui::FontId::proportional(11.0), Color32::from_rgb(255, 215, 0));
+                        cur_x += 16.0;
                     }
 
-                    // Anchor point badge
-                    if layer.anchor_point.is_some() {
-                        let a_rect = Rect::from_min_size(pos2(rect.right() - 65.0, rect.top() + 5.0), vec2(16.0, 16.0));
+                    // Thumbnail 1: Content/Material
+                    let mat_thumb_rect = Rect::from_min_size(pos2(cur_x, rect.top() + 5.0), vec2(18.0, 18.0));
+                    let (badge_char, badge_color) = match layer_type {
+                        LayerType::Paint => ("P", Color32::from_rgb(100, 200, 255)),
+                        LayerType::Fill => ("F", SMART_MAT_ORANGE),
+                        LayerType::Folder => ("D", Color32::from_rgb(255, 215, 0)),
+                    };
+                    ui.painter().rect_filled(mat_thumb_rect, 2.0, Color32::from_rgb(35, 35, 40));
+                    ui.painter().text(mat_thumb_rect.center(), Align2::CENTER_CENTER, badge_char, egui::FontId::monospace(10.0), badge_color);
+                    if is_active && !self.paint_target_mask {
+                        ui.painter().rect_stroke(mat_thumb_rect, 2.0, Stroke::new(1.5_f32, ACTIVE_BLUE));
+                    } else {
+                        ui.painter().rect_stroke(mat_thumb_rect, 2.0, Stroke::new(0.8_f32, Color32::from_rgb(80, 80, 85)));
+                    }
+                    cur_x += 22.0;
+
+                    // Thumbnail 2: Mask (if present)
+                    let mask_thumb_rect = if has_mask {
+                        let mtr = Rect::from_min_size(pos2(cur_x, rect.top() + 5.0), vec2(18.0, 18.0));
+                        ui.painter().rect_filled(mtr, 2.0, Color32::BLACK);
+                        ui.painter().text(mtr.center(), Align2::CENTER_CENTER, "M", egui::FontId::monospace(9.0), Color32::WHITE);
+                        if is_active && self.paint_target_mask {
+                            ui.painter().rect_stroke(mtr, 2.0, Stroke::new(1.8_f32, Color32::from_rgb(100, 230, 255)));
+                        } else {
+                            ui.painter().rect_stroke(mtr, 2.0, Stroke::new(0.8_f32, Color32::from_rgb(140, 140, 150)));
+                        }
+                        cur_x += 22.0;
+                        Some(mtr)
+                    } else {
+                        None
+                    };
+
+                    // Layer name text
+                    ui.painter().text(pos2(cur_x, rect.center().y), Align2::LEFT_CENTER, &layer_name, egui::FontId::proportional(12.0), Color32::WHITE);
+
+                    // Right side badges: Opacity, Anchor, Effects
+                    let mut right_x = rect.right() - 8.0;
+                    ui.painter().text(pos2(right_x, rect.center().y), Align2::RIGHT_CENTER, format!("{:.0}%", layer_opacity * 100.0), egui::FontId::proportional(11.0), TEXT_DIMMED);
+                    right_x -= 38.0;
+
+                    if has_anchor {
+                        let a_rect = Rect::from_min_size(pos2(right_x - 14.0, rect.top() + 6.0), vec2(14.0, 14.0));
                         ui.painter().rect_filled(a_rect, 1.0, SMART_MAT_ORANGE);
-                        ui.painter().text(a_rect.center(), Align2::CENTER_CENTER, "A", egui::FontId::proportional(10.0), Color32::WHITE);
+                        ui.painter().text(a_rect.center(), Align2::CENTER_CENTER, "A", egui::FontId::proportional(9.0), Color32::WHITE);
+                        right_x -= 18.0;
                     }
 
-                    // Opacity label
-                    ui.painter().text(pos2(rect.right() - 8.0, rect.center().y), Align2::RIGHT_CENTER, format!("{:.0}%", layer.opacity * 100.0), egui::FontId::proportional(11.0), TEXT_DIMMED);
+                    if num_effects > 0 {
+                        let fx_rect = Rect::from_min_size(pos2(right_x - 22.0, rect.top() + 6.0), vec2(20.0, 14.0));
+                        ui.painter().rect_filled(fx_rect, 2.0, Color32::from_rgb(130, 70, 200));
+                        ui.painter().text(fx_rect.center(), Align2::CENTER_CENTER, format!("+{}", num_effects), egui::FontId::proportional(9.0), Color32::WHITE);
+                    }
 
-                    // Right-Click Context Menu (Substance Painter 1:1 matching Screenshot_20261020_170634.png)
+                    // Right-Click Context Menu (Substance Painter 1:1 matching)
                     resp.context_menu(|ui| {
                         ui.set_min_width(220.0);
                         ui.label(egui::RichText::new(&layer_name).strong().color(Color32::WHITE));
@@ -3314,17 +3446,17 @@ impl RemoainterApp {
                         });
                         ui.separator();
 
-                        // ── 4. Blending Options ────────────────────────────
+                        // ── 4. Blending Options (All 18 Substance Painter Blend Modes) ─
                         ui.menu_button("Blending options", |ui| {
                             let modes = [
-                                (BlendMode::Normal, "Normal"),
-                                (BlendMode::Multiply, "Multiply"),
-                                (BlendMode::Screen, "Screen"),
-                                (BlendMode::Overlay, "Overlay"),
-                                (BlendMode::PassThrough, "PassThrough"),
+                                BlendMode::Normal, BlendMode::PassThrough, BlendMode::Multiply, BlendMode::Screen,
+                                BlendMode::Overlay, BlendMode::Add, BlendMode::Subtract, BlendMode::Darken,
+                                BlendMode::Lighten, BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::LinearBurn,
+                                BlendMode::HardLight, BlendMode::SoftLight, BlendMode::Difference, BlendMode::Exclusion,
+                                BlendMode::Color, BlendMode::Luminosity,
                             ];
-                            for (mode, label) in modes {
-                                if ui.button(label).clicked() {
+                            for mode in modes {
+                                if ui.button(mode.name()).clicked() {
                                     list_action = Some(LayerListAction::SetBlendMode(i, mode));
                                     ui.close_menu();
                                 }
@@ -3348,12 +3480,25 @@ impl RemoainterApp {
                             }
                         });
                         ui.menu_button("🔮 Add filter", |ui| {
-                            let filters = ["Blur", "Bevel", "Clamp", "Color Balance", "Contrast", "Glow", "Gradient"];
-                            for filt in filters {
-                                if ui.button(filt).clicked() {
-                                    list_action = Some(LayerListAction::AddGenerator(i, format!("Filter ({})", filt)));
-                                    ui.close_menu();
-                                }
+                            if ui.button("Levels").clicked() {
+                                list_action = Some(LayerListAction::AddFilter(i, FilterEffect::Levels { min_in: 0.0, max_in: 1.0, gamma: 1.0, min_out: 0.0, max_out: 1.0, channel: FilterTargetChannel::All }));
+                                ui.close_menu();
+                            }
+                            if ui.button("Gaussian Blur").clicked() {
+                                list_action = Some(LayerListAction::AddFilter(i, FilterEffect::Blur { radius: 3.0, channel: FilterTargetChannel::All }));
+                                ui.close_menu();
+                            }
+                            if ui.button("Sharpen").clicked() {
+                                list_action = Some(LayerListAction::AddFilter(i, FilterEffect::Sharpen { strength: 1.5, channel: FilterTargetChannel::All }));
+                                ui.close_menu();
+                            }
+                            if ui.button("HSL Adjustment").clicked() {
+                                list_action = Some(LayerListAction::AddFilter(i, FilterEffect::HSL { hue_shift: 0.0, sat_mult: 1.0, light_offset: 0.0 }));
+                                ui.close_menu();
+                            }
+                            if ui.button("Invert").clicked() {
+                                list_action = Some(LayerListAction::AddFilter(i, FilterEffect::Invert { channel: FilterTargetChannel::All }));
+                                ui.close_menu();
                             }
                         });
                         if ui.button("📊 Add levels").clicked() {
@@ -3382,13 +3527,21 @@ impl RemoainterApp {
 
                     if resp.clicked() {
                         if let Some(pos) = resp.interact_pointer_pos() {
-                            if pos.x <= rect.left() + 24.0 {
+                            if pos.x <= rect.left() + indent + 20.0 {
                                 list_action = Some(LayerListAction::ToggleVisibility(i));
+                            } else if is_folder && pos.x <= rect.left() + indent + 40.0 {
+                                list_action = Some(LayerListAction::ToggleFolder(i));
+                            } else if let Some(mtr) = mask_thumb_rect {
+                                if pos.x >= mtr.left() && pos.x <= mtr.right() {
+                                    list_action = Some(LayerListAction::Select(i, true));
+                                } else {
+                                    list_action = Some(LayerListAction::Select(i, false));
+                                }
                             } else {
-                                list_action = Some(LayerListAction::Select(i));
+                                list_action = Some(LayerListAction::Select(i, false));
                             }
                         } else {
-                            list_action = Some(LayerListAction::Select(i));
+                            list_action = Some(LayerListAction::Select(i, false));
                         }
                     }
 
@@ -3444,13 +3597,24 @@ impl RemoainterApp {
 
         if let Some(action) = list_action {
             match action {
-                LayerListAction::Select(i) => {
+                LayerListAction::Select(i, is_mask) => {
                     self.layer_stack.active_layer_index = i;
+                    self.paint_target_mask = is_mask;
+                    if is_mask {
+                        self.status_message = format!("Editing Mask for {}", self.layer_stack.layers.get(i).map(|l| l.name.as_str()).unwrap_or(""));
+                    } else {
+                        self.status_message = format!("Selected Layer: {}", self.layer_stack.layers.get(i).map(|l| l.name.as_str()).unwrap_or(""));
+                    }
                 }
                 LayerListAction::ToggleVisibility(i) => {
                     if let Some(l) = self.layer_stack.layers.get_mut(i) {
                         l.visible = !l.visible;
                         recomposite_needed = true;
+                    }
+                }
+                LayerListAction::ToggleFolder(i) => {
+                    if let Some(l) = self.layer_stack.layers.get_mut(i) {
+                        l.folder_expanded = !l.folder_expanded;
                     }
                 }
                 LayerListAction::AddBlackMask(i) => {
@@ -3478,6 +3642,7 @@ impl RemoainterApp {
                     let id = self.layer_stack.layers.len() + 1;
                     self.layer_stack.layers.push(Layer::new_paint(id, format!("Paint Layer {}", id), self.layer_stack.width, self.layer_stack.height));
                     self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
                     recomposite_needed = true;
                     self.status_message = format!("Added Paint Layer {}", id);
                 }
@@ -3485,6 +3650,7 @@ impl RemoainterApp {
                     let id = self.layer_stack.layers.len() + 1;
                     self.layer_stack.layers.push(Layer::new_fill(id, format!("Fill Layer {}", id), self.brush.color, self.brush.metallic, self.brush.roughness, self.layer_stack.width, self.layer_stack.height));
                     self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
                     recomposite_needed = true;
                     self.status_message = format!("Added Fill Layer {}", id);
                 }
@@ -3492,6 +3658,7 @@ impl RemoainterApp {
                     let id = self.layer_stack.layers.len() + 1;
                     self.layer_stack.layers.push(Layer::new_folder(id, format!("Folder {}", id), self.layer_stack.width, self.layer_stack.height));
                     self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
                     recomposite_needed = true;
                     self.status_message = format!("Added Folder {}", id);
                 }
@@ -3558,6 +3725,14 @@ impl RemoainterApp {
                         l.blend_mode = mode;
                         recomposite_needed = true;
                         self.status_message = format!("Set Blend Mode: {:?}", mode);
+                    }
+                }
+                LayerListAction::AddFilter(i, effect) => {
+                    if let Some(l) = self.layer_stack.layers.get_mut(i) {
+                        l.effects.push(effect);
+                        l.apply_effects();
+                        recomposite_needed = true;
+                        self.status_message = format!("Added Filter to {}", l.name);
                     }
                 }
                 LayerListAction::AddGenerator(i, gen_name) => {
@@ -3692,22 +3867,19 @@ impl RemoainterApp {
                 ui.horizontal(|ui| {
                     ui.label("Blending:");
                     egui::ComboBox::from_id_salt("layer_blend_mode")
-                        .selected_text(format!("{:?}", active_layer.blend_mode))
+                        .selected_text(active_layer.blend_mode.name())
                         .show_ui(ui, |ui| {
-                            if ui.selectable_value(&mut active_layer.blend_mode, BlendMode::Normal, "Normal").clicked() {
-                                recomposite_needed = true;
-                            }
-                            if ui.selectable_value(&mut active_layer.blend_mode, BlendMode::Multiply, "Multiply").clicked() {
-                                recomposite_needed = true;
-                            }
-                            if ui.selectable_value(&mut active_layer.blend_mode, BlendMode::Screen, "Screen").clicked() {
-                                recomposite_needed = true;
-                            }
-                            if ui.selectable_value(&mut active_layer.blend_mode, BlendMode::Overlay, "Overlay").clicked() {
-                                recomposite_needed = true;
-                            }
-                            if ui.selectable_value(&mut active_layer.blend_mode, BlendMode::PassThrough, "Pass Through").clicked() {
-                                recomposite_needed = true;
+                            let modes = [
+                                BlendMode::Normal, BlendMode::PassThrough, BlendMode::Multiply, BlendMode::Screen,
+                                BlendMode::Overlay, BlendMode::Add, BlendMode::Subtract, BlendMode::Darken,
+                                BlendMode::Lighten, BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::LinearBurn,
+                                BlendMode::HardLight, BlendMode::SoftLight, BlendMode::Difference, BlendMode::Exclusion,
+                                BlendMode::Color, BlendMode::Luminosity,
+                            ];
+                            for m in modes {
+                                if ui.selectable_value(&mut active_layer.blend_mode, m, m.name()).clicked() {
+                                    recomposite_needed = true;
+                                }
                             }
                         });
                 });
@@ -3734,6 +3906,164 @@ impl RemoainterApp {
                             active_layer.add_white_mask();
                             recomposite_needed = true;
                         }
+                    }
+                });
+
+                // Per-Layer Channel Blends & Overrides (Substance Painter Parity)
+                ui.collapsing("CHANNEL BLEND & ROUTING (SUBSTANCE PARITY)", |ui| {
+                    let mut ch_row = |name: &str, enabled: &mut bool, blend: &mut BlendMode, opacity: &mut f32, id_salt: &str| {
+                        ui.horizontal(|ui| {
+                            if ui.checkbox(enabled, name).changed() {
+                                recomposite_needed = true;
+                            }
+                            egui::ComboBox::from_id_salt(id_salt)
+                                .selected_text(blend.name())
+                                .width(110.0)
+                                .show_ui(ui, |ui| {
+                                    let modes = [
+                                        BlendMode::Normal, BlendMode::Multiply, BlendMode::Screen, BlendMode::Overlay,
+                                        BlendMode::Add, BlendMode::Subtract, BlendMode::Darken, BlendMode::Lighten,
+                                        BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::LinearBurn,
+                                        BlendMode::HardLight, BlendMode::SoftLight, BlendMode::Difference,
+                                    ];
+                                    for m in modes {
+                                        if ui.selectable_value(blend, m, m.name()).clicked() {
+                                            recomposite_needed = true;
+                                        }
+                                    }
+                                });
+                            if ui.add(egui::Slider::new(opacity, 0.0..=1.0).show_value(false)).changed() {
+                                recomposite_needed = true;
+                            }
+                        });
+                    };
+
+                    ch_row("Base Color", &mut active_layer.channel_color_enabled, &mut active_layer.channel_color_blend, &mut active_layer.channel_color_opacity, "ch_color_blend");
+                    ch_row("Metallic", &mut active_layer.channel_metallic_enabled, &mut active_layer.channel_metallic_blend, &mut active_layer.channel_metallic_opacity, "ch_met_blend");
+                    ch_row("Roughness", &mut active_layer.channel_roughness_enabled, &mut active_layer.channel_roughness_blend, &mut active_layer.channel_roughness_opacity, "ch_rough_blend");
+                    ch_row("Normal", &mut active_layer.channel_normal_enabled, &mut active_layer.channel_normal_blend, &mut active_layer.channel_normal_opacity, "ch_norm_blend");
+                    ch_row("Height", &mut active_layer.channel_height_enabled, &mut active_layer.channel_height_blend, &mut active_layer.channel_height_opacity, "ch_height_blend");
+                });
+
+                // Layer Filter & Effects Stack
+                ui.collapsing(format!("FILTER & EFFECT STACK ({})", active_layer.effects.len()), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.menu_button("+ Add Filter...", |ui| {
+                            if ui.button("Levels").clicked() {
+                                active_layer.effects.push(FilterEffect::Levels { min_in: 0.0, max_in: 1.0, gamma: 1.0, min_out: 0.0, max_out: 1.0, channel: FilterTargetChannel::All });
+                                active_layer.apply_effects();
+                                recomposite_needed = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("Gaussian Blur").clicked() {
+                                active_layer.effects.push(FilterEffect::Blur { radius: 3.0, channel: FilterTargetChannel::All });
+                                active_layer.apply_effects();
+                                recomposite_needed = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("Sharpen").clicked() {
+                                active_layer.effects.push(FilterEffect::Sharpen { strength: 1.5, channel: FilterTargetChannel::All });
+                                active_layer.apply_effects();
+                                recomposite_needed = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("HSL Adjustment").clicked() {
+                                active_layer.effects.push(FilterEffect::HSL { hue_shift: 0.0, sat_mult: 1.0, light_offset: 0.0 });
+                                active_layer.apply_effects();
+                                recomposite_needed = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("Invert").clicked() {
+                                active_layer.effects.push(FilterEffect::Invert { channel: FilterTargetChannel::All });
+                                active_layer.apply_effects();
+                                recomposite_needed = true;
+                                ui.close_menu();
+                            }
+                        });
+                    });
+
+                    let mut effect_to_remove = None;
+                    let mut effects_changed = false;
+
+                    for (eff_idx, effect) in active_layer.effects.iter_mut().enumerate() {
+                        ui.group(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.strong(match effect {
+                                    FilterEffect::Levels { .. } => "📊 Levels",
+                                    FilterEffect::Blur { .. } => "💧 Gaussian Blur",
+                                    FilterEffect::Sharpen { .. } => "🔪 Sharpen",
+                                    FilterEffect::HSL { .. } => "🌈 HSL Adjustment",
+                                    FilterEffect::Invert { .. } => "🔄 Invert",
+                                    FilterEffect::GradientMap { .. } => "🎨 Gradient Map",
+                                });
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if ui.small_button("✕").on_hover_text("Remove filter").clicked() {
+                                        effect_to_remove = Some(eff_idx);
+                                    }
+                                });
+                            });
+
+                            match effect {
+                                FilterEffect::Levels { min_in, max_in, gamma, min_out, max_out, .. } => {
+                                    ui.horizontal(|ui| {
+                                        ui.label("In:");
+                                        if ui.add(egui::Slider::new(min_in, 0.0..=1.0).text("Min")).changed() { effects_changed = true; }
+                                        if ui.add(egui::Slider::new(max_in, 0.0..=1.0).text("Max")).changed() { effects_changed = true; }
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("Gamma:");
+                                        if ui.add(egui::Slider::new(gamma, 0.1..=5.0)).changed() { effects_changed = true; }
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("Out:");
+                                        if ui.add(egui::Slider::new(min_out, 0.0..=1.0).text("Min")).changed() { effects_changed = true; }
+                                        if ui.add(egui::Slider::new(max_out, 0.0..=1.0).text("Max")).changed() { effects_changed = true; }
+                                    });
+                                }
+                                FilterEffect::Blur { radius, .. } => {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Radius:");
+                                        if ui.add(egui::Slider::new(radius, 1.0..=20.0)).changed() { effects_changed = true; }
+                                    });
+                                }
+                                FilterEffect::Sharpen { strength, .. } => {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Strength:");
+                                        if ui.add(egui::Slider::new(strength, 0.1..=5.0)).changed() { effects_changed = true; }
+                                    });
+                                }
+                                FilterEffect::HSL { hue_shift, sat_mult, light_offset } => {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Hue:");
+                                        if ui.add(egui::Slider::new(hue_shift, -180.0..=180.0)).changed() { effects_changed = true; }
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("Saturation:");
+                                        if ui.add(egui::Slider::new(sat_mult, 0.0..=2.0)).changed() { effects_changed = true; }
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.label("Lightness:");
+                                        if ui.add(egui::Slider::new(light_offset, -1.0..=1.0)).changed() { effects_changed = true; }
+                                    });
+                                }
+                                FilterEffect::Invert { .. } => {
+                                    ui.label("Inverts pixel values across target channel.");
+                                }
+                                FilterEffect::GradientMap { .. } => {
+                                    ui.label("Remaps luminance to gradient palette.");
+                                }
+                            }
+                        });
+                    }
+
+                    if let Some(rem_idx) = effect_to_remove {
+                        active_layer.effects.remove(rem_idx);
+                        effects_changed = true;
+                    }
+
+                    if effects_changed {
+                        active_layer.apply_effects();
+                        recomposite_needed = true;
                     }
                 });
 

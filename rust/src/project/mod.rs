@@ -11,6 +11,7 @@ use crate::graphics::mesh::Mesh;
 use crate::painting::layer::{BlendMode, Layer, LayerStack, LayerType};
 use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
 use crate::painting::anchor::AnchorPoint;
+use crate::painting::filter::FilterEffect;
 
 /// Magic bytes for REMoAINTER Project archives
 pub const RMP_MAGIC: &str = "REMOAINTER_PROJECT_V1";
@@ -82,6 +83,10 @@ pub struct LayerManifest {
     pub opacity: f32,
     pub blend_mode: String,
     pub folder_expanded: bool,
+    #[serde(default)]
+    pub parent_folder_id: Option<usize>,
+    #[serde(default)]
+    pub effects: Vec<FilterEffect>,
     pub color_tag: Option<u8>,
 
     pub fill_color: [f32; 4],
@@ -140,6 +145,19 @@ impl ProjectManager {
                 BlendMode::Screen => "Screen",
                 BlendMode::Overlay => "Overlay",
                 BlendMode::PassThrough => "PassThrough",
+                BlendMode::Add => "Add",
+                BlendMode::Subtract => "Subtract",
+                BlendMode::Darken => "Darken",
+                BlendMode::Lighten => "Lighten",
+                BlendMode::ColorDodge => "ColorDodge",
+                BlendMode::ColorBurn => "ColorBurn",
+                BlendMode::LinearBurn => "LinearBurn",
+                BlendMode::HardLight => "HardLight",
+                BlendMode::SoftLight => "SoftLight",
+                BlendMode::Difference => "Difference",
+                BlendMode::Exclusion => "Exclusion",
+                BlendMode::Color => "Color",
+                BlendMode::Luminosity => "Luminosity",
             };
 
             let (has_mask, mask_type_str, mask_effects) = if let Some(ref m) = layer.mask {
@@ -160,6 +178,8 @@ impl ProjectManager {
                 opacity: layer.opacity,
                 blend_mode: blend_str.to_string(),
                 folder_expanded: layer.folder_expanded,
+                parent_folder_id: layer.parent_folder_id,
+                effects: layer.effects.clone(),
                 color_tag: layer.color_tag,
                 fill_color: layer.fill_color,
                 fill_metallic: layer.fill_metallic,
@@ -379,6 +399,19 @@ impl ProjectManager {
                 "Screen" => BlendMode::Screen,
                 "Overlay" => BlendMode::Overlay,
                 "PassThrough" => BlendMode::PassThrough,
+                "Add" => BlendMode::Add,
+                "Subtract" => BlendMode::Subtract,
+                "Darken" => BlendMode::Darken,
+                "Lighten" => BlendMode::Lighten,
+                "ColorDodge" => BlendMode::ColorDodge,
+                "ColorBurn" => BlendMode::ColorBurn,
+                "LinearBurn" => BlendMode::LinearBurn,
+                "HardLight" => BlendMode::HardLight,
+                "SoftLight" => BlendMode::SoftLight,
+                "Difference" => BlendMode::Difference,
+                "Exclusion" => BlendMode::Exclusion,
+                "Color" => BlendMode::Color,
+                "Luminosity" => BlendMode::Luminosity,
                 _ => BlendMode::Normal,
             };
 
@@ -390,6 +423,27 @@ impl ProjectManager {
                 opacity: lm.opacity,
                 blend_mode,
                 folder_expanded: lm.folder_expanded,
+                parent_folder_id: lm.parent_folder_id,
+                effects: lm.effects.clone(),
+
+                channel_color_enabled: true,
+                channel_metallic_enabled: true,
+                channel_roughness_enabled: true,
+                channel_normal_enabled: true,
+                channel_height_enabled: true,
+
+                channel_color_blend: BlendMode::Normal,
+                channel_metallic_blend: BlendMode::Normal,
+                channel_roughness_blend: BlendMode::Normal,
+                channel_normal_blend: BlendMode::Normal,
+                channel_height_blend: BlendMode::Add,
+
+                channel_color_opacity: 1.0,
+                channel_metallic_opacity: 1.0,
+                channel_roughness_opacity: 1.0,
+                channel_normal_opacity: 1.0,
+                channel_height_opacity: 1.0,
+
                 mask: None,
                 anchor_point: lm.anchor_point.clone(),
                 color_tag: lm.color_tag,

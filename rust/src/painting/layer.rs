@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 use super::anchor::AnchorPoint;
 use super::brush::{sample_brush_alpha, Brush};
+use super::filter::{
+    apply_levels_scalar, gaussian_blur_f32, gaussian_blur_rgba, hsl_to_rgb, rgb_to_hsl,
+    sharpen_f32, sharpen_rgba, FilterEffect, FilterTargetChannel,
+};
 use super::history::HistoryManager;
 use super::mask::{LayerMask, MaskType};
 use crate::graphics::lighting::{pbr_shade, EnvironmentPreset};
@@ -18,10 +22,128 @@ pub enum LayerType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlendMode {
     Normal,
+    PassThrough,
     Multiply,
     Screen,
     Overlay,
-    PassThrough,
+    Add,
+    Subtract,
+    Darken,
+    Lighten,
+    ColorDodge,
+    ColorBurn,
+    LinearBurn,
+    HardLight,
+    SoftLight,
+    Difference,
+    Exclusion,
+    Color,
+    Luminosity,
+}
+
+impl BlendMode {
+    pub fn name(&self) -> &'static str {
+        match self {
+            BlendMode::Normal => "Normal",
+            BlendMode::PassThrough => "Pass Through",
+            BlendMode::Multiply => "Multiply",
+            BlendMode::Screen => "Screen",
+            BlendMode::Overlay => "Overlay",
+            BlendMode::Add => "Linear Dodge (Add)",
+            BlendMode::Subtract => "Subtract",
+            BlendMode::Darken => "Darken",
+            BlendMode::Lighten => "Lighten",
+            BlendMode::ColorDodge => "Color Dodge",
+            BlendMode::ColorBurn => "Color Burn",
+            BlendMode::LinearBurn => "Linear Burn",
+            BlendMode::HardLight => "Hard Light",
+            BlendMode::SoftLight => "Soft Light",
+            BlendMode::Difference => "Difference",
+            BlendMode::Exclusion => "Exclusion",
+            BlendMode::Color => "Color",
+            BlendMode::Luminosity => "Luminosity",
+        }
+    }
+}
+
+pub fn blend_colors(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] {
+    match mode {
+        BlendMode::Normal | BlendMode::PassThrough => top,
+        BlendMode::Multiply => [base[0] * top[0], base[1] * top[1], base[2] * top[2]],
+        BlendMode::Screen => [
+            1.0 - (1.0 - base[0]) * (1.0 - top[0]),
+            1.0 - (1.0 - base[1]) * (1.0 - top[1]),
+            1.0 - (1.0 - base[2]) * (1.0 - top[2]),
+        ],
+        BlendMode::Overlay => {
+            let ch = |b: f32, t: f32| if b < 0.5 { 2.0 * b * t } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - t) };
+            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+        }
+        BlendMode::Add => [(base[0] + top[0]).min(1.0), (base[1] + top[1]).min(1.0), (base[2] + top[2]).min(1.0)],
+        BlendMode::Subtract => [(base[0] - top[0]).max(0.0), (base[1] - top[1]).max(0.0), (base[2] - top[2]).max(0.0)],
+        BlendMode::Darken => [base[0].min(top[0]), base[1].min(top[1]), base[2].min(top[2])],
+        BlendMode::Lighten => [base[0].max(top[0]), base[1].max(top[1]), base[2].max(top[2])],
+        BlendMode::ColorDodge => {
+            let ch = |b: f32, t: f32| if t >= 1.0 { 1.0 } else { (b / (1.0 - t)).min(1.0) };
+            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+        }
+        BlendMode::ColorBurn => {
+            let ch = |b: f32, t: f32| if t <= 0.0 { 0.0 } else { (1.0 - (1.0 - b) / t).max(0.0) };
+            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+        }
+        BlendMode::LinearBurn => [
+            (base[0] + top[0] - 1.0).max(0.0),
+            (base[1] + top[1] - 1.0).max(0.0),
+            (base[2] + top[2] - 1.0).max(0.0),
+        ],
+        BlendMode::HardLight => {
+            let ch = |b: f32, t: f32| if t < 0.5 { 2.0 * b * t } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - t) };
+            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+        }
+        BlendMode::SoftLight => {
+            let ch = |b: f32, t: f32| {
+                if t < 0.5 {
+                    b - (1.0 - 2.0 * t) * b * (1.0 - b)
+                } else {
+                    b + (2.0 * t - 1.0) * (b.sqrt() - b)
+                }
+            };
+            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+        }
+        BlendMode::Difference => [(base[0] - top[0]).abs(), (base[1] - top[1]).abs(), (base[2] - top[2]).abs()],
+        BlendMode::Exclusion => [
+            base[0] + top[0] - 2.0 * base[0] * top[0],
+            base[1] + top[1] - 2.0 * base[1] * top[1],
+            base[2] + top[2] - 2.0 * base[2] * top[2],
+        ],
+        BlendMode::Color => {
+            let (_hb, _sb, lb) = rgb_to_hsl(base[0], base[1], base[2]);
+            let (ht, st, _lt) = rgb_to_hsl(top[0], top[1], top[2]);
+            let (r, g, b) = hsl_to_rgb(ht, st, lb);
+            [r, g, b]
+        }
+        BlendMode::Luminosity => {
+            let (hb, sb, _lb) = rgb_to_hsl(base[0], base[1], base[2]);
+            let (_ht, _st, lt) = rgb_to_hsl(top[0], top[1], top[2]);
+            let (r, g, b) = hsl_to_rgb(hb, sb, lt);
+            [r, g, b]
+        }
+    }
+}
+
+pub fn blend_scalar_channel(base: f32, top: f32, mode: BlendMode) -> f32 {
+    match mode {
+        BlendMode::Normal | BlendMode::PassThrough => top,
+        BlendMode::Multiply => base * top,
+        BlendMode::Screen => 1.0 - (1.0 - base) * (1.0 - top),
+        BlendMode::Overlay => if base < 0.5 { 2.0 * base * top } else { 1.0 - 2.0 * (1.0 - base) * (1.0 - top) },
+        BlendMode::Add => (base + top).min(1.0),
+        BlendMode::Subtract => (base - top).max(0.0),
+        BlendMode::Darken => base.min(top),
+        BlendMode::Lighten => base.max(top),
+        BlendMode::Difference => (base - top).abs(),
+        _ => top,
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +155,27 @@ pub struct Layer {
     pub opacity: f32,
     pub blend_mode: BlendMode,
     pub folder_expanded: bool,
+    pub parent_folder_id: Option<usize>,
+    pub effects: Vec<FilterEffect>,
+
+    // Per-Layer Channel Overrides & Blends (Substance Painter Parity)
+    pub channel_color_enabled: bool,
+    pub channel_metallic_enabled: bool,
+    pub channel_roughness_enabled: bool,
+    pub channel_normal_enabled: bool,
+    pub channel_height_enabled: bool,
+
+    pub channel_color_blend: BlendMode,
+    pub channel_metallic_blend: BlendMode,
+    pub channel_roughness_blend: BlendMode,
+    pub channel_normal_blend: BlendMode,
+    pub channel_height_blend: BlendMode,
+
+    pub channel_color_opacity: f32,
+    pub channel_metallic_opacity: f32,
+    pub channel_roughness_opacity: f32,
+    pub channel_normal_opacity: f32,
+    pub channel_height_opacity: f32,
 
     // Masking & Anchor Points
     pub mask: Option<LayerMask>,
@@ -72,6 +215,27 @@ impl Layer {
             opacity: 1.0,
             blend_mode: BlendMode::Normal,
             folder_expanded: true,
+            parent_folder_id: None,
+            effects: Vec::new(),
+
+            channel_color_enabled: true,
+            channel_metallic_enabled: true,
+            channel_roughness_enabled: true,
+            channel_normal_enabled: true,
+            channel_height_enabled: true,
+
+            channel_color_blend: BlendMode::Normal,
+            channel_metallic_blend: BlendMode::Normal,
+            channel_roughness_blend: BlendMode::Normal,
+            channel_normal_blend: BlendMode::Normal,
+            channel_height_blend: BlendMode::Add,
+
+            channel_color_opacity: 1.0,
+            channel_metallic_opacity: 1.0,
+            channel_roughness_opacity: 1.0,
+            channel_normal_opacity: 1.0,
+            channel_height_opacity: 1.0,
+
             mask: None,
             anchor_point: None,
             color_tag: None,
@@ -99,6 +263,27 @@ impl Layer {
             opacity: 1.0,
             blend_mode: BlendMode::Normal,
             folder_expanded: true,
+            parent_folder_id: None,
+            effects: Vec::new(),
+
+            channel_color_enabled: true,
+            channel_metallic_enabled: true,
+            channel_roughness_enabled: true,
+            channel_normal_enabled: true,
+            channel_height_enabled: true,
+
+            channel_color_blend: BlendMode::Normal,
+            channel_metallic_blend: BlendMode::Normal,
+            channel_roughness_blend: BlendMode::Normal,
+            channel_normal_blend: BlendMode::Normal,
+            channel_height_blend: BlendMode::Add,
+
+            channel_color_opacity: 1.0,
+            channel_metallic_opacity: 1.0,
+            channel_roughness_opacity: 1.0,
+            channel_normal_opacity: 1.0,
+            channel_height_opacity: 1.0,
+
             mask: None,
             anchor_point: None,
             color_tag: None,
@@ -113,6 +298,113 @@ impl Layer {
             height_buffer: vec![0.0; total],
             width,
             height,
+        }
+    }
+
+    pub fn apply_effects(&mut self) {
+        for effect in &self.effects {
+            match effect {
+                FilterEffect::Levels { min_in, max_in, gamma, min_out, max_out, channel } => {
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                        for p in &mut self.color_buffer {
+                            p[0] = apply_levels_scalar(p[0], *min_in, *max_in, *gamma, *min_out, *max_out);
+                            p[1] = apply_levels_scalar(p[1], *min_in, *max_in, *gamma, *min_out, *max_out);
+                            p[2] = apply_levels_scalar(p[2], *min_in, *max_in, *gamma, *min_out, *max_out);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                        for v in &mut self.metallic_buffer {
+                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                        for v in &mut self.roughness_buffer {
+                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                        for v in &mut self.height_buffer {
+                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                        }
+                    }
+                }
+                FilterEffect::Blur { radius, channel } => {
+                    let w = self.width as usize;
+                    let h = self.height as usize;
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                        self.color_buffer = gaussian_blur_rgba(&self.color_buffer, w, h, *radius);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                        self.metallic_buffer = gaussian_blur_f32(&self.metallic_buffer, w, h, *radius);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                        self.roughness_buffer = gaussian_blur_f32(&self.roughness_buffer, w, h, *radius);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                        self.height_buffer = gaussian_blur_f32(&self.height_buffer, w, h, *radius);
+                    }
+                }
+                FilterEffect::Sharpen { strength, channel } => {
+                    let w = self.width as usize;
+                    let h = self.height as usize;
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                        self.color_buffer = sharpen_rgba(&self.color_buffer, w, h, *strength);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                        self.metallic_buffer = sharpen_f32(&self.metallic_buffer, w, h, *strength);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                        self.roughness_buffer = sharpen_f32(&self.roughness_buffer, w, h, *strength);
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                        self.height_buffer = sharpen_f32(&self.height_buffer, w, h, *strength);
+                    }
+                }
+                FilterEffect::HSL { hue_shift, sat_mult, light_offset } => {
+                    for p in &mut self.color_buffer {
+                        let (h, s, l) = rgb_to_hsl(p[0], p[1], p[2]);
+                        let new_h = (h + hue_shift).rem_euclid(360.0);
+                        let new_s = (s * sat_mult).clamp(0.0, 1.0);
+                        let new_l = (l + light_offset).clamp(0.0, 1.0);
+                        let (r, g, b) = hsl_to_rgb(new_h, new_s, new_l);
+                        p[0] = r;
+                        p[1] = g;
+                        p[2] = b;
+                    }
+                }
+                FilterEffect::Invert { channel } => {
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                        for p in &mut self.color_buffer {
+                            p[0] = (1.0 - p[0]).clamp(0.0, 1.0);
+                            p[1] = (1.0 - p[1]).clamp(0.0, 1.0);
+                            p[2] = (1.0 - p[2]).clamp(0.0, 1.0);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                        for v in &mut self.metallic_buffer {
+                            *v = (1.0 - *v).clamp(0.0, 1.0);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                        for v in &mut self.roughness_buffer {
+                            *v = (1.0 - *v).clamp(0.0, 1.0);
+                        }
+                    }
+                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                        for v in &mut self.height_buffer {
+                            *v = -*v;
+                        }
+                    }
+                }
+                FilterEffect::GradientMap { color_start, color_end } => {
+                    for p in &mut self.color_buffer {
+                        let lum = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114).clamp(0.0, 1.0);
+                        p[0] = color_start[0] * (1.0 - lum) + color_end[0] * lum;
+                        p[1] = color_start[1] * (1.0 - lum) + color_end[1] * lum;
+                        p[2] = color_start[2] * (1.0 - lum) + color_end[2] * lum;
+                    }
+                }
+            }
         }
     }
 
@@ -1064,8 +1356,37 @@ impl LayerStack {
         }
         self.composite_height.fill(0.0);
 
+        // Apply layer effects
         for layer in &mut self.layers {
-            if !layer.visible {
+            if !layer.effects.is_empty() {
+                layer.apply_effects();
+            }
+        }
+
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self.layers.iter().map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id)).collect();
+
+        for layer in &mut self.layers {
+            if layer.layer_type == LayerType::Folder || !layer.visible {
+                continue;
+            }
+
+            // Check parent folder visibility and opacity hierarchy
+            let mut folder_visible = true;
+            let mut folder_opacity = 1.0f32;
+            let mut curr_parent = layer.parent_folder_id;
+            while let Some(parent_id) = curr_parent {
+                if let Some(parent) = layers_meta.iter().find(|m| m.0 == parent_id) {
+                    if !parent.1 {
+                        folder_visible = false;
+                        break;
+                    }
+                    folder_opacity *= parent.2;
+                    curr_parent = parent.3;
+                } else {
+                    break;
+                }
+            }
+            if !folder_visible {
                 continue;
             }
 
@@ -1073,7 +1394,7 @@ impl LayerStack {
                 mask.recompute(baked_curvature, baked_ao);
             }
 
-            let layer_op = layer.opacity;
+            let layer_op = layer.opacity * folder_opacity;
 
             for i in 0..total {
                 let mask_val = if let Some(ref mask) = layer.mask {
@@ -1081,48 +1402,64 @@ impl LayerStack {
                 } else {
                     1.0
                 };
-                let effective_alpha = (layer.color_buffer[i][3] * layer_op * mask_val).clamp(0.0, 1.0);
+                let base_alpha = (layer.color_buffer[i][3] * layer_op * mask_val).clamp(0.0, 1.0);
 
-                if effective_alpha > 0.001 {
-                    let base_c = self.composite_color[i];
-                    let top_c = layer.color_buffer[i];
+                if base_alpha > 0.001 {
+                    // 1. Color channel
+                    if layer.channel_color_enabled {
+                        let eff_a = (base_alpha * layer.channel_color_opacity).clamp(0.0, 1.0);
+                        if eff_a > 0.001 {
+                            let base_c = [self.composite_color[i][0], self.composite_color[i][1], self.composite_color[i][2]];
+                            let top_c = [layer.color_buffer[i][0], layer.color_buffer[i][1], layer.color_buffer[i][2]];
+                            let blended = blend_colors(base_c, top_c, layer.channel_color_blend);
+                            self.composite_color[i] = [
+                                base_c[0] * (1.0 - eff_a) + blended[0] * eff_a,
+                                base_c[1] * (1.0 - eff_a) + blended[1] * eff_a,
+                                base_c[2] * (1.0 - eff_a) + blended[2] * eff_a,
+                                1.0,
+                            ];
+                        }
+                    }
 
-                    let blended_c = match layer.blend_mode {
-                        BlendMode::Normal | BlendMode::PassThrough => top_c,
-                        BlendMode::Multiply => [base_c[0] * top_c[0], base_c[1] * top_c[1], base_c[2] * top_c[2], top_c[3]],
-                        BlendMode::Screen => [
-                            1.0 - (1.0 - base_c[0]) * (1.0 - top_c[0]),
-                            1.0 - (1.0 - base_c[1]) * (1.0 - top_c[1]),
-                            1.0 - (1.0 - base_c[2]) * (1.0 - top_c[2]),
-                            top_c[3],
-                        ],
-                        BlendMode::Overlay => [
-                            if base_c[0] < 0.5 { 2.0 * base_c[0] * top_c[0] } else { 1.0 - 2.0 * (1.0 - base_c[0]) * (1.0 - top_c[0]) },
-                            if base_c[1] < 0.5 { 2.0 * base_c[1] * top_c[1] } else { 1.0 - 2.0 * (1.0 - base_c[1]) * (1.0 - top_c[1]) },
-                            if base_c[2] < 0.5 { 2.0 * base_c[2] * top_c[2] } else { 1.0 - 2.0 * (1.0 - base_c[2]) * (1.0 - top_c[2]) },
-                            top_c[3],
-                        ],
-                    };
+                    // 2. Metallic channel
+                    if layer.channel_metallic_enabled {
+                        let eff_a = (base_alpha * layer.channel_metallic_opacity).clamp(0.0, 1.0);
+                        if eff_a > 0.001 {
+                            let blended = blend_scalar_channel(self.composite_metallic[i], layer.metallic_buffer[i], layer.channel_metallic_blend);
+                            self.composite_metallic[i] = self.composite_metallic[i] * (1.0 - eff_a) + blended * eff_a;
+                        }
+                    }
 
-                    self.composite_color[i] = [
-                        base_c[0] * (1.0 - effective_alpha) + blended_c[0] * effective_alpha,
-                        base_c[1] * (1.0 - effective_alpha) + blended_c[1] * effective_alpha,
-                        base_c[2] * (1.0 - effective_alpha) + blended_c[2] * effective_alpha,
-                        1.0,
-                    ];
+                    // 3. Roughness channel
+                    if layer.channel_roughness_enabled {
+                        let eff_a = (base_alpha * layer.channel_roughness_opacity).clamp(0.0, 1.0);
+                        if eff_a > 0.001 {
+                            let blended = blend_scalar_channel(self.composite_roughness[i], layer.roughness_buffer[i], layer.channel_roughness_blend);
+                            self.composite_roughness[i] = self.composite_roughness[i] * (1.0 - eff_a) + blended * eff_a;
+                        }
+                    }
 
-                    self.composite_metallic[i] = self.composite_metallic[i] * (1.0 - effective_alpha) + layer.metallic_buffer[i] * effective_alpha;
-                    self.composite_roughness[i] = self.composite_roughness[i] * (1.0 - effective_alpha) + layer.roughness_buffer[i] * effective_alpha;
-                    self.composite_height[i] = self.composite_height[i] * (1.0 - effective_alpha) + layer.height_buffer[i] * effective_alpha;
+                    // 4. Height channel
+                    if layer.channel_height_enabled {
+                        let eff_a = (base_alpha * layer.channel_height_opacity).clamp(0.0, 1.0);
+                        if eff_a > 0.001 {
+                            let blended = blend_scalar_channel(self.composite_height[i], layer.height_buffer[i], layer.channel_height_blend);
+                            self.composite_height[i] = self.composite_height[i] * (1.0 - eff_a) + blended * eff_a;
+                        }
+                    }
 
-                    if layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
-                        let base_n = self.composite_normal[i];
-                        let top_n = layer.normal_buffer[i];
-                        self.composite_normal[i] = [
-                            base_n[0] * (1.0 - effective_alpha) + top_n[0] * effective_alpha,
-                            base_n[1] * (1.0 - effective_alpha) + top_n[1] * effective_alpha,
-                            base_n[2] * (1.0 - effective_alpha) + top_n[2] * effective_alpha,
-                        ];
+                    // 5. Normal channel
+                    if layer.channel_normal_enabled && layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
+                        let eff_a = (base_alpha * layer.channel_normal_opacity).clamp(0.0, 1.0);
+                        if eff_a > 0.001 {
+                            let base_n = self.composite_normal[i];
+                            let top_n = layer.normal_buffer[i];
+                            self.composite_normal[i] = [
+                                base_n[0] * (1.0 - eff_a) + top_n[0] * eff_a,
+                                base_n[1] * (1.0 - eff_a) + top_n[1] * eff_a,
+                                base_n[2] * (1.0 - eff_a) + top_n[2] * eff_a,
+                            ];
+                        }
                     }
                 }
             }
@@ -1196,52 +1533,88 @@ impl LayerStack {
         let mut base_norm = [0.5f32, 0.5, 1.0];
         let mut base_height = 0.0f32;
 
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self.layers.iter().map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id)).collect();
+
         for layer in &self.layers {
-            if !layer.visible {
+            if layer.layer_type == LayerType::Folder || !layer.visible {
                 continue;
             }
+
+            let mut folder_visible = true;
+            let mut folder_opacity = 1.0f32;
+            let mut curr_parent = layer.parent_folder_id;
+            while let Some(parent_id) = curr_parent {
+                if let Some(parent) = layers_meta.iter().find(|m| m.0 == parent_id) {
+                    if !parent.1 {
+                        folder_visible = false;
+                        break;
+                    }
+                    folder_opacity *= parent.2;
+                    curr_parent = parent.3;
+                } else {
+                    break;
+                }
+            }
+            if !folder_visible {
+                continue;
+            }
+
             let mask_val = if let Some(ref mask) = layer.mask {
                 mask.buffer.get(i).copied().unwrap_or(1.0)
             } else {
                 1.0
             };
-            let effective_alpha = (layer.color_buffer[i][3] * layer.opacity * mask_val).clamp(0.0, 1.0);
-            if effective_alpha > 0.001 {
-                let top_c = layer.color_buffer[i];
-                let blended_c = match layer.blend_mode {
-                    BlendMode::Normal | BlendMode::PassThrough => top_c,
-                    BlendMode::Multiply => [base_c[0] * top_c[0], base_c[1] * top_c[1], base_c[2] * top_c[2], top_c[3]],
-                    BlendMode::Screen => [
-                        1.0 - (1.0 - base_c[0]) * (1.0 - top_c[0]),
-                        1.0 - (1.0 - base_c[1]) * (1.0 - top_c[1]),
-                        1.0 - (1.0 - base_c[2]) * (1.0 - top_c[2]),
-                        top_c[3],
-                    ],
-                    BlendMode::Overlay => [
-                        if base_c[0] < 0.5 { 2.0 * base_c[0] * top_c[0] } else { 1.0 - 2.0 * (1.0 - base_c[0]) * (1.0 - top_c[0]) },
-                        if base_c[1] < 0.5 { 2.0 * base_c[1] * top_c[1] } else { 1.0 - 2.0 * (1.0 - base_c[1]) * (1.0 - top_c[1]) },
-                        if base_c[2] < 0.5 { 2.0 * base_c[2] * top_c[2] } else { 1.0 - 2.0 * (1.0 - base_c[2]) * (1.0 - top_c[2]) },
-                        top_c[3],
-                    ],
-                };
+            let base_alpha = (layer.color_buffer[i][3] * layer.opacity * folder_opacity * mask_val).clamp(0.0, 1.0);
+            if base_alpha > 0.001 {
+                if layer.channel_color_enabled {
+                    let eff_a = (base_alpha * layer.channel_color_opacity).clamp(0.0, 1.0);
+                    if eff_a > 0.001 {
+                        let b_c = [base_c[0], base_c[1], base_c[2]];
+                        let top_c = [layer.color_buffer[i][0], layer.color_buffer[i][1], layer.color_buffer[i][2]];
+                        let blended = blend_colors(b_c, top_c, layer.channel_color_blend);
+                        base_c = [
+                            base_c[0] * (1.0 - eff_a) + blended[0] * eff_a,
+                            base_c[1] * (1.0 - eff_a) + blended[1] * eff_a,
+                            base_c[2] * (1.0 - eff_a) + blended[2] * eff_a,
+                            1.0,
+                        ];
+                    }
+                }
 
-                base_c = [
-                    base_c[0] * (1.0 - effective_alpha) + blended_c[0] * effective_alpha,
-                    base_c[1] * (1.0 - effective_alpha) + blended_c[1] * effective_alpha,
-                    base_c[2] * (1.0 - effective_alpha) + blended_c[2] * effective_alpha,
-                    1.0,
-                ];
-                base_met = base_met * (1.0 - effective_alpha) + layer.metallic_buffer[i] * effective_alpha;
-                base_rough = base_rough * (1.0 - effective_alpha) + layer.roughness_buffer[i] * effective_alpha;
-                base_height = base_height * (1.0 - effective_alpha) + layer.height_buffer[i] * effective_alpha;
+                if layer.channel_metallic_enabled {
+                    let eff_a = (base_alpha * layer.channel_metallic_opacity).clamp(0.0, 1.0);
+                    if eff_a > 0.001 {
+                        let blended = blend_scalar_channel(base_met, layer.metallic_buffer[i], layer.channel_metallic_blend);
+                        base_met = base_met * (1.0 - eff_a) + blended * eff_a;
+                    }
+                }
 
-                if layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
-                    let top_n = layer.normal_buffer[i];
-                    base_norm = [
-                        base_norm[0] * (1.0 - effective_alpha) + top_n[0] * effective_alpha,
-                        base_norm[1] * (1.0 - effective_alpha) + top_n[1] * effective_alpha,
-                        base_norm[2] * (1.0 - effective_alpha) + top_n[2] * effective_alpha,
-                    ];
+                if layer.channel_roughness_enabled {
+                    let eff_a = (base_alpha * layer.channel_roughness_opacity).clamp(0.0, 1.0);
+                    if eff_a > 0.001 {
+                        let blended = blend_scalar_channel(base_rough, layer.roughness_buffer[i], layer.channel_roughness_blend);
+                        base_rough = base_rough * (1.0 - eff_a) + blended * eff_a;
+                    }
+                }
+
+                if layer.channel_height_enabled {
+                    let eff_a = (base_alpha * layer.channel_height_opacity).clamp(0.0, 1.0);
+                    if eff_a > 0.001 {
+                        let blended = blend_scalar_channel(base_height, layer.height_buffer[i], layer.channel_height_blend);
+                        base_height = base_height * (1.0 - eff_a) + blended * eff_a;
+                    }
+                }
+
+                if layer.channel_normal_enabled && layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
+                    let eff_a = (base_alpha * layer.channel_normal_opacity).clamp(0.0, 1.0);
+                    if eff_a > 0.001 {
+                        let top_n = layer.normal_buffer[i];
+                        base_norm = [
+                            base_norm[0] * (1.0 - eff_a) + top_n[0] * eff_a,
+                            base_norm[1] * (1.0 - eff_a) + top_n[1] * eff_a,
+                            base_norm[2] * (1.0 - eff_a) + top_n[2] * eff_a,
+                        ];
+                    }
                 }
             }
         }
@@ -1311,5 +1684,63 @@ impl LayerStack {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    #[test]
+    fn test_all_18_blend_modes() {
+        let base = [0.5, 0.4, 0.3];
+        let top = [0.8, 0.2, 0.6];
+        let modes = [
+            BlendMode::Normal, BlendMode::PassThrough, BlendMode::Multiply, BlendMode::Screen,
+            BlendMode::Overlay, BlendMode::Add, BlendMode::Subtract, BlendMode::Darken,
+            BlendMode::Lighten, BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::LinearBurn,
+            BlendMode::HardLight, BlendMode::SoftLight, BlendMode::Difference, BlendMode::Exclusion,
+            BlendMode::Color, BlendMode::Luminosity,
+        ];
+        for mode in modes {
+            let c = blend_colors(base, top, mode);
+            assert!(c[0] >= 0.0 && c[0] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
+            assert!(c[1] >= 0.0 && c[1] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
+            assert!(c[2] >= 0.0 && c[2] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
+
+            let s = blend_scalar_channel(0.5, 0.8, mode);
+            assert!(s >= 0.0 && s <= 1.0, "Scalar mode {:?} out of bounds: {}", mode, s);
+        }
+    }
+
+    #[test]
+    fn test_folder_hierarchy_and_channel_overrides() {
+        let mut stack = LayerStack::new(4, 4);
+        stack.layers.clear();
+
+        // Folder with id 10
+        let folder = Layer::new_folder(10, "Base Folder", 4, 4);
+        stack.layers.push(folder);
+
+        // Child fill layer with parent_folder_id = 10
+        let mut child = Layer::new_fill(11, "Red Child", [1.0, 0.0, 0.0, 1.0], 1.0, 0.1, 4, 4);
+        child.parent_folder_id = Some(10);
+        child.channel_roughness_enabled = false; // Override: do not contribute roughness
+        stack.layers.push(child);
+
+        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        // Child color should be visible because folder is visible
+        assert_eq!(stack.composite_color[0], [1.0, 0.0, 0.0, 1.0]);
+        // Metallic should be contributed
+        assert_eq!(stack.composite_metallic[0], 1.0);
+        // Roughness channel was disabled, so it should stay default (0.5)
+        assert_eq!(stack.composite_roughness[0], 0.5);
+
+        // Now hide the folder
+        stack.layers[0].visible = false;
+        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        // Since parent folder is hidden, child should not contribute
+        assert_eq!(stack.composite_color[0], [0.15, 0.15, 0.16, 1.0]);
+        assert_eq!(stack.composite_metallic[0], 0.0);
     }
 }

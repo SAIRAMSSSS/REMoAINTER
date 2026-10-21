@@ -1,6 +1,7 @@
 pub mod anchor;
 pub mod brush;
 pub mod export;
+pub mod filter;
 pub mod history;
 pub mod layer;
 pub mod mask;
@@ -11,6 +12,7 @@ pub mod texture_set;
 pub use anchor::*;
 pub use brush::*;
 pub use export::*;
+pub use filter::*;
 pub use history::*;
 pub use layer::*;
 pub use mask::*;
