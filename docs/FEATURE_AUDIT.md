@@ -20,7 +20,7 @@ Status Legend:
 | **Save Project** | `Ctrl+S` | **Implemented** | `src/project/mod.rs`: Full versioned container format (`.rmp`) saving JSON manifest, mesh OBJ, layer buffers, and baked maps. |
 | **Save Project As...** | `Ctrl+Shift+S` | **Implemented** | File picker for project save with versioned `.rmp` container. |
 | **Autosave & Snapshots** | — | **Implemented** | `src/project/mod.rs` & `app.rs`: 180s background autosave (`autosave.rmp`) and manual/auto snapshot history modal. |
-| **Import 3D Mesh (OBJ)...**| `Ctrl+Shift+O` | **Implemented** | `src/ui/app.rs`: `import_mesh_file()`. Loads OBJ via `tobj`, recalculates bounds, updates GPU mesh, bakes maps. |
+| **Import 3D Mesh (OBJ/FBX/glTF)...**| `Ctrl+Shift+O` | **Implemented** | `src/graphics/mesh.rs`: `load_file()` supports Wavefront OBJ (`tobj`), Autodesk FBX (`ufbx`), and glTF 2.0 / GLB (`gltf`). Fails with clear error feedback if file is invalid (no silent fallback). |
 | **Reload Mesh** | `Ctrl+R` | **Implemented** | `src/ui/app.rs`: `reload_mesh()`. Hot-reloads source mesh from disk or primitive while preserving all painted layer channels and history intact. |
 | **Bake Mesh Maps...** | `Ctrl+Shift+B`| **Implemented** | `src/ui/app.rs`: `ui_baker_modal()` & `ui_baker_studio_mode()`. |
 | **Export Textures...** | `Ctrl+Shift+E`| **Implemented** | `src/painting/export.rs`: Full Substance Painter-parity export engine with presets (Unreal ORM, Unity URP/HDRP MaskMap, glTF 2.0, Generic PBR, OpenEXR 32-bit Float), 8/16/32-bit depth, UV edge dilation/seam padding, resolution override, and logging. |
