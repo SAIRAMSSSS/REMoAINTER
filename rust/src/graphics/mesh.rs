@@ -236,6 +236,91 @@ impl Mesh {
         Ok(mesh)
     }
 
+    /// Serializes the mesh to Wavefront OBJ format string for project archive embedding
+    pub fn export_obj_string(&self) -> String {
+        let mut s = String::with_capacity(self.vertices.len() * 48);
+        s.push_str(&format!("# REMoAINTER Mesh Export: {}\n", self.name));
+        for v in &self.vertices {
+            s.push_str(&format!("v {:.6} {:.6} {:.6}\n", v[0], v[1], v[2]));
+        }
+        for n in &self.normals {
+            s.push_str(&format!("vn {:.6} {:.6} {:.6}\n", n[0], n[1], n[2]));
+        }
+        for uv in &self.uvs {
+            s.push_str(&format!("vt {:.6} {:.6}\n", uv[0], uv[1]));
+        }
+        for chunk in self.indices.chunks_exact(3) {
+            let i0 = chunk[0] + 1;
+            let i1 = chunk[1] + 1;
+            let i2 = chunk[2] + 1;
+            s.push_str(&format!("f {}/{}/{} {}/{}/{} {}/{}/{}\n", i0, i0, i0, i1, i1, i1, i2, i2, i2));
+        }
+        s
+    }
+
+    /// Deserializes a mesh from Wavefront OBJ string
+    pub fn from_obj_string(content: &str, name: &str) -> Result<Self, String> {
+        let mut cursor = std::io::Cursor::new(content.as_bytes());
+        let (models, _) = tobj::load_obj_buf(
+            &mut cursor,
+            &tobj::LoadOptions {
+                triangulate: true,
+                single_index: true,
+                ..Default::default()
+            },
+            |_| Err(tobj::LoadError::GenericFailure),
+        ).map_err(|e| format!("Failed to parse embedded OBJ: {}", e))?;
+
+        if models.is_empty() {
+            return Err("Embedded OBJ contains no geometry models".to_string());
+        }
+
+        let mut vertices = Vec::new();
+        let mut normals = Vec::new();
+        let mut uvs = Vec::new();
+        let mut indices = Vec::new();
+        let mut index_offset = 0u32;
+
+        for model in models {
+            let m = model.mesh;
+            for i in (0..m.positions.len()).step_by(3) {
+                vertices.push([m.positions[i], m.positions[i + 1], m.positions[i + 2]]);
+            }
+            if !m.normals.is_empty() {
+                for i in (0..m.normals.len()).step_by(3) {
+                    normals.push([m.normals[i], m.normals[i + 1], m.normals[i + 2]]);
+                }
+            } else {
+                normals.resize(vertices.len(), [0.0, 1.0, 0.0]);
+            }
+            if !m.texcoords.is_empty() {
+                for i in (0..m.texcoords.len()).step_by(2) {
+                    let u = m.texcoords[i].rem_euclid(1.0);
+                    let v = m.texcoords[i + 1].rem_euclid(1.0);
+                    uvs.push([u, v]);
+                }
+            } else {
+                uvs.resize(vertices.len(), [0.0, 0.0]);
+            }
+            for idx in m.indices {
+                indices.push(idx + index_offset);
+            }
+            index_offset = vertices.len() as u32;
+        }
+
+        let mut mesh = Self {
+            name: name.to_string(),
+            vertices,
+            normals,
+            tangents: Vec::new(),
+            uvs,
+            indices,
+        };
+        mesh.normalize_to_unit();
+        mesh.compute_tangents();
+        Ok(mesh)
+    }
+
     /// Automatically centers and scales mesh vertices to fit within unit sphere [-1, 1]
     pub fn normalize_to_unit(&mut self) {
         if self.vertices.is_empty() {

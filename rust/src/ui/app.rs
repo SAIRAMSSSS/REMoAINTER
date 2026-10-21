@@ -150,6 +150,16 @@ pub struct RemoainterApp {
     // Advanced Tools
     pub poly_fill_mode: usize, // 0: Triangle, 1: UV Island, 2: Mesh
     pub clone_source_uv: Option<[f32; 2]>,
+
+    // Project Management (File > Save/Load, Autosave, Snapshots)
+    pub project_name: String,
+    pub current_project_path: Option<PathBuf>,
+    pub project_is_dirty: bool,
+    pub last_autosave_time: std::time::Instant,
+    pub autosave_interval_secs: u64,
+    pub mesh_source_path: Option<String>,
+    pub snapshots: Vec<crate::project::SnapshotInfo>,
+    pub show_snapshots_dialog: bool,
 }
 
 fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
@@ -408,6 +418,15 @@ impl Default for RemoainterApp {
             new_proj_import_cameras: true,
             poly_fill_mode: 1, // UV Island by default
             clone_source_uv: None,
+
+            project_name: "Untitled Project".to_string(),
+            current_project_path: None,
+            project_is_dirty: false,
+            last_autosave_time: std::time::Instant::now(),
+            autosave_interval_secs: 180,
+            mesh_source_path: None,
+            snapshots: Vec::new(),
+            show_snapshots_dialog: false,
         };
 
         // Material Calibration Sphere is active by default
@@ -678,6 +697,7 @@ impl RemoainterApp {
         match Mesh::load_obj(path.to_str().unwrap_or("")) {
             Ok(loaded_mesh) => {
                 self.mesh = loaded_mesh;
+                self.mesh_source_path = Some(path.display().to_string());
                 self.selected_model_idx = 99; // custom imported mesh
                 self.status_message = format!("Imported 3D Model: {}", path.display());
                 self.history.push(format!("{:02}  Import Mesh ({})", self.history.len() + 1, self.mesh.name));
@@ -718,6 +738,256 @@ impl RemoainterApp {
             Err(e) => {
                 self.status_message = format!("Failed to import mesh {}: {}", path.display(), e);
             }
+        }
+    }
+
+    /// Saves the active project to current path or prompts for path
+    pub fn save_project(&mut self) {
+        if let Some(ref path) = self.current_project_path.clone() {
+            let res = crate::project::ProjectManager::save_project(
+                path,
+                &self.project_name,
+                &self.mesh,
+                self.mesh_source_path.as_deref(),
+                &self.layer_stack,
+                &self.baked_maps,
+                &self.baker_options,
+                (self.camera_yaw, self.camera_pitch, self.camera_dist),
+                (self.exposure, self.light_intensity, self.env_rotation, self.selected_env_idx),
+            );
+            match res {
+                Ok(_) => {
+                    self.project_is_dirty = false;
+                    self.status_message = format!("Saved project to {}", path.display());
+                    self.history.push(format!("{:02}  Save Project", self.history.len() + 1));
+                    self.logs.push((
+                        chrono::Local::now().format("%H:%M:%S").to_string(),
+                        "INFO".into(),
+                        format!("Saved project file: {}", path.display()),
+                    ));
+                }
+                Err(e) => {
+                    self.status_message = format!("Failed to save project: {}", e);
+                    self.logs.push((
+                        chrono::Local::now().format("%H:%M:%S").to_string(),
+                        "ERROR".into(),
+                        format!("Project save error: {}", e),
+                    ));
+                }
+            }
+        } else {
+            self.save_project_as();
+        }
+    }
+
+    /// Prompts user for file location and saves project
+    pub fn save_project_as(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title("Save REMoAINTER Project")
+            .add_filter("REMoAINTER Project (*.rmp)", &["rmp"])
+            .set_file_name(&format!("{}.rmp", self.project_name))
+            .save_file()
+        {
+            if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                self.project_name = stem.to_string();
+            }
+            self.current_project_path = Some(path);
+            self.save_project();
+        }
+    }
+
+    /// Opens a `.rmp` project file from disk
+    pub fn open_project(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title("Open REMoAINTER Project")
+            .add_filter("REMoAINTER Project (*.rmp)", &["rmp"])
+            .pick_file()
+        {
+            match crate::project::ProjectManager::load_project(&path) {
+                Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) => {
+                    self.project_name = manifest.project_name;
+                    self.current_project_path = Some(path.clone());
+                    self.mesh = mesh;
+                    self.mesh_source_path = manifest.mesh_file_path;
+                    self.layer_stack = layer_stack;
+                    self.baked_maps = baked_maps;
+                    self.baker_options = baker_options;
+                    self.camera_yaw = manifest.camera_yaw;
+                    self.camera_pitch = manifest.camera_pitch;
+                    self.camera_dist = manifest.camera_dist;
+                    self.exposure = manifest.exposure;
+                    self.light_intensity = manifest.light_intensity;
+                    self.env_rotation = manifest.env_rotation;
+                    self.selected_env_idx = manifest.selected_env_idx;
+                    self.project_is_dirty = false;
+                    self.texture_needs_update = true;
+
+                    // Update GPU mesh in Viewport
+                    if let Some(ref vp_mutex) = self.viewport_gl {
+                        if let Some(ref gl) = self.gl {
+                            if let Ok(mut vp) = vp_mutex.lock() {
+                                vp.set_mesh(gl, &self.mesh);
+                            }
+                        }
+                    }
+
+                    self.recompute_composite();
+                    self.status_message = format!("Opened project: {}", path.display());
+                    self.history.push(format!("{:02}  Open Project ({})", self.history.len() + 1, self.project_name));
+                    self.logs.push((
+                        chrono::Local::now().format("%H:%M:%S").to_string(),
+                        "INFO".into(),
+                        format!("Loaded project archive: {} ({} layers)", path.display(), self.layer_stack.layers.len()),
+                    ));
+                }
+                Err(e) => {
+                    self.status_message = format!("Failed to open project: {}", e);
+                    self.logs.push((
+                        chrono::Local::now().format("%H:%M:%S").to_string(),
+                        "ERROR".into(),
+                        format!("Project open error: {}", e),
+                    ));
+                }
+            }
+        }
+    }
+
+    /// Automatically saves the project in the background
+    pub fn trigger_autosave(&mut self) {
+        let autosave_path = crate::project::ProjectManager::autosave_path();
+        if let Err(e) = crate::project::ProjectManager::save_project(
+            &autosave_path,
+            &format!("{} (Autosave)", self.project_name),
+            &self.mesh,
+            self.mesh_source_path.as_deref(),
+            &self.layer_stack,
+            &self.baked_maps,
+            &self.baker_options,
+            (self.camera_yaw, self.camera_pitch, self.camera_dist),
+            (self.exposure, self.light_intensity, self.env_rotation, self.selected_env_idx),
+        ) {
+            eprintln!("[AUTOSAVE ERROR] {}", e);
+        } else {
+            self.last_autosave_time = std::time::Instant::now();
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Autosaved project to {}", autosave_path.display()),
+            ));
+        }
+    }
+
+    /// Creates a project snapshot
+    pub fn take_snapshot(&mut self, name: &str) {
+        let snap_dir = crate::project::ProjectManager::snapshots_dir();
+        let _ = std::fs::create_dir_all(&snap_dir);
+        let id = self.snapshots.len() + 1;
+        let snap_path = snap_dir.join(format!("snapshot_{}_{}.rmp", id, name.replace(' ', "_")));
+
+        if let Ok(_) = crate::project::ProjectManager::save_project(
+            &snap_path,
+            name,
+            &self.mesh,
+            self.mesh_source_path.as_deref(),
+            &self.layer_stack,
+            &self.baked_maps,
+            &self.baker_options,
+            (self.camera_yaw, self.camera_pitch, self.camera_dist),
+            (self.exposure, self.light_intensity, self.env_rotation, self.selected_env_idx),
+        ) {
+            let snap = crate::project::SnapshotInfo {
+                id,
+                name: name.to_string(),
+                timestamp: chrono::Local::now().format("%H:%M:%S").to_string(),
+                path: snap_path,
+            };
+            self.snapshots.push(snap);
+            self.status_message = format!("Captured snapshot: {}", name);
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Created project snapshot: {}", name),
+            ));
+        }
+    }
+
+    /// Restores a project snapshot
+    pub fn restore_snapshot(&mut self, idx: usize) {
+        if let Some(snap) = self.snapshots.get(idx).cloned() {
+            if let Ok((_, mesh, layer_stack, baked_maps, baker_options)) = crate::project::ProjectManager::load_project(&snap.path) {
+                self.mesh = mesh;
+                self.layer_stack = layer_stack;
+                self.baked_maps = baked_maps;
+                self.baker_options = baker_options;
+                self.texture_needs_update = true;
+
+                if let Some(ref vp_mutex) = self.viewport_gl {
+                    if let Some(ref gl) = self.gl {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            vp.set_mesh(gl, &self.mesh);
+                        }
+                    }
+                }
+                self.recompute_composite();
+                self.status_message = format!("Restored snapshot: {}", snap.name);
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    format!("Restored state from snapshot: {}", snap.name),
+                ));
+            }
+        }
+    }
+
+    /// Reloads the active mesh from disk preserving all layers and channels
+    pub fn reload_mesh(&mut self) {
+        if let Some(ref path_str) = self.mesh_source_path.clone() {
+            let path = PathBuf::from(path_str);
+            if path.exists() {
+                match Mesh::load_obj(&path) {
+                    Ok(reloaded_mesh) => {
+                        self.mesh = reloaded_mesh;
+                        self.baked_maps = BakerEngine::bake_all(
+                            &self.mesh.vertices,
+                            &self.mesh.normals,
+                            &self.mesh.uvs,
+                            &self.mesh.indices,
+                            &self.baker_options,
+                            None,
+                            None,
+                        );
+                        if let Some(ref vp_mutex) = self.viewport_gl {
+                            if let Some(ref gl) = self.gl {
+                                if let Ok(mut vp) = vp_mutex.lock() {
+                                    vp.set_mesh(gl, &self.mesh);
+                                }
+                            }
+                        }
+                        self.recompute_composite();
+                        self.status_message = format!("Reloaded mesh: {} (paint preserved)", path.display());
+                        self.history.push(format!("{:02}  Reload Mesh ({})", self.history.len() + 1, self.mesh.name));
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "INFO".into(),
+                            format!("Reloaded 3D mesh from disk: {}. Retained {} paint layers.", path.display(), self.layer_stack.layers.len()),
+                        ));
+                    }
+                    Err(e) => {
+                        self.status_message = format!("Failed to reload mesh: {}", e);
+                    }
+                }
+            } else {
+                self.status_message = format!("Mesh source file not found: {}", path_str);
+            }
+        } else {
+            // Re-initialize standard primitive model
+            self.load_model(self.selected_model_idx);
+            self.status_message = format!("Reloaded base model: {}", self.mesh.name);
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Reloaded standard primitive model: {}", self.mesh.name),
+            ));
         }
     }
 
@@ -956,8 +1226,21 @@ impl eframe::App for RemoainterApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_substance_theme(ctx);
 
+        // Automatic background autosave
+        if self.project_is_dirty && self.last_autosave_time.elapsed().as_secs() >= self.autosave_interval_secs {
+            self.trigger_autosave();
+        }
+
         // Global hotkey processing (Substance Painter standard)
-        if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::N)) {
+        if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::S)) {
+            self.save_project();
+        } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::S)) {
+            self.save_project_as();
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::O)) {
+            self.open_project();
+        } else if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::R)) {
+            self.reload_mesh();
+        } else if ctx.input(|i| i.modifiers.command && i.key_pressed(egui::Key::N)) {
             self.show_new_project_dialog = true;
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::B)) {
             self.show_baker_dialog = true;
@@ -1117,7 +1400,24 @@ impl eframe::App for RemoainterApp {
                             self.show_new_project_dialog = true;
                             ui.close_menu();
                         }
-                        if ui.button("📦 Import 3D Mesh (OBJ)... (Ctrl+O)").clicked() {
+                        if ui.button("Open Project... (Ctrl+O)").clicked() {
+                            self.open_project();
+                            ui.close_menu();
+                        }
+                        if ui.button("Save Project (Ctrl+S)").clicked() {
+                            self.save_project();
+                            ui.close_menu();
+                        }
+                        if ui.button("Save Project As... (Ctrl+Shift+S)").clicked() {
+                            self.save_project_as();
+                            ui.close_menu();
+                        }
+                        if ui.button("Snapshots & Autosave Recovery...").clicked() {
+                            self.show_snapshots_dialog = true;
+                            ui.close_menu();
+                        }
+                        ui.separator();
+                        if ui.button("📦 Import 3D Mesh (OBJ)...").clicked() {
                             if let Some(path) = rfd::FileDialog::new()
                                 .set_title("Import 3D Mesh — REMoAINTER")
                                 .add_filter("3D Mesh (*.obj)", &["obj", "OBJ"])
@@ -1128,6 +1428,11 @@ impl eframe::App for RemoainterApp {
                             }
                             ui.close_menu();
                         }
+                        if ui.button("🔄 Reload Current Mesh (Ctrl+R)").clicked() {
+                            self.reload_mesh();
+                            ui.close_menu();
+                        }
+                        ui.separator();
                         if ui.button("Bake Mesh Maps... (Ctrl+Shift+B)").clicked() {
                             self.show_baker_dialog = true;
                             ui.close_menu();
@@ -1201,6 +1506,11 @@ impl eframe::App for RemoainterApp {
                         }
                         if ui.button("Test Asset: Retro Radio").clicked() {
                             self.load_model(2);
+                            ui.close_menu();
+                        }
+                        ui.separator();
+                        if ui.button("🔄 Reload Current Mesh (Ctrl+R)").clicked() {
+                            self.reload_mesh();
                             ui.close_menu();
                         }
                     });
@@ -1850,6 +2160,11 @@ impl eframe::App for RemoainterApp {
         // New Project Modal (File > New..., Ctrl+N)
         if self.show_new_project_dialog {
             self.ui_new_project_modal(ctx);
+        }
+
+        // Project Snapshots & Autosave Recovery Modal
+        if self.show_snapshots_dialog {
+            self.ui_snapshots_modal(ctx);
         }
     }
 }
@@ -4417,6 +4732,14 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
 
             self.mesh = loaded_mesh;
             self.selected_model_idx = if self.new_proj_mesh_path.is_empty() { 0 } else { 99 };
+            self.project_name = if !self.new_proj_mesh_path.is_empty() {
+                std::path::Path::new(&self.new_proj_mesh_path).file_stem().and_then(|s| s.to_str()).unwrap_or("Untitled").to_string()
+            } else {
+                "Untitled Project".to_string()
+            };
+            self.current_project_path = None;
+            self.mesh_source_path = if !self.new_proj_mesh_path.is_empty() { Some(self.new_proj_mesh_path.clone()) } else { None };
+            self.project_is_dirty = false;
 
             // Resize LayerStack and reset to fresh clean base PBR layers
             let res = self.new_proj_resolution;
@@ -4467,5 +4790,100 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
             show = false;
         }
         self.show_new_project_dialog = show;
+    }
+
+    fn ui_snapshots_modal(&mut self, ctx: &egui::Context) {
+        let mut show = self.show_snapshots_dialog;
+        let mut to_restore: Option<usize> = None;
+        let mut capture_now = false;
+
+        egui::Window::new("Project Snapshots & Autosave Recovery")
+            .open(&mut show)
+            .default_width(520.0)
+            .min_width(420.0)
+            .resizable(true)
+            .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading("PROJECT SNAPSHOTS");
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button(egui::RichText::new("📷 Capture Snapshot").strong().color(Color32::WHITE)).clicked() {
+                            capture_now = true;
+                        }
+                    });
+                });
+                ui.separator();
+
+                // Autosave recovery section
+                if let Some(autosave_path) = crate::project::ProjectManager::check_autosave() {
+                    egui::Frame::none()
+                        .fill(Color32::from_rgb(30, 45, 60))
+                        .rounding(4.0)
+                        .inner_margin(8.0)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.colored_label(Color32::from_rgb(100, 240, 150), "● Autosave File Detected");
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if ui.button("Restore Autosave").clicked() {
+                                        if let Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) = crate::project::ProjectManager::load_project(&autosave_path) {
+                                            self.project_name = manifest.project_name;
+                                            self.mesh = mesh;
+                                            self.layer_stack = layer_stack;
+                                            self.baked_maps = baked_maps;
+                                            self.baker_options = baker_options;
+                                            self.texture_needs_update = true;
+                                            if let Some(ref vp_mutex) = self.viewport_gl {
+                                                if let Some(ref gl) = self.gl {
+                                                    if let Ok(mut vp) = vp_mutex.lock() {
+                                                        vp.set_mesh(gl, &self.mesh);
+                                                    }
+                                                }
+                                            }
+                                            self.recompute_composite();
+                                            self.status_message = "Restored project from Autosave".into();
+                                            self.logs.push((
+                                                chrono::Local::now().format("%H:%M:%S").to_string(),
+                                                "INFO".into(),
+                                                "Restored active session from ~/.remoainter/autosave.rmp".into(),
+                                            ));
+                                        }
+                                    }
+                                });
+                            });
+                            ui.label(egui::RichText::new(autosave_path.display().to_string()).size(11.0).color(TEXT_DIMMED));
+                        });
+                    ui.add_space(6.0);
+                }
+
+                ui.strong("SESSION SNAPSHOTS");
+                if self.snapshots.is_empty() {
+                    ui.colored_label(TEXT_DIMMED, "No project snapshots captured yet in this session.");
+                } else {
+                    egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
+                        for (i, snap) in self.snapshots.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}.", i + 1));
+                                ui.colored_label(Color32::WHITE, &snap.name);
+                                ui.colored_label(TEXT_DIMMED, format!("({})", snap.timestamp));
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if ui.button("Restore").clicked() {
+                                        to_restore = Some(i);
+                                    }
+                                });
+                            });
+                            ui.separator();
+                        }
+                    });
+                }
+            });
+
+        if let Some(idx) = to_restore {
+            self.restore_snapshot(idx);
+        }
+        if capture_now {
+            let name = format!("Snapshot {}", self.snapshots.len() + 1);
+            self.take_snapshot(&name);
+        }
+        self.show_snapshots_dialog = show;
     }
 }

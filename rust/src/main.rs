@@ -1,6 +1,7 @@
 mod baker;
 mod graphics;
 mod painting;
+pub mod project;
 mod ui;
 
 use ui::RemoainterApp;
