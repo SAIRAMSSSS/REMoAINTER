@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use std::path::{Path, PathBuf};
 use crate::painting::layer::Layer;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChannelType {
@@ -30,49 +30,82 @@ pub fn detect_channel_type(filename: &str) -> Option<(ChannelType, bool)> {
     let stem = Path::new(&lower).file_stem()?.to_str()?;
 
     // Check normal maps first to avoid false matches on "color" or "norm"
-    if stem.contains("nor_dx") || stem.contains("normaldx") || stem.contains("normal_dx") || stem.contains("_n_dx") {
+    if stem.contains("nor_dx")
+        || stem.contains("normaldx")
+        || stem.contains("normal_dx")
+        || stem.contains("_n_dx")
+    {
         return Some((ChannelType::Normal, true));
     }
-    if stem.contains("nor_gl") || stem.contains("normalgl") || stem.contains("normal_gl")
-        || stem.contains("normal") || stem.contains("_norm") || stem.contains("-norm")
-        || stem.ends_with("_nor") || stem.ends_with("-nor") || stem.ends_with("_n")
+    if stem.contains("nor_gl")
+        || stem.contains("normalgl")
+        || stem.contains("normal_gl")
+        || stem.contains("normal")
+        || stem.contains("_norm")
+        || stem.contains("-norm")
+        || stem.ends_with("_nor")
+        || stem.ends_with("-nor")
+        || stem.ends_with("_n")
     {
         return Some((ChannelType::Normal, false));
     }
 
     // Roughness
-    if stem.contains("roughness") || stem.contains("_rough") || stem.contains("-rough")
-        || stem.contains("_rgh") || stem.contains("-rgh") || stem.ends_with("_r")
+    if stem.contains("roughness")
+        || stem.contains("_rough")
+        || stem.contains("-rough")
+        || stem.contains("_rgh")
+        || stem.contains("-rgh")
+        || stem.ends_with("_r")
     {
         return Some((ChannelType::Roughness, false));
     }
 
     // Metallic / Metalness
-    if stem.contains("metallic") || stem.contains("metalness") || stem.contains("_metal")
-        || stem.contains("-metal") || stem.contains("_met") || stem.contains("-met") || stem.ends_with("_m")
+    if stem.contains("metallic")
+        || stem.contains("metalness")
+        || stem.contains("_metal")
+        || stem.contains("-metal")
+        || stem.contains("_met")
+        || stem.contains("-met")
+        || stem.ends_with("_m")
     {
         return Some((ChannelType::Metallic, false));
     }
 
     // Ambient Occlusion
-    if stem.contains("ambient_occlusion") || stem.contains("ambientocclusion")
-        || stem.contains("_ao") || stem.contains("-ao") || stem.contains("occlusion")
+    if stem.contains("ambient_occlusion")
+        || stem.contains("ambientocclusion")
+        || stem.contains("_ao")
+        || stem.contains("-ao")
+        || stem.contains("occlusion")
     {
         return Some((ChannelType::AmbientOcclusion, false));
     }
 
     // Height / Displacement
-    if stem.contains("displacement") || stem.contains("_disp") || stem.contains("-disp")
-        || stem.contains("height") || stem.ends_with("_h")
+    if stem.contains("displacement")
+        || stem.contains("_disp")
+        || stem.contains("-disp")
+        || stem.contains("height")
+        || stem.ends_with("_h")
     {
         return Some((ChannelType::Height, false));
     }
 
     // Base Color / Albedo / Diffuse
-    if stem.contains("albedo") || stem.contains("basecolor") || stem.contains("base_color")
-        || stem.contains("diffuse") || stem.contains("_diff") || stem.contains("-diff")
-        || stem.contains("_color") || stem.contains("-color") || stem.contains("_col")
-        || stem.contains("-col") || stem.ends_with("_bc") || stem.ends_with("_d")
+    if stem.contains("albedo")
+        || stem.contains("basecolor")
+        || stem.contains("base_color")
+        || stem.contains("diffuse")
+        || stem.contains("_diff")
+        || stem.contains("-diff")
+        || stem.contains("_color")
+        || stem.contains("-color")
+        || stem.contains("_col")
+        || stem.contains("-col")
+        || stem.ends_with("_bc")
+        || stem.ends_with("_d")
     {
         return Some((ChannelType::BaseColor, false));
     }
@@ -84,7 +117,11 @@ impl PbrTextureSet {
     pub fn from_files(files: &[PathBuf]) -> Self {
         let mut set = Self::default();
         if let Some(first) = files.first() {
-            set.name = first.file_stem().and_then(|s| s.to_str()).unwrap_or("Imported Material").to_string();
+            set.name = first
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Imported Material")
+                .to_string();
         }
 
         for p in files {
@@ -115,7 +152,13 @@ impl PbrTextureSet {
                 if p.is_file() {
                     if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
                         let ext_lower = ext.to_lowercase();
-                        if ext_lower == "png" || ext_lower == "jpg" || ext_lower == "jpeg" || ext_lower == "tga" || ext_lower == "webp" || ext_lower == "exr" {
+                        if ext_lower == "png"
+                            || ext_lower == "jpg"
+                            || ext_lower == "jpeg"
+                            || ext_lower == "tga"
+                            || ext_lower == "webp"
+                            || ext_lower == "exr"
+                        {
                             files.push(p);
                         }
                     }
@@ -123,12 +166,20 @@ impl PbrTextureSet {
             }
         }
         let mut set = Self::from_files(&files);
-        set.name = dir.file_name().and_then(|s| s.to_str()).unwrap_or("Imported Material").to_string();
+        set.name = dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Imported Material")
+            .to_string();
         set
     }
 
     /// Loads the texture set directly into the target layer's channel buffers
-    pub fn load_into_layer(&self, layer: &mut Layer, force_flip_normal_y: bool) -> Result<(), String> {
+    pub fn load_into_layer(
+        &self,
+        layer: &mut Layer,
+        force_flip_normal_y: bool,
+    ) -> Result<(), String> {
         let target_w = layer.width;
         let target_h = layer.height;
         let total = (target_w * target_h) as usize;
@@ -136,7 +187,9 @@ impl PbrTextureSet {
         // 1. Base Color (sRGB)
         if let Some(ref path) = self.base_color {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_rgba8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_rgba8();
                 for (i, pixel) in resized.pixels().enumerate() {
                     if i < total {
                         layer.color_buffer[i] = [
@@ -153,7 +206,9 @@ impl PbrTextureSet {
         // 2. Metallic (Linear)
         if let Some(ref path) = self.metallic {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_luma8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_luma8();
                 for (i, pixel) in resized.pixels().enumerate() {
                     if i < total {
                         layer.metallic_buffer[i] = pixel[0] as f32 / 255.0;
@@ -165,7 +220,9 @@ impl PbrTextureSet {
         // 3. Roughness (Linear)
         if let Some(ref path) = self.roughness {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_luma8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_luma8();
                 for (i, pixel) in resized.pixels().enumerate() {
                     if i < total {
                         layer.roughness_buffer[i] = pixel[0] as f32 / 255.0;
@@ -177,7 +234,9 @@ impl PbrTextureSet {
         // 4. Normal (Linear with DirectX to OpenGL flipping)
         if let Some(ref path) = self.normal {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_rgb8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_rgb8();
                 let flip_g = self.is_directx_normal || force_flip_normal_y;
                 for (i, pixel) in resized.pixels().enumerate() {
                     if i < total {
@@ -194,7 +253,9 @@ impl PbrTextureSet {
         // 5. Height / Displacement (Linear)
         if let Some(ref path) = self.height {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_luma8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_luma8();
                 for (i, pixel) in resized.pixels().enumerate() {
                     if i < total {
                         layer.height_buffer[i] = (pixel[0] as f32 / 255.0) * 2.0 - 1.0;
@@ -210,7 +271,9 @@ impl PbrTextureSet {
     pub fn load_ao_map(&self, target_w: u32, target_h: u32) -> Option<Vec<f32>> {
         if let Some(ref path) = self.ambient_occlusion {
             if let Ok(img) = image::open(path) {
-                let resized = img.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3).to_luma8();
+                let resized = img
+                    .resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                    .to_luma8();
                 return Some(resized.pixels().map(|p| p[0] as f32 / 255.0).collect());
             }
         }
@@ -224,21 +287,57 @@ mod tests {
 
     #[test]
     fn test_detect_channel_type_ambientcg() {
-        assert_eq!(detect_channel_type("Metal001_2K_Color.png"), Some((ChannelType::BaseColor, false)));
-        assert_eq!(detect_channel_type("Metal001_2K_Roughness.png"), Some((ChannelType::Roughness, false)));
-        assert_eq!(detect_channel_type("Metal001_2K_Metalness.png"), Some((ChannelType::Metallic, false)));
-        assert_eq!(detect_channel_type("Metal001_2K_NormalGL.png"), Some((ChannelType::Normal, false)));
-        assert_eq!(detect_channel_type("Metal001_2K_NormalDX.png"), Some((ChannelType::Normal, true)));
-        assert_eq!(detect_channel_type("Metal001_2K_Displacement.png"), Some((ChannelType::Height, false)));
-        assert_eq!(detect_channel_type("Metal001_2K_AmbientOcclusion.png"), Some((ChannelType::AmbientOcclusion, false)));
+        assert_eq!(
+            detect_channel_type("Metal001_2K_Color.png"),
+            Some((ChannelType::BaseColor, false))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_Roughness.png"),
+            Some((ChannelType::Roughness, false))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_Metalness.png"),
+            Some((ChannelType::Metallic, false))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_NormalGL.png"),
+            Some((ChannelType::Normal, false))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_NormalDX.png"),
+            Some((ChannelType::Normal, true))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_Displacement.png"),
+            Some((ChannelType::Height, false))
+        );
+        assert_eq!(
+            detect_channel_type("Metal001_2K_AmbientOcclusion.png"),
+            Some((ChannelType::AmbientOcclusion, false))
+        );
     }
 
     #[test]
     fn test_detect_channel_type_polyhaven() {
-        assert_eq!(detect_channel_type("rock_wall_02_diff_2k.jpg"), Some((ChannelType::BaseColor, false)));
-        assert_eq!(detect_channel_type("rock_wall_02_nor_gl_2k.exr"), Some((ChannelType::Normal, false)));
-        assert_eq!(detect_channel_type("rock_wall_02_nor_dx_2k.exr"), Some((ChannelType::Normal, true)));
-        assert_eq!(detect_channel_type("rock_wall_02_rough_2k.png"), Some((ChannelType::Roughness, false)));
-        assert_eq!(detect_channel_type("rock_wall_02_ao_2k.jpg"), Some((ChannelType::AmbientOcclusion, false)));
+        assert_eq!(
+            detect_channel_type("rock_wall_02_diff_2k.jpg"),
+            Some((ChannelType::BaseColor, false))
+        );
+        assert_eq!(
+            detect_channel_type("rock_wall_02_nor_gl_2k.exr"),
+            Some((ChannelType::Normal, false))
+        );
+        assert_eq!(
+            detect_channel_type("rock_wall_02_nor_dx_2k.exr"),
+            Some((ChannelType::Normal, true))
+        );
+        assert_eq!(
+            detect_channel_type("rock_wall_02_rough_2k.png"),
+            Some((ChannelType::Roughness, false))
+        );
+        assert_eq!(
+            detect_channel_type("rock_wall_02_ao_2k.jpg"),
+            Some((ChannelType::AmbientOcclusion, false))
+        );
     }
 }

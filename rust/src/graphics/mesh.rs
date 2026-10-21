@@ -111,25 +111,68 @@ impl Mesh {
         // 6 faces: (normal, [corners: p00, p10, p11, p01])
         let faces: [([f32; 3], [[f32; 3]; 4]); 6] = [
             // Front (+Z)
-            ([0.0, 0.0, 1.0], [[-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]]),
+            (
+                [0.0, 0.0, 1.0],
+                [
+                    [-1.0, -1.0, 1.0],
+                    [1.0, -1.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                    [-1.0, 1.0, 1.0],
+                ],
+            ),
             // Back (-Z)
-            ([0.0, 0.0, -1.0], [[1.0, -1.0, -1.0], [-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0]]),
+            (
+                [0.0, 0.0, -1.0],
+                [
+                    [1.0, -1.0, -1.0],
+                    [-1.0, -1.0, -1.0],
+                    [-1.0, 1.0, -1.0],
+                    [1.0, 1.0, -1.0],
+                ],
+            ),
             // Top (+Y)
-            ([0.0, 1.0, 0.0], [[-1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, -1.0], [-1.0, 1.0, -1.0]]),
+            (
+                [0.0, 1.0, 0.0],
+                [
+                    [-1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                    [1.0, 1.0, -1.0],
+                    [-1.0, 1.0, -1.0],
+                ],
+            ),
             // Bottom (-Y)
-            ([0.0, -1.0, 0.0], [[-1.0, -1.0, -1.0], [1.0, -1.0, -1.0], [1.0, -1.0, 1.0], [-1.0, -1.0, 1.0]]),
+            (
+                [0.0, -1.0, 0.0],
+                [
+                    [-1.0, -1.0, -1.0],
+                    [1.0, -1.0, -1.0],
+                    [1.0, -1.0, 1.0],
+                    [-1.0, -1.0, 1.0],
+                ],
+            ),
             // Right (+X)
-            ([1.0, 0.0, 0.0], [[1.0, -1.0, 1.0], [1.0, -1.0, -1.0], [1.0, 1.0, -1.0], [1.0, 1.0, 1.0]]),
+            (
+                [1.0, 0.0, 0.0],
+                [
+                    [1.0, -1.0, 1.0],
+                    [1.0, -1.0, -1.0],
+                    [1.0, 1.0, -1.0],
+                    [1.0, 1.0, 1.0],
+                ],
+            ),
             // Left (-X)
-            ([-1.0, 0.0, 0.0], [[-1.0, -1.0, -1.0], [-1.0, -1.0, 1.0], [-1.0, 1.0, 1.0], [-1.0, 1.0, -1.0]]),
+            (
+                [-1.0, 0.0, 0.0],
+                [
+                    [-1.0, -1.0, -1.0],
+                    [-1.0, -1.0, 1.0],
+                    [-1.0, 1.0, 1.0],
+                    [-1.0, 1.0, -1.0],
+                ],
+            ),
         ];
 
-        let face_uvs: [[f32; 2]; 4] = [
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-        ];
+        let face_uvs: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
 
         for (norm, pts) in faces {
             let base_idx = vertices.len() as u32;
@@ -165,17 +208,12 @@ impl Mesh {
     pub fn create_plane() -> Self {
         let vertices = vec![
             [-1.5, 0.0, -1.5],
-            [ 1.5, 0.0, -1.5],
-            [ 1.5, 0.0,  1.5],
-            [-1.5, 0.0,  1.5],
+            [1.5, 0.0, -1.5],
+            [1.5, 0.0, 1.5],
+            [-1.5, 0.0, 1.5],
         ];
         let normals = vec![[0.0, 1.0, 0.0]; 4];
-        let uvs = vec![
-            [0.0, 1.0],
-            [1.0, 1.0],
-            [1.0, 0.0],
-            [0.0, 0.0],
-        ];
+        let uvs = vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
         let indices = vec![0, 2, 1, 0, 3, 2];
 
         let mut mesh = Self {
@@ -194,7 +232,8 @@ impl Mesh {
 
     pub fn load_file(path: impl AsRef<Path>) -> Result<Self, String> {
         let p = path.as_ref();
-        let ext = p.extension()
+        let ext = p
+            .extension()
             .and_then(|s| s.to_str())
             .map(|s| s.to_ascii_lowercase())
             .unwrap_or_default();
@@ -213,7 +252,11 @@ impl Mesh {
     /// Loads glTF 2.0 (.gltf / .glb) 3D models with geometry, UVs, and normals
     pub fn load_gltf(path: impl AsRef<Path>) -> Result<Self, String> {
         let path_ref = path.as_ref();
-        let name = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Model").to_string();
+        let name = path_ref
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Model")
+            .to_string();
 
         let (doc, buffers, _images) = gltf::import(path_ref)
             .map_err(|e| format!("glTF import error for {:?}: {}", path_ref, e))?;
@@ -286,8 +329,14 @@ impl Mesh {
     /// Loads Autodesk FBX (.fbx) binary and ASCII models using ufbx
     pub fn load_fbx(path: impl AsRef<Path>) -> Result<Self, String> {
         let path_ref = path.as_ref();
-        let path_str = path_ref.to_str().ok_or_else(|| "Invalid UTF-8 in FBX file path".to_string())?;
-        let name = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Model").to_string();
+        let path_str = path_ref
+            .to_str()
+            .ok_or_else(|| "Invalid UTF-8 in FBX file path".to_string())?;
+        let name = path_ref
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Model")
+            .to_string();
 
         let mut opts = ufbx::LoadOpts::default();
         opts.target_unit_meters = 1.0;
@@ -381,7 +430,11 @@ impl Mesh {
     /// Loads Wavefront OBJ 3D meshes (such as lantern.obj or radio.obj)
     pub fn load_obj(path: impl AsRef<Path>) -> Result<Self, String> {
         let path_ref = path.as_ref();
-        let name = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Model").to_string();
+        let name = path_ref
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Model")
+            .to_string();
 
         let (models, _) = tobj::load_obj(
             path_ref,
@@ -390,7 +443,8 @@ impl Mesh {
                 single_index: true,
                 ..Default::default()
             },
-        ).map_err(|e| format!("Failed to load OBJ {:?}: {}", path_ref, e))?;
+        )
+        .map_err(|e| format!("Failed to load OBJ {:?}: {}", path_ref, e))?;
 
         if models.is_empty() {
             return Err("OBJ file contains no geometry models".to_string());
@@ -481,7 +535,10 @@ impl Mesh {
             let i0 = chunk[0] + 1;
             let i1 = chunk[1] + 1;
             let i2 = chunk[2] + 1;
-            s.push_str(&format!("f {}/{}/{} {}/{}/{} {}/{}/{}\n", i0, i0, i0, i1, i1, i1, i2, i2, i2));
+            s.push_str(&format!(
+                "f {}/{}/{} {}/{}/{} {}/{}/{}\n",
+                i0, i0, i0, i1, i1, i1, i2, i2, i2
+            ));
         }
         s
     }
@@ -497,7 +554,8 @@ impl Mesh {
                 ..Default::default()
             },
             |_| Err(tobj::LoadError::GenericFailure),
-        ).map_err(|e| format!("Failed to parse embedded OBJ: {}", e))?;
+        )
+        .map_err(|e| format!("Failed to parse embedded OBJ: {}", e))?;
 
         if models.is_empty() {
             return Err("Embedded OBJ contains no geometry models".to_string());
@@ -661,7 +719,11 @@ impl Mesh {
             };
 
             // Calculate handedness (bitangent sign)
-            let w = if n.cross(t).dot(tan2[a]) < 0.0 { -1.0 } else { 1.0 };
+            let w = if n.cross(t).dot(tan2[a]) < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
             self.tangents.push([tangent.x, tangent.y, tangent.z, w]);
         }
     }
@@ -818,14 +880,18 @@ impl Mesh {
             return Vec::new();
         }
 
-        let mut uv_to_tris: std::collections::HashMap<(i32, i32), Vec<usize>> = std::collections::HashMap::new();
+        let mut uv_to_tris: std::collections::HashMap<(i32, i32), Vec<usize>> =
+            std::collections::HashMap::new();
         let quant = 10000.0f32;
         for t in 0..num_tris {
             for k in 0..3 {
                 let idx = self.indices[t * 3 + k] as usize;
                 if idx < self.uvs.len() {
                     let uv = self.uvs[idx];
-                    let key = ((uv[0] * quant).round() as i32, (uv[1] * quant).round() as i32);
+                    let key = (
+                        (uv[0] * quant).round() as i32,
+                        (uv[1] * quant).round() as i32,
+                    );
                     uv_to_tris.entry(key).or_default().push(t);
                 }
             }
@@ -844,7 +910,10 @@ impl Mesh {
                 let idx = self.indices[t * 3 + k] as usize;
                 if idx < self.uvs.len() {
                     let uv = self.uvs[idx];
-                    let key = ((uv[0] * quant).round() as i32, (uv[1] * quant).round() as i32);
+                    let key = (
+                        (uv[0] * quant).round() as i32,
+                        (uv[1] * quant).round() as i32,
+                    );
                     if let Some(neighbors) = uv_to_tris.get(&key) {
                         for &n in neighbors {
                             if !visited[n] {
@@ -871,7 +940,11 @@ mod tests {
         let result = Mesh::load_file(dummy_path);
         assert!(result.is_err(), "Unsupported format must return Err");
         let err = result.unwrap_err();
-        assert!(err.contains("Unsupported 3D file format"), "Error must clearly identify unsupported format: {}", err);
+        assert!(
+            err.contains("Unsupported 3D file format"),
+            "Error must clearly identify unsupported format: {}",
+            err
+        );
     }
 
     #[test]
@@ -884,7 +957,8 @@ mod tests {
         assert!(obj_str.contains("v -1.000000"));
         assert!(obj_str.contains("f "));
 
-        let reloaded = Mesh::from_obj_string(&obj_str, "ReloadedCube").expect("OBJ roundtrip should parse");
+        let reloaded =
+            Mesh::from_obj_string(&obj_str, "ReloadedCube").expect("OBJ roundtrip should parse");
         assert_eq!(reloaded.indices.len(), 36);
         assert_eq!(reloaded.name, "ReloadedCube");
     }
@@ -898,4 +972,3 @@ mod tests {
         assert_eq!(sphere.vertices.len(), sphere.uvs.len());
     }
 }
-

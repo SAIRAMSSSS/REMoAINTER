@@ -50,10 +50,22 @@ impl LayerTileBackup {
                 let py = start_y + y;
                 let idx = (py * layer.width + px) as usize;
 
-                color_data.push(layer.color_buffer.get(idx).copied().unwrap_or([0.0, 0.0, 0.0, 0.0]));
+                color_data.push(
+                    layer
+                        .color_buffer
+                        .get(idx)
+                        .copied()
+                        .unwrap_or([0.0, 0.0, 0.0, 0.0]),
+                );
                 metallic_data.push(layer.metallic_buffer.get(idx).copied().unwrap_or(0.0));
                 roughness_data.push(layer.roughness_buffer.get(idx).copied().unwrap_or(0.5));
-                normal_data.push(layer.normal_buffer.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]));
+                normal_data.push(
+                    layer
+                        .normal_buffer
+                        .get(idx)
+                        .copied()
+                        .unwrap_or([0.5, 0.5, 1.0]),
+                );
                 height_data.push(layer.height_buffer.get(idx).copied().unwrap_or(0.0));
             }
         }
@@ -207,9 +219,11 @@ impl HistoryManager {
         }
 
         let min_x = (bbox[0].max(0) as u32) / HISTORY_TILE_SIZE;
-        let max_x = ((bbox[2].max(0) as u32) / HISTORY_TILE_SIZE).min((layer.width.saturating_sub(1)) / HISTORY_TILE_SIZE);
+        let max_x = ((bbox[2].max(0) as u32) / HISTORY_TILE_SIZE)
+            .min((layer.width.saturating_sub(1)) / HISTORY_TILE_SIZE);
         let min_y = (bbox[1].max(0) as u32) / HISTORY_TILE_SIZE;
-        let max_y = ((bbox[3].max(0) as u32) / HISTORY_TILE_SIZE).min((layer.height.saturating_sub(1)) / HISTORY_TILE_SIZE);
+        let max_y = ((bbox[3].max(0) as u32) / HISTORY_TILE_SIZE)
+            .min((layer.height.saturating_sub(1)) / HISTORY_TILE_SIZE);
 
         for ty in min_y..=max_y {
             for tx in min_x..=max_x {
@@ -251,13 +265,21 @@ impl HistoryManager {
         let mut redo_tiles = Vec::with_capacity(cmd.tile_backups.len());
         for backup in &cmd.tile_backups {
             if let Some(layer) = layer_stack.layers.iter().find(|l| l.id == backup.layer_id) {
-                redo_tiles.push(LayerTileBackup::capture(layer, backup.tile_x, backup.tile_y));
+                redo_tiles.push(LayerTileBackup::capture(
+                    layer,
+                    backup.tile_x,
+                    backup.tile_y,
+                ));
             }
         }
 
         // Restore past pixels
         for backup in &cmd.tile_backups {
-            if let Some(layer) = layer_stack.layers.iter_mut().find(|l| l.id == backup.layer_id) {
+            if let Some(layer) = layer_stack
+                .layers
+                .iter_mut()
+                .find(|l| l.id == backup.layer_id)
+            {
                 backup.restore(layer);
             }
         }
@@ -281,13 +303,21 @@ impl HistoryManager {
         let mut undo_tiles = Vec::with_capacity(cmd.tile_backups.len());
         for backup in &cmd.tile_backups {
             if let Some(layer) = layer_stack.layers.iter().find(|l| l.id == backup.layer_id) {
-                undo_tiles.push(LayerTileBackup::capture(layer, backup.tile_x, backup.tile_y));
+                undo_tiles.push(LayerTileBackup::capture(
+                    layer,
+                    backup.tile_x,
+                    backup.tile_y,
+                ));
             }
         }
 
         // Apply redone pixels
         for backup in &cmd.tile_backups {
-            if let Some(layer) = layer_stack.layers.iter_mut().find(|l| l.id == backup.layer_id) {
+            if let Some(layer) = layer_stack
+                .layers
+                .iter_mut()
+                .find(|l| l.id == backup.layer_id)
+            {
                 backup.restore(layer);
             }
         }

@@ -38,6 +38,35 @@ pub struct BakerOptions {
     pub relative_to_bbox: bool,
     pub average_normals: bool,
     pub ignore_backfaces: bool,
+
+    // Skew correction ("Use Skew Correction" / USE_SKEW_MAP parity): a 2-channel shear map
+    // that warps the high-poly sample position along the tangent/bitangent plane to correct
+    // normal-projection stretching on distorted UVs. `skew_map` data holds decoded (u, v)
+    // shear offsets in [-1, 1].
+    pub use_skew_correction: bool,
+    pub skew_invert: bool,
+    pub skew_strength: f32,
+    pub skew_map: Option<Arc<SkewMap>>,
+}
+
+/// External skew texture: RGB image loaded by the App, R/G decoded to [-1, 1] shear offsets.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SkewMap {
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<[f32; 2]>,
+}
+
+impl SkewMap {
+    /// Sample the shear offset at normalized (u, v) texture coordinates.
+    #[inline]
+    pub fn sample(&self, u: f32, v: f32) -> [f32; 2] {
+        let px = (u.clamp(0.0, 1.0) * (self.width.max(1) - 1) as f32).round() as u32;
+        let py = (v.clamp(0.0, 1.0) * (self.height.max(1) - 1) as f32).round() as u32;
+        self.data[((py.min(self.height.saturating_sub(1)) as usize) * (self.width as usize))
+            + px.min(self.width.saturating_sub(1)) as usize]
+            .map(|o| o.clamp(-1.0, 1.0))
+    }
 }
 
 impl Default for BakerOptions {
@@ -56,6 +85,10 @@ impl Default for BakerOptions {
             bake_position: true,
             bake_thickness: true,
             bake_id: true,
+            use_skew_correction: false,
+            skew_invert: false,
+            skew_strength: 0.6,
+            skew_map: None,
             max_frontal_distance: 0.05,
             max_rear_distance: 0.05,
             match_by_name: false,
@@ -102,8 +135,12 @@ impl BoundingBox {
 
     pub fn grow(&mut self, p: [f32; 3]) {
         for i in 0..3 {
-            if p[i] < self.min[i] { self.min[i] = p[i]; }
-            if p[i] > self.max[i] { self.max[i] = p[i]; }
+            if p[i] < self.min[i] {
+                self.min[i] = p[i];
+            }
+            if p[i] > self.max[i] {
+                self.max[i] = p[i];
+            }
         }
     }
 
@@ -185,10 +222,18 @@ impl BvhNode {
         let dx = bbox.max[0] - bbox.min[0];
         let dy = bbox.max[1] - bbox.min[1];
         let dz = bbox.max[2] - bbox.min[2];
-        let axis = if dx >= dy && dx >= dz { 0 } else if dy >= dz { 1 } else { 2 };
+        let axis = if dx >= dy && dx >= dz {
+            0
+        } else if dy >= dz {
+            1
+        } else {
+            2
+        };
 
         tris.sort_unstable_by(|a, b| {
-            a.center[axis].partial_cmp(&b.center[axis]).unwrap_or(std::cmp::Ordering::Equal)
+            a.center[axis]
+                .partial_cmp(&b.center[axis])
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let mid = tris.len() / 2;
@@ -223,7 +268,9 @@ impl BvhNode {
         match self {
             BvhNode::Leaf { triangles, .. } => {
                 for tri in triangles {
-                    if let Some(h) = intersect_triangle_moller(origin, dir, tri, *closest_t, ignore_backfaces) {
+                    if let Some(h) =
+                        intersect_triangle_moller(origin, dir, tri, *closest_t, ignore_backfaces)
+                    {
                         if h.distance < *closest_t {
                             *closest_t = h.distance;
                             *hit = Some(h);
@@ -387,8 +434,12 @@ impl BakerEngine {
         let mut max_pos = [f32::MIN, f32::MIN, f32::MIN];
         for v in vertices {
             for c in 0..3 {
-                if v[c] < min_pos[c] { min_pos[c] = v[c]; }
-                if v[c] > max_pos[c] { max_pos[c] = v[c]; }
+                if v[c] < min_pos[c] {
+                    min_pos[c] = v[c];
+                }
+                if v[c] > max_pos[c] {
+                    max_pos[c] = v[c];
+                }
             }
         }
         let pos_range = [
@@ -396,7 +447,11 @@ impl BakerEngine {
             (max_pos[1] - min_pos[1]).max(0.001),
             (max_pos[2] - min_pos[2]).max(0.001),
         ];
-        let bbox_diag = (pos_range[0] * pos_range[0] + pos_range[1] * pos_range[1] + pos_range[2] * pos_range[2]).sqrt().max(0.001);
+        let bbox_diag = (pos_range[0] * pos_range[0]
+            + pos_range[1] * pos_range[1]
+            + pos_range[2] * pos_range[2])
+            .sqrt()
+            .max(0.001);
 
         let frontal_dist = if options.relative_to_bbox {
             options.max_frontal_distance * bbox_diag
@@ -432,8 +487,12 @@ impl BakerEngine {
                     tb.grow(v2);
 
                     all_hp_tris.push(BvhTriangle {
-                        v0, v1, v2,
-                        n0, n1, n2,
+                        v0,
+                        v1,
+                        v2,
+                        n0,
+                        n1,
+                        n2,
                         bbox: tb,
                         center: [
                             (v0[0] + v1[0] + v2[0]) / 3.0,
@@ -458,7 +517,10 @@ impl BakerEngine {
                             let i0 = hp.indices[t * 3] as usize;
                             let i1 = hp.indices[t * 3 + 1] as usize;
                             let i2 = hp.indices[t * 3 + 2] as usize;
-                            if i0 < hp.vertices.len() && i1 < hp.vertices.len() && i2 < hp.vertices.len() {
+                            if i0 < hp.vertices.len()
+                                && i1 < hp.vertices.len()
+                                && i2 < hp.vertices.len()
+                            {
                                 let v0 = hp.vertices[i0];
                                 let v1 = hp.vertices[i1];
                                 let v2 = hp.vertices[i2];
@@ -470,8 +532,12 @@ impl BakerEngine {
                                 tb.grow(v1);
                                 tb.grow(v2);
                                 sm_tris.push(BvhTriangle {
-                                    v0, v1, v2,
-                                    n0, n1, n2,
+                                    v0,
+                                    v1,
+                                    v2,
+                                    n0,
+                                    n1,
+                                    n2,
                                     bbox: tb,
                                     center: [
                                         (v0[0] + v1[0] + v2[0]) / 3.0,
@@ -519,7 +585,11 @@ impl BakerEngine {
 
                 for &vi in &[i0, i1, i2] {
                     let vp = vertices[vi];
-                    let k = ((vp[0] * quant).round() as i32, (vp[1] * quant).round() as i32, (vp[2] * quant).round() as i32);
+                    let k = (
+                        (vp[0] * quant).round() as i32,
+                        (vp[1] * quant).round() as i32,
+                        (vp[2] * quant).round() as i32,
+                    );
                     pos_to_faces.entry(k).or_default().push(fn_norm);
                 }
             }
@@ -531,7 +601,11 @@ impl BakerEngine {
         for i in 0..n_verts {
             let vn = normals.get(i).copied().unwrap_or([0.0, 1.0, 0.0]);
             let vp = vertices[i];
-            let k = ((vp[0] * quant).round() as i32, (vp[1] * quant).round() as i32, (vp[2] * quant).round() as i32);
+            let k = (
+                (vp[0] * quant).round() as i32,
+                (vp[1] * quant).round() as i32,
+                (vp[2] * quant).round() as i32,
+            );
 
             if let Some(fns) = pos_to_faces.get(&k) {
                 if fns.len() > 1 {
@@ -573,15 +647,24 @@ impl BakerEngine {
 
         // Determine subpixel jitter offsets based on anti_aliasing setting
         let subpixel_offsets: &[(f32, f32)] = match options.anti_aliasing {
-            2 => &[
-                (0.25, 0.25), (0.75, 0.25),
-                (0.25, 0.75), (0.75, 0.75),
-            ],
+            2 => &[(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)],
             4 => &[
-                (0.125, 0.125), (0.375, 0.125), (0.625, 0.125), (0.875, 0.125),
-                (0.125, 0.375), (0.375, 0.375), (0.625, 0.375), (0.875, 0.375),
-                (0.125, 0.625), (0.375, 0.625), (0.625, 0.625), (0.875, 0.625),
-                (0.125, 0.875), (0.375, 0.875), (0.625, 0.875), (0.875, 0.875),
+                (0.125, 0.125),
+                (0.375, 0.125),
+                (0.625, 0.125),
+                (0.875, 0.125),
+                (0.125, 0.375),
+                (0.375, 0.375),
+                (0.625, 0.375),
+                (0.875, 0.375),
+                (0.125, 0.625),
+                (0.375, 0.625),
+                (0.625, 0.625),
+                (0.875, 0.625),
+                (0.125, 0.875),
+                (0.375, 0.875),
+                (0.625, 0.875),
+                (0.875, 0.875),
             ],
             _ => &[(0.5, 0.5)],
         };
@@ -636,7 +719,9 @@ impl BakerEngine {
             let y0 = (min_v * res_f).floor() as usize;
             let y1 = ((max_v * res_f).ceil() as usize).min(res - 1);
 
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+                .max(1e-7);
 
             let c0 = vert_curv[i0];
             let c1 = vert_curv[i1];
@@ -667,16 +752,32 @@ impl BakerEngine {
                 (e1[1] * dv2 - e2[1] * dv1) * inv_det,
                 (e1[2] * dv2 - e2[2] * dv1) * inv_det,
             ];
-            let t_len = (tri_t[0]*tri_t[0] + tri_t[1]*tri_t[1] + tri_t[2]*tri_t[2]).sqrt().max(1e-6);
+            // World-space span of one U/V step on this triangle: needed for both the handedness
+            // correction and the skew-map shear offsets (texel-footprint scaling).
+            let t_span = (tri_t[0] * tri_t[0] + tri_t[1] * tri_t[1] + tri_t[2] * tri_t[2])
+                .sqrt()
+                .max(1e-6);
+            let bit_span = {
+                let bx = (e2[0] * du1 - e1[0] * du2) * inv_det;
+                let by = (e2[1] * du1 - e1[1] * du2) * inv_det;
+                let bz = (e2[2] * du1 - e1[2] * du2) * inv_det;
+                (bx * bx + by * by + bz * bz).sqrt().max(1e-9)
+            };
+            let handedness = if det < 0.0 { -1.0 } else { 1.0 };
+            let t_len = (tri_t[0] * tri_t[0] + tri_t[1] * tri_t[1] + tri_t[2] * tri_t[2])
+                .sqrt()
+                .max(1e-6);
             let tri_t = [tri_t[0] / t_len, tri_t[1] / t_len, tri_t[2] / t_len];
 
             // Match-by-Name BVH selection for this triangle
             let target_bvh = if options.match_by_name && !hp_submesh_bvhs.is_empty() {
                 let matching_submesh = submeshes.iter().find(|sm| {
-                    tri_idx_start >= sm.index_start && tri_idx_start < sm.index_start + sm.index_count
+                    tri_idx_start >= sm.index_start
+                        && tri_idx_start < sm.index_start + sm.index_count
                 });
                 if let Some(sm) = matching_submesh {
-                    let low_base = strip_mesh_suffix(&sm.name, &options.low_poly_suffix).to_lowercase();
+                    let low_base =
+                        strip_mesh_suffix(&sm.name, &options.low_poly_suffix).to_lowercase();
                     hp_submesh_bvhs.get(&low_base).or(hp_global_bvh.as_ref())
                 } else {
                     hp_global_bvh.as_ref()
@@ -692,8 +793,12 @@ impl BakerEngine {
                         let u_px = (px as f32 + ox) / res_f;
                         let v_px = (py as f32 + oy) / res_f;
 
-                        let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
-                        let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                        let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                            + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                            / denom;
+                        let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                            + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                            / denom;
                         let b2 = 1.0 - b0 - b1;
 
                         if b0 >= -0.02 && b1 >= -0.02 && b2 >= -0.02 {
@@ -709,26 +814,42 @@ impl BakerEngine {
                                 b0 * v0[2] + b1 * v1[2] + b2 * v2[2],
                             ];
 
-                            let n_len = (nx*nx + ny*ny + nz*nz).sqrt().max(1e-6);
+                            let n_len = (nx * nx + ny * ny + nz * nz).sqrt().max(1e-6);
                             let n_low = [nx / n_len, ny / n_len, nz / n_len];
 
                             // Orthonormalize Tangent
-                            let t_dot_n = tri_t[0]*n_low[0] + tri_t[1]*n_low[1] + tri_t[2]*n_low[2];
+                            let t_dot_n =
+                                tri_t[0] * n_low[0] + tri_t[1] * n_low[1] + tri_t[2] * n_low[2];
                             let t_ortho = [
                                 tri_t[0] - n_low[0] * t_dot_n,
                                 tri_t[1] - n_low[1] * t_dot_n,
                                 tri_t[2] - n_low[2] * t_dot_n,
                             ];
-                            let to_len = (t_ortho[0]*t_ortho[0] + t_ortho[1]*t_ortho[1] + t_ortho[2]*t_ortho[2]).sqrt().max(1e-6);
-                            let tangent = [t_ortho[0] / to_len, t_ortho[1] / to_len, t_ortho[2] / to_len];
+                            let to_len = (t_ortho[0] * t_ortho[0]
+                                + t_ortho[1] * t_ortho[1]
+                                + t_ortho[2] * t_ortho[2])
+                                .sqrt()
+                                .max(1e-6);
+                            let tangent = [
+                                t_ortho[0] / to_len,
+                                t_ortho[1] / to_len,
+                                t_ortho[2] / to_len,
+                            ];
+                            // Mirrored-UV parity fix: flip the bitangent on negative UV determinant
+                            // (matching Substance's signed handedness) so mirrored islands no longer
+                            // bake with an inverted G channel.
                             let bitangent = [
-                                n_low[1]*tangent[2] - n_low[2]*tangent[1],
-                                n_low[2]*tangent[0] - n_low[0]*tangent[2],
-                                n_low[0]*tangent[1] - n_low[1]*tangent[0],
+                                (n_low[1] * tangent[2] - n_low[2] * tangent[1]) * handedness,
+                                (n_low[2] * tangent[0] - n_low[0] * tangent[2]) * handedness,
+                                (n_low[0] * tangent[1] - n_low[1] * tangent[0]) * handedness,
                             ];
 
                             let mut final_norm = [0.5f32, 0.5, 1.0];
-                            let mut final_wsn = [n_low[0] * 0.5 + 0.5, n_low[1] * 0.5 + 0.5, n_low[2] * 0.5 + 0.5];
+                            let mut final_wsn = [
+                                n_low[0] * 0.5 + 0.5,
+                                n_low[1] * 0.5 + 0.5,
+                                n_low[2] * 0.5 + 0.5,
+                            ];
                             let mut final_pos = [
                                 ((px_pos[0] - min_pos[0]) / pos_range[0]).clamp(0.0, 1.0),
                                 ((px_pos[1] - min_pos[1]) / pos_range[1]).clamp(0.0, 1.0),
@@ -739,32 +860,93 @@ impl BakerEngine {
                             let mut final_thick = 1.0f32;
                             let final_id = [1.0f32, 1.0, 1.0, 1.0];
 
+                            // Skew correction: sample the shear map at this texel and offset the
+                            // ray origin along the tangent/bitangent plane (texel-footprint
+                            // scaled), compensating projected-normal stretching ("External skew
+                            // texture from file" / "Invert skew correction" parity).
+                            let (skew_o, skew_b) =
+                                if options.use_skew_correction && options.bake_normal {
+                                    if let Some(ref skew) = options.skew_map {
+                                        let o = skew.sample(
+                                            px as f32 / res_f.max(1.0),
+                                            py as f32 / res_f.max(1.0),
+                                        );
+                                        let s = if options.skew_invert {
+                                            -options.skew_strength
+                                        } else {
+                                            options.skew_strength
+                                        };
+                                        (o[0] * s, o[1] * s)
+                                    } else {
+                                        (0.0, 0.0)
+                                    }
+                                } else {
+                                    (0.0, 0.0)
+                                };
+                            let skew_world = [
+                                tangent[0] * (skew_o * t_span / res_f)
+                                    + bitangent[0] * (skew_b * bit_span / res_f),
+                                tangent[1] * (skew_o * t_span / res_f)
+                                    + bitangent[1] * (skew_b * bit_span / res_f),
+                                tangent[2] * (skew_o * t_span / res_f)
+                                    + bitangent[2] * (skew_b * bit_span / res_f),
+                            ];
+
                             // High-poly raycasting through BVH
                             if let Some(bvh) = target_bvh {
                                 let ray_origin = [
-                                    px_pos[0] + n_low[0] * frontal_dist,
-                                    px_pos[1] + n_low[1] * frontal_dist,
-                                    px_pos[2] + n_low[2] * frontal_dist,
+                                    px_pos[0] + n_low[0] * frontal_dist + skew_world[0],
+                                    px_pos[1] + n_low[1] * frontal_dist + skew_world[1],
+                                    px_pos[2] + n_low[2] * frontal_dist + skew_world[2],
                                 ];
                                 let ray_dir = [-n_low[0], -n_low[1], -n_low[2]];
                                 let max_dist = frontal_dist + rear_dist;
 
                                 let inv_dir = [
-                                    if ray_dir[0].abs() > 1e-6 { 1.0 / ray_dir[0] } else { 1e6 },
-                                    if ray_dir[1].abs() > 1e-6 { 1.0 / ray_dir[1] } else { 1e6 },
-                                    if ray_dir[2].abs() > 1e-6 { 1.0 / ray_dir[2] } else { 1e6 },
+                                    if ray_dir[0].abs() > 1e-6 {
+                                        1.0 / ray_dir[0]
+                                    } else {
+                                        1e6
+                                    },
+                                    if ray_dir[1].abs() > 1e-6 {
+                                        1.0 / ray_dir[1]
+                                    } else {
+                                        1e6
+                                    },
+                                    if ray_dir[2].abs() > 1e-6 {
+                                        1.0 / ray_dir[2]
+                                    } else {
+                                        1e6
+                                    },
                                 ];
 
                                 let mut closest_t = max_dist;
                                 let mut hit: Option<HighPolyHit> = None;
-                                bvh.intersect_ray(&ray_origin, &ray_dir, &inv_dir, &mut closest_t, &mut hit, options.ignore_backfaces);
+                                bvh.intersect_ray(
+                                    &ray_origin,
+                                    &ray_dir,
+                                    &inv_dir,
+                                    &mut closest_t,
+                                    &mut hit,
+                                    options.ignore_backfaces,
+                                );
 
                                 if let Some(hp_hit) = hit {
                                     let hp_norm = hp_hit.normal;
-                                    let dot_t = hp_norm[0]*tangent[0] + hp_norm[1]*tangent[1] + hp_norm[2]*tangent[2];
-                                    let dot_b = hp_norm[0]*bitangent[0] + hp_norm[1]*bitangent[1] + hp_norm[2]*bitangent[2];
-                                    let dot_n = hp_norm[0]*n_low[0] + hp_norm[1]*n_low[1] + hp_norm[2]*n_low[2];
-                                    let ts_y = if options.invert_normal_y { -dot_b } else { dot_b };
+                                    let dot_t = hp_norm[0] * tangent[0]
+                                        + hp_norm[1] * tangent[1]
+                                        + hp_norm[2] * tangent[2];
+                                    let dot_b = hp_norm[0] * bitangent[0]
+                                        + hp_norm[1] * bitangent[1]
+                                        + hp_norm[2] * bitangent[2];
+                                    let dot_n = hp_norm[0] * n_low[0]
+                                        + hp_norm[1] * n_low[1]
+                                        + hp_norm[2] * n_low[2];
+                                    let ts_y = if options.invert_normal_y {
+                                        -dot_b
+                                    } else {
+                                        dot_b
+                                    };
                                     final_norm = [
                                         (dot_t * 0.5 + 0.5).clamp(0.0, 1.0),
                                         (ts_y * 0.5 + 0.5).clamp(0.0, 1.0),
@@ -776,9 +958,12 @@ impl BakerEngine {
                                         (hp_norm[2] * 0.5 + 0.5).clamp(0.0, 1.0),
                                     ];
                                     final_pos = [
-                                        ((hp_hit.position[0] - min_pos[0]) / pos_range[0]).clamp(0.0, 1.0),
-                                        ((hp_hit.position[1] - min_pos[1]) / pos_range[1]).clamp(0.0, 1.0),
-                                        ((hp_hit.position[2] - min_pos[2]) / pos_range[2]).clamp(0.0, 1.0),
+                                        ((hp_hit.position[0] - min_pos[0]) / pos_range[0])
+                                            .clamp(0.0, 1.0),
+                                        ((hp_hit.position[1] - min_pos[1]) / pos_range[1])
+                                            .clamp(0.0, 1.0),
+                                        ((hp_hit.position[2] - min_pos[2]) / pos_range[2])
+                                            .clamp(0.0, 1.0),
                                     ];
 
                                     // Thickness estimation from High-Poly via reverse raycast
@@ -790,15 +975,35 @@ impl BakerEngine {
                                         ];
                                         let rev_dir = [-hp_norm[0], -hp_norm[1], -hp_norm[2]];
                                         let rev_inv = [
-                                            if rev_dir[0].abs() > 1e-6 { 1.0 / rev_dir[0] } else { 1e6 },
-                                            if rev_dir[1].abs() > 1e-6 { 1.0 / rev_dir[1] } else { 1e6 },
-                                            if rev_dir[2].abs() > 1e-6 { 1.0 / rev_dir[2] } else { 1e6 },
+                                            if rev_dir[0].abs() > 1e-6 {
+                                                1.0 / rev_dir[0]
+                                            } else {
+                                                1e6
+                                            },
+                                            if rev_dir[1].abs() > 1e-6 {
+                                                1.0 / rev_dir[1]
+                                            } else {
+                                                1e6
+                                            },
+                                            if rev_dir[2].abs() > 1e-6 {
+                                                1.0 / rev_dir[2]
+                                            } else {
+                                                1e6
+                                            },
                                         ];
                                         let mut rev_closest = max_dist * 2.0;
                                         let mut rev_hit = None;
-                                        bvh.intersect_ray(&rev_origin, &rev_dir, &rev_inv, &mut rev_closest, &mut rev_hit, false);
+                                        bvh.intersect_ray(
+                                            &rev_origin,
+                                            &rev_dir,
+                                            &rev_inv,
+                                            &mut rev_closest,
+                                            &mut rev_hit,
+                                            false,
+                                        );
                                         if let Some(rh) = rev_hit {
-                                            final_thick = (rh.distance / (max_dist * 1.5)).clamp(0.05, 1.0);
+                                            final_thick =
+                                                (rh.distance / (max_dist * 1.5)).clamp(0.05, 1.0);
                                         }
                                     }
 
@@ -807,7 +1012,8 @@ impl BakerEngine {
                                         let mut occluded = 0u32;
                                         let num_samples = options.ao_samples.min(32);
                                         for s in 0..num_samples {
-                                            let xi1 = ((s as f32 + 0.5) / num_samples as f32).fract();
+                                            let xi1 =
+                                                ((s as f32 + 0.5) / num_samples as f32).fract();
                                             let xi2 = ((s as f32 * 0.6180339887) + 0.1).fract();
                                             let phi = 2.0 * std::f32::consts::PI * xi1;
                                             let cos_theta = (1.0 - xi2).sqrt();
@@ -818,9 +1024,15 @@ impl BakerEngine {
                                                 cos_theta,
                                             ];
                                             let world_h = [
-                                                tangent[0]*h_dir[0] + bitangent[0]*h_dir[1] + hp_norm[0]*h_dir[2],
-                                                tangent[1]*h_dir[0] + bitangent[1]*h_dir[1] + hp_norm[1]*h_dir[2],
-                                                tangent[2]*h_dir[0] + bitangent[2]*h_dir[1] + hp_norm[2]*h_dir[2],
+                                                tangent[0] * h_dir[0]
+                                                    + bitangent[0] * h_dir[1]
+                                                    + hp_norm[0] * h_dir[2],
+                                                tangent[1] * h_dir[0]
+                                                    + bitangent[1] * h_dir[1]
+                                                    + hp_norm[1] * h_dir[2],
+                                                tangent[2] * h_dir[0]
+                                                    + bitangent[2] * h_dir[1]
+                                                    + hp_norm[2] * h_dir[2],
                                             ];
                                             let ao_origin = [
                                                 hp_hit.position[0] + hp_norm[0] * 0.002,
@@ -828,19 +1040,39 @@ impl BakerEngine {
                                                 hp_hit.position[2] + hp_norm[2] * 0.002,
                                             ];
                                             let ao_inv = [
-                                                if world_h[0].abs() > 1e-6 { 1.0 / world_h[0] } else { 1e6 },
-                                                if world_h[1].abs() > 1e-6 { 1.0 / world_h[1] } else { 1e6 },
-                                                if world_h[2].abs() > 1e-6 { 1.0 / world_h[2] } else { 1e6 },
+                                                if world_h[0].abs() > 1e-6 {
+                                                    1.0 / world_h[0]
+                                                } else {
+                                                    1e6
+                                                },
+                                                if world_h[1].abs() > 1e-6 {
+                                                    1.0 / world_h[1]
+                                                } else {
+                                                    1e6
+                                                },
+                                                if world_h[2].abs() > 1e-6 {
+                                                    1.0 / world_h[2]
+                                                } else {
+                                                    1e6
+                                                },
                                             ];
                                             let mut ao_closest = options.ao_max_distance;
                                             let mut ao_hit = None;
-                                            bvh.intersect_ray(&ao_origin, &world_h, &ao_inv, &mut ao_closest, &mut ao_hit, true);
+                                            bvh.intersect_ray(
+                                                &ao_origin,
+                                                &world_h,
+                                                &ao_inv,
+                                                &mut ao_closest,
+                                                &mut ao_hit,
+                                                true,
+                                            );
                                             if ao_hit.is_some() {
                                                 occluded += 1;
                                             }
                                         }
                                         let occ_ratio = occluded as f32 / num_samples as f32;
-                                        final_ao = (1.0 - occ_ratio * options.ao_spread).clamp(0.05, 1.0);
+                                        final_ao =
+                                            (1.0 - occ_ratio * options.ao_spread).clamp(0.05, 1.0);
                                     }
                                 }
                             }
@@ -921,7 +1153,9 @@ pub fn strip_mesh_suffix(name: &str, suffix: &str) -> String {
     let trimmed = name.trim();
     let s = suffix.trim();
     if !s.is_empty() && trimmed.to_lowercase().ends_with(&s.to_lowercase()) {
-        trimmed[..trimmed.len() - s.len()].trim_end_matches('_').to_string()
+        trimmed[..trimmed.len() - s.len()]
+            .trim_end_matches('_')
+            .to_string()
     } else {
         trimmed.to_string()
     }
@@ -967,8 +1201,18 @@ mod tests {
             bb.grow(v1);
             bb.grow(v2);
             tris.push(BvhTriangle {
-                v0, v1, v2, n0, n1, n2, bbox: bb,
-                center: [(v0[0]+v1[0]+v2[0])/3.0, (v0[1]+v1[1]+v2[1])/3.0, (v0[2]+v1[2]+v2[2])/3.0],
+                v0,
+                v1,
+                v2,
+                n0,
+                n1,
+                n2,
+                bbox: bb,
+                center: [
+                    (v0[0] + v1[0] + v2[0]) / 3.0,
+                    (v0[1] + v1[1] + v2[1]) / 3.0,
+                    (v0[2] + v1[2] + v2[2]) / 3.0,
+                ],
             });
         }
 
@@ -982,22 +1226,32 @@ mod tests {
         bvh.intersect_ray(&ro, &rd, &inv_d, &mut closest_t, &mut hit, false);
         assert!(hit.is_some(), "Ray directed at sphere must intersect BVH");
         let h = hit.unwrap();
-        assert!((h.position[2] - 0.577).abs() < 0.1, "Front surface of normalized sphere should be near z=0.577");
-        assert!((h.distance - 2.422).abs() < 0.1, "Hit distance should be ~2.42");
+        assert!(
+            (h.position[2] - 0.577).abs() < 0.1,
+            "Front surface of normalized sphere should be near z=0.577"
+        );
+        assert!(
+            (h.distance - 2.422).abs() < 0.1,
+            "Hit distance should be ~2.42"
+        );
         assert!(h.normal[2] > 0.9, "Hit normal should face +Z");
     }
 
     #[test]
     fn test_high_to_low_bake_with_match_by_name() {
         let mut low = Mesh::create_cube();
-        low.submeshes = vec![
-            SubMesh { name: "Cube_low".into(), index_start: 0, index_count: low.indices.len() }
-        ];
+        low.submeshes = vec![SubMesh {
+            name: "Cube_low".into(),
+            index_start: 0,
+            index_count: low.indices.len(),
+        }];
 
         let mut high = Mesh::create_material_sphere(16, 16);
-        high.submeshes = vec![
-            SubMesh { name: "Cube_high".into(), index_start: 0, index_count: high.indices.len() }
-        ];
+        high.submeshes = vec![SubMesh {
+            name: "Cube_high".into(),
+            index_start: 0,
+            index_count: high.indices.len(),
+        }];
 
         let mut opts = BakerOptions::default();
         opts.resolution = 64;
@@ -1042,6 +1296,36 @@ mod tests {
             None,
         );
 
-        assert!(baked.is_cancelled, "Pre-cancelled baker must set is_cancelled flag");
+        assert!(
+            baked.is_cancelled,
+            "Pre-cancelled baker must set is_cancelled flag"
+        );
+    }
+
+    #[test]
+    fn test_skew_map_sample_decodes_offsets() {
+        let skew = SkewMap {
+            width: 2,
+            height: 2,
+            data: vec![[-1.0, 0.5], [1.0, -0.5], [0.25, -1.0], [0.0, 1.0]],
+        };
+        assert_eq!(
+            skew.sample(0.0, 0.0),
+            [-1.0, 0.5],
+            "nearest sample at top-left"
+        );
+        assert_eq!(skew.sample(1.0, 0.0), [1.0, -0.5]);
+        assert_eq!(skew.sample(0.74, 0.74), [0.0, 1.0]);
+        // Out-of-range values are clamped to row/col bounds (nearest sampling)
+        assert_eq!(skew.sample(-5.0, 9.0), [0.25, -1.0]);
+    }
+
+    #[test]
+    fn test_skew_options_default_off() {
+        let o = BakerOptions::default();
+        assert!(!o.use_skew_correction);
+        assert_eq!(o.skew_strength, 0.6);
+        assert!(o.skew_map.is_none());
+        assert!(!o.skew_invert);
     }
 }

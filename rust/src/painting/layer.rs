@@ -76,20 +76,66 @@ pub fn blend_colors(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] 
             1.0 - (1.0 - base[2]) * (1.0 - top[2]),
         ],
         BlendMode::Overlay => {
-            let ch = |b: f32, t: f32| if b < 0.5 { 2.0 * b * t } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - t) };
-            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+            let ch = |b: f32, t: f32| {
+                if b < 0.5 {
+                    2.0 * b * t
+                } else {
+                    1.0 - 2.0 * (1.0 - b) * (1.0 - t)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
         }
-        BlendMode::Add => [(base[0] + top[0]).min(1.0), (base[1] + top[1]).min(1.0), (base[2] + top[2]).min(1.0)],
-        BlendMode::Subtract => [(base[0] - top[0]).max(0.0), (base[1] - top[1]).max(0.0), (base[2] - top[2]).max(0.0)],
-        BlendMode::Darken => [base[0].min(top[0]), base[1].min(top[1]), base[2].min(top[2])],
-        BlendMode::Lighten => [base[0].max(top[0]), base[1].max(top[1]), base[2].max(top[2])],
+        BlendMode::Add => [
+            (base[0] + top[0]).min(1.0),
+            (base[1] + top[1]).min(1.0),
+            (base[2] + top[2]).min(1.0),
+        ],
+        BlendMode::Subtract => [
+            (base[0] - top[0]).max(0.0),
+            (base[1] - top[1]).max(0.0),
+            (base[2] - top[2]).max(0.0),
+        ],
+        BlendMode::Darken => [
+            base[0].min(top[0]),
+            base[1].min(top[1]),
+            base[2].min(top[2]),
+        ],
+        BlendMode::Lighten => [
+            base[0].max(top[0]),
+            base[1].max(top[1]),
+            base[2].max(top[2]),
+        ],
         BlendMode::ColorDodge => {
-            let ch = |b: f32, t: f32| if t >= 1.0 { 1.0 } else { (b / (1.0 - t)).min(1.0) };
-            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+            let ch = |b: f32, t: f32| {
+                if t >= 1.0 {
+                    1.0
+                } else {
+                    (b / (1.0 - t)).min(1.0)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
         }
         BlendMode::ColorBurn => {
-            let ch = |b: f32, t: f32| if t <= 0.0 { 0.0 } else { (1.0 - (1.0 - b) / t).max(0.0) };
-            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+            let ch = |b: f32, t: f32| {
+                if t <= 0.0 {
+                    0.0
+                } else {
+                    (1.0 - (1.0 - b) / t).max(0.0)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
         }
         BlendMode::LinearBurn => [
             (base[0] + top[0] - 1.0).max(0.0),
@@ -97,8 +143,18 @@ pub fn blend_colors(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] 
             (base[2] + top[2] - 1.0).max(0.0),
         ],
         BlendMode::HardLight => {
-            let ch = |b: f32, t: f32| if t < 0.5 { 2.0 * b * t } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - t) };
-            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+            let ch = |b: f32, t: f32| {
+                if t < 0.5 {
+                    2.0 * b * t
+                } else {
+                    1.0 - 2.0 * (1.0 - b) * (1.0 - t)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
         }
         BlendMode::SoftLight => {
             let ch = |b: f32, t: f32| {
@@ -108,9 +164,17 @@ pub fn blend_colors(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] 
                     b + (2.0 * t - 1.0) * (b.sqrt() - b)
                 }
             };
-            [ch(base[0], top[0]), ch(base[1], top[1]), ch(base[2], top[2])]
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
         }
-        BlendMode::Difference => [(base[0] - top[0]).abs(), (base[1] - top[1]).abs(), (base[2] - top[2]).abs()],
+        BlendMode::Difference => [
+            (base[0] - top[0]).abs(),
+            (base[1] - top[1]).abs(),
+            (base[2] - top[2]).abs(),
+        ],
         BlendMode::Exclusion => [
             base[0] + top[0] - 2.0 * base[0] * top[0],
             base[1] + top[1] - 2.0 * base[1] * top[1],
@@ -136,7 +200,13 @@ pub fn blend_scalar_channel(base: f32, top: f32, mode: BlendMode) -> f32 {
         BlendMode::Normal | BlendMode::PassThrough => top,
         BlendMode::Multiply => base * top,
         BlendMode::Screen => 1.0 - (1.0 - base) * (1.0 - top),
-        BlendMode::Overlay => if base < 0.5 { 2.0 * base * top } else { 1.0 - 2.0 * (1.0 - base) * (1.0 - top) },
+        BlendMode::Overlay => {
+            if base < 0.5 {
+                2.0 * base * top
+            } else {
+                1.0 - 2.0 * (1.0 - base) * (1.0 - top)
+            }
+        }
         BlendMode::Add => (base + top).min(1.0),
         BlendMode::Subtract => (base - top).max(0.0),
         BlendMode::Darken => base.min(top),
@@ -204,6 +274,87 @@ pub struct Layer {
     pub height: u32,
 }
 
+/// Immutable snapshot of texture buffers a tool samples from (smudge "Sample Merged", clone).
+pub struct SampleSource<'a> {
+    pub color: &'a [[f32; 4]],
+    pub metallic: &'a [f32],
+    pub roughness: &'a [f32],
+    pub normal: &'a [[f32; 3]],
+    pub height: &'a [f32],
+    pub w: u32,
+    pub h: u32,
+}
+
+impl<'a> SampleSource<'a> {
+    /// Nearest sample at texture index with clamped coordinates.
+    #[inline]
+    pub fn sample_idx(&self, idx: usize) -> ([f32; 4], f32, f32, [f32; 3], f32) {
+        let i = idx.min(self.color.len().saturating_sub(1));
+        (
+            self.color[i],
+            self.metallic[i.min(self.metallic.len().saturating_sub(1))],
+            self.roughness[i.min(self.roughness.len().saturating_sub(1))],
+            self.normal[i.min(self.normal.len().saturating_sub(1))],
+            self.height[i.min(self.height.len().saturating_sub(1))],
+        )
+    }
+
+    /// Nearest sample at a UV coordinate (clamped to texture bounds).
+    #[inline]
+    pub fn sample_uv(&self, u: f32, v: f32) -> ([f32; 4], f32, f32, [f32; 3], f32) {
+        let px = (u.clamp(0.0, 1.0) * (self.w as f32 - 1.0)).round() as i32;
+        let py = (v.clamp(0.0, 1.0) * (self.h as f32 - 1.0)).round() as i32;
+        let idx = (py * self.w as i32 + px).max(0) as usize;
+        self.sample_idx(idx)
+    }
+}
+
+/// Local tangent-frame basis (t, b) from a surface normal. The baker handles mirrored-UV
+/// handedness separately via the UV determinant.
+pub fn tangent_basis(n: [f32; 3]) -> ([f32; 3], [f32; 3]) {
+    let up = if n[0].abs() > 0.9 {
+        [0.0, 1.0, 0.0]
+    } else {
+        [1.0, 0.0, 0.0]
+    };
+    let c = [
+        n[1] * up[2] - n[2] * up[1],
+        n[2] * up[0] - n[0] * up[2],
+        n[0] * up[1] - n[1] * up[0],
+    ];
+    let cl = (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]).sqrt().max(1e-9);
+    let t = [c[0] / cl, c[1] / cl, c[2] / cl];
+    let b = [
+        n[1] * t[2] - n[2] * t[1],
+        n[2] * t[0] - n[0] * t[2],
+        n[0] * t[1] - n[1] * t[0],
+    ];
+    (t, b)
+}
+
+#[inline]
+fn blend_rgb(cur: [f32; 4], src: [f32; 3], alpha: f32) -> [f32; 4] {
+    [
+        cur[0] * (1.0 - alpha) + src[0] * alpha,
+        cur[1] * (1.0 - alpha) + src[1] * alpha,
+        cur[2] * (1.0 - alpha) + src[2] * alpha,
+        cur[3],
+    ]
+}
+
+/// (cos, sin, mirror_x, mirror_y, scale) for the clone stamp pattern transform.
+#[inline]
+fn clone_transform(brush: &Brush) -> (f32, f32, bool, bool, f32) {
+    let a = brush.clone_rotation.to_radians();
+    (
+        a.cos(),
+        a.sin(),
+        brush.clone_mirror_x,
+        brush.clone_mirror_y,
+        brush.clone_scale.max(0.05),
+    )
+}
+
 impl Layer {
     pub fn new_paint(id: usize, name: impl Into<String>, width: u32, height: u32) -> Self {
         let total = (width * height) as usize;
@@ -253,7 +404,15 @@ impl Layer {
         }
     }
 
-    pub fn new_fill(id: usize, name: impl Into<String>, color: [f32; 4], metallic: f32, roughness: f32, width: u32, height: u32) -> Self {
+    pub fn new_fill(
+        id: usize,
+        name: impl Into<String>,
+        color: [f32; 4],
+        metallic: f32,
+        roughness: f32,
+        width: u32,
+        height: u32,
+    ) -> Self {
         let total = (width * height) as usize;
         Self {
             id,
@@ -304,63 +463,113 @@ impl Layer {
     pub fn apply_effects(&mut self) {
         for effect in &self.effects {
             match effect {
-                FilterEffect::Levels { min_in, max_in, gamma, min_out, max_out, channel } => {
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                FilterEffect::Levels {
+                    min_in,
+                    max_in,
+                    gamma,
+                    min_out,
+                    max_out,
+                    channel,
+                } => {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::BaseColor
+                    {
                         for p in &mut self.color_buffer {
-                            p[0] = apply_levels_scalar(p[0], *min_in, *max_in, *gamma, *min_out, *max_out);
-                            p[1] = apply_levels_scalar(p[1], *min_in, *max_in, *gamma, *min_out, *max_out);
-                            p[2] = apply_levels_scalar(p[2], *min_in, *max_in, *gamma, *min_out, *max_out);
+                            p[0] = apply_levels_scalar(
+                                p[0], *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
+                            p[1] = apply_levels_scalar(
+                                p[1], *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
+                            p[2] = apply_levels_scalar(
+                                p[2], *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Metallic
+                    {
                         for v in &mut self.metallic_buffer {
-                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                            *v = apply_levels_scalar(
+                                *v, *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Roughness
+                    {
                         for v in &mut self.roughness_buffer {
-                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                            *v = apply_levels_scalar(
+                                *v, *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Height
+                    {
                         for v in &mut self.height_buffer {
-                            *v = apply_levels_scalar(*v, *min_in, *max_in, *gamma, *min_out, *max_out);
+                            *v = apply_levels_scalar(
+                                *v, *min_in, *max_in, *gamma, *min_out, *max_out,
+                            );
                         }
                     }
                 }
                 FilterEffect::Blur { radius, channel } => {
                     let w = self.width as usize;
                     let h = self.height as usize;
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::BaseColor
+                    {
                         self.color_buffer = gaussian_blur_rgba(&self.color_buffer, w, h, *radius);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
-                        self.metallic_buffer = gaussian_blur_f32(&self.metallic_buffer, w, h, *radius);
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Metallic
+                    {
+                        self.metallic_buffer =
+                            gaussian_blur_f32(&self.metallic_buffer, w, h, *radius);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
-                        self.roughness_buffer = gaussian_blur_f32(&self.roughness_buffer, w, h, *radius);
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Roughness
+                    {
+                        self.roughness_buffer =
+                            gaussian_blur_f32(&self.roughness_buffer, w, h, *radius);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Height
+                    {
                         self.height_buffer = gaussian_blur_f32(&self.height_buffer, w, h, *radius);
                     }
                 }
                 FilterEffect::Sharpen { strength, channel } => {
                     let w = self.width as usize;
                     let h = self.height as usize;
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::BaseColor
+                    {
                         self.color_buffer = sharpen_rgba(&self.color_buffer, w, h, *strength);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Metallic
+                    {
                         self.metallic_buffer = sharpen_f32(&self.metallic_buffer, w, h, *strength);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
-                        self.roughness_buffer = sharpen_f32(&self.roughness_buffer, w, h, *strength);
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Roughness
+                    {
+                        self.roughness_buffer =
+                            sharpen_f32(&self.roughness_buffer, w, h, *strength);
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Height
+                    {
                         self.height_buffer = sharpen_f32(&self.height_buffer, w, h, *strength);
                     }
                 }
-                FilterEffect::HSL { hue_shift, sat_mult, light_offset } => {
+                FilterEffect::HSL {
+                    hue_shift,
+                    sat_mult,
+                    light_offset,
+                } => {
                     for p in &mut self.color_buffer {
                         let (h, s, l) = rgb_to_hsl(p[0], p[1], p[2]);
                         let new_h = (h + hue_shift).rem_euclid(360.0);
@@ -373,30 +582,41 @@ impl Layer {
                     }
                 }
                 FilterEffect::Invert { channel } => {
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::BaseColor
+                    {
                         for p in &mut self.color_buffer {
                             p[0] = (1.0 - p[0]).clamp(0.0, 1.0);
                             p[1] = (1.0 - p[1]).clamp(0.0, 1.0);
                             p[2] = (1.0 - p[2]).clamp(0.0, 1.0);
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Metallic
+                    {
                         for v in &mut self.metallic_buffer {
                             *v = (1.0 - *v).clamp(0.0, 1.0);
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Roughness
+                    {
                         for v in &mut self.roughness_buffer {
                             *v = (1.0 - *v).clamp(0.0, 1.0);
                         }
                     }
-                    if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                    if *channel == FilterTargetChannel::All
+                        || *channel == FilterTargetChannel::Height
+                    {
                         for v in &mut self.height_buffer {
                             *v = -*v;
                         }
                     }
                 }
-                FilterEffect::GradientMap { color_start, color_end } => {
+                FilterEffect::GradientMap {
+                    color_start,
+                    color_end,
+                } => {
                     for p in &mut self.color_buffer {
                         let lum = (p[0] * 0.299 + p[1] * 0.587 + p[2] * 0.114).clamp(0.0, 1.0);
                         p[0] = color_start[0] * (1.0 - lum) + color_end[0] * lum;
@@ -431,7 +651,9 @@ impl Layer {
         height: u32,
     ) -> Self {
         let name_str = name.into();
-        let mut layer = Self::new_fill(id, name_str, pbr_hint.0, pbr_hint.1, pbr_hint.2, width, height);
+        let mut layer = Self::new_fill(
+            id, name_str, pbr_hint.0, pbr_hint.1, pbr_hint.2, width, height,
+        );
 
         if let Ok(img) = image::open(path) {
             let rgba_img = img.to_rgba8();
@@ -614,7 +836,8 @@ impl Layer {
                 let px = x;
                 let dx = (x - px_center) as f32;
 
-                let alpha_base = sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
+                let alpha_base =
+                    sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
                 let alpha = (alpha_base * brush.opacity * brush.flow).clamp(0.0, 1.0);
 
                 if alpha > 0.001 {
@@ -623,7 +846,8 @@ impl Layer {
                     if on_mask {
                         if let Some(ref mut mask) = self.mask {
                             if idx < mask.buffer.len() {
-                                mask.buffer[idx] = (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
+                                mask.buffer[idx] =
+                                    (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
                             }
                         }
                     } else {
@@ -638,10 +862,12 @@ impl Layer {
                             ];
                         }
                         if brush.paint_metallic && idx < self.metallic_buffer.len() {
-                            self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
+                            self.metallic_buffer[idx] =
+                                self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
                         }
                         if brush.paint_roughness && idx < self.roughness_buffer.len() {
-                            self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + brush.roughness * alpha;
+                            self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha)
+                                + brush.roughness * alpha;
                         }
                         if brush.paint_normal && idx < self.normal_buffer.len() {
                             let cur = self.normal_buffer[idx];
@@ -652,7 +878,8 @@ impl Layer {
                             ];
                         }
                         if brush.paint_height && idx < self.height_buffer.len() {
-                            self.height_buffer[idx] = self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
+                            self.height_buffer[idx] =
+                                self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
                         }
                     }
                 }
@@ -681,7 +908,8 @@ impl Layer {
             return self.paint_stamp(to_uv, brush, on_mask, history);
         }
 
-        let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
+        let pixel_dist =
+            (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
         let step_size = (brush.size * brush.spacing).max(1.0);
         let steps = (pixel_dist / step_size).ceil().max(1.0) as usize;
 
@@ -739,7 +967,8 @@ impl Layer {
                 let px = x;
                 let dx = (x - px_center) as f32;
 
-                let alpha_base = sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
+                let alpha_base =
+                    sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
                 let alpha = (alpha_base * brush.opacity * brush.flow).clamp(0.0, 1.0);
                 if alpha > 0.001 {
                     let idx = (py * w + px) as usize;
@@ -773,7 +1002,8 @@ impl Layer {
             return self.erase_stamp(to_uv, brush, on_mask, history);
         }
 
-        let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
+        let pixel_dist =
+            (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
         let step_size = (brush.size * brush.spacing).max(1.0);
         let steps = (pixel_dist / step_size).ceil().max(1.0) as usize;
 
@@ -837,15 +1067,20 @@ impl Layer {
             hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
         }
 
-        let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+        let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+            .max(1e-7);
 
         for py in py_min..=py_max {
             let v_px = py as f32 / (h_f - 1.0);
             let row_offset = py as usize * self.width as usize;
             for px in px_min..=px_max {
                 let u_px = px as f32 / (w_f - 1.0);
-                let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
-                let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                    + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                    / denom;
+                let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                    + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                    / denom;
                 let b2 = 1.0 - b0 - b1;
 
                 if b0 >= -0.01 && b1 >= -0.01 && b2 >= -0.01 {
@@ -891,6 +1126,10 @@ impl Layer {
         let num_tris = mesh.indices.len() / 3;
         let r2 = radius_3d * radius_3d;
         let hardness = brush.hardness.clamp(0.0, 0.999);
+        // Stamp-local tangent frame: per-pixel alpha now honors alpha shapes, custom alphas,
+        // stencils and brush angle in 3D (previously 3D painting used a plain distance falloff)
+        let (tan_v, bin_v) = tangent_basis(hit_normal);
+        let angle_rad = brush.angle.to_radians();
 
         let mut bbox = [w, h, 0, 0];
         let mut any_painted = false;
@@ -919,9 +1158,13 @@ impl Layer {
             let tri_min_z = v0[2].min(v1[2]).min(v2[2]);
             let tri_max_z = v0[2].max(v1[2]).max(v2[2]);
 
-            if hit_pos[0] + radius_3d < tri_min_x || hit_pos[0] - radius_3d > tri_max_x ||
-               hit_pos[1] + radius_3d < tri_min_y || hit_pos[1] - radius_3d > tri_max_y ||
-               hit_pos[2] + radius_3d < tri_min_z || hit_pos[2] - radius_3d > tri_max_z {
+            if hit_pos[0] + radius_3d < tri_min_x
+                || hit_pos[0] - radius_3d > tri_max_x
+                || hit_pos[1] + radius_3d < tri_min_y
+                || hit_pos[1] - radius_3d > tri_max_y
+                || hit_pos[2] + radius_3d < tri_min_z
+                || hit_pos[2] - radius_3d > tri_max_z
+            {
                 continue;
             }
 
@@ -934,8 +1177,10 @@ impl Layer {
                 (n0[1] + n1[1] + n2[1]) * 0.3333,
                 (n0[2] + n1[2] + n2[2]) * 0.3333,
             ];
-            let dot = avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2];
-            if dot < 0.05 {
+            let dot =
+                avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2];
+            // Paint-through modifier (PaintThroughModifier parity): paint back-facing geometry too
+            if dot < 0.05 && !brush.paint_through {
                 continue;
             }
 
@@ -953,7 +1198,9 @@ impl Layer {
             let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
             let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
 
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+                .max(1e-7);
 
             if let Some(ref mut hist) = history {
                 hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
@@ -966,8 +1213,12 @@ impl Layer {
                 for px in px_min..=px_max {
                     let u_px = px as f32 / (w_f - 1.0);
 
-                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
-                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                        + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                        + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                        / denom;
                     let b2 = 1.0 - b0 - b1;
 
                     if b0 >= -0.05 && b1 >= -0.05 && b2 >= -0.05 {
@@ -981,13 +1232,13 @@ impl Layer {
                         let dist2 = dx * dx + dy * dy + dz * dz;
 
                         if dist2 <= r2 {
-                            let dist = dist2.sqrt();
-                            let norm_dist = dist / radius_3d;
-                            let brush_alpha = if norm_dist <= hardness {
-                                1.0
-                            } else {
-                                1.0 - (norm_dist - hardness) / (1.0 - hardness)
-                            };
+                            let inv_r = 1.0 / radius_3d;
+                            let lt =
+                                ((dx * tan_v[0] + dy * tan_v[1] + dz * tan_v[2]) * inv_r) * 64.0;
+                            let lb =
+                                ((dx * bin_v[0] + dy * bin_v[1] + dz * bin_v[2]) * inv_r) * 64.0;
+                            let brush_alpha =
+                                sample_brush_alpha(lt, lb, 64.0, hardness, angle_rad, brush);
                             let alpha = (brush_alpha * brush.opacity * brush.flow).clamp(0.0, 1.0);
 
                             if alpha > 0.001 {
@@ -996,15 +1247,19 @@ impl Layer {
                                     if let Some(ref mut mask) = self.mask {
                                         if idx < mask.buffer.len() {
                                             if is_eraser {
-                                                mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
+                                                mask.buffer[idx] =
+                                                    (mask.buffer[idx] - alpha).max(0.0);
                                             } else {
-                                                mask.buffer[idx] = (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
+                                                mask.buffer[idx] =
+                                                    (mask.buffer[idx] * (1.0 - alpha) + alpha)
+                                                        .clamp(0.0, 1.0);
                                             }
                                         }
                                     }
                                 } else if is_eraser {
                                     if idx < self.color_buffer.len() {
-                                        self.color_buffer[idx][3] = (self.color_buffer[idx][3] - alpha).max(0.0);
+                                        self.color_buffer[idx][3] =
+                                            (self.color_buffer[idx][3] - alpha).max(0.0);
                                     }
                                 } else {
                                     if brush.paint_color && idx < self.color_buffer.len() {
@@ -1018,10 +1273,14 @@ impl Layer {
                                         ];
                                     }
                                     if brush.paint_metallic && idx < self.metallic_buffer.len() {
-                                        self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
+                                        self.metallic_buffer[idx] = self.metallic_buffer[idx]
+                                            * (1.0 - alpha)
+                                            + brush.metallic * alpha;
                                     }
                                     if brush.paint_roughness && idx < self.roughness_buffer.len() {
-                                        self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + brush.roughness * alpha;
+                                        self.roughness_buffer[idx] = self.roughness_buffer[idx]
+                                            * (1.0 - alpha)
+                                            + brush.roughness * alpha;
                                     }
                                     if brush.paint_normal && idx < self.normal_buffer.len() {
                                         let cur = self.normal_buffer[idx];
@@ -1032,7 +1291,9 @@ impl Layer {
                                         ];
                                     }
                                     if brush.paint_height && idx < self.height_buffer.len() {
-                                        self.height_buffer[idx] = self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
+                                        self.height_buffer[idx] = self.height_buffer[idx]
+                                            * (1.0 - alpha)
+                                            + brush.height * alpha;
                                     }
                                 }
 
@@ -1054,207 +1315,6 @@ impl Layer {
             [0, 0, 0, 0]
         }
     }
-
-    /// 3D Surface Smudge: blends surrounding pixels on the 3D surface
-    pub fn smudge_3d_surface(
-        &mut self,
-        mesh: &crate::graphics::mesh::Mesh,
-        hit_pos: [f32; 3],
-        hit_normal: [f32; 3],
-        radius_3d: f32,
-        brush: &Brush,
-        mut history: Option<&mut HistoryManager>,
-    ) -> [i32; 4] {
-        let w = self.width as i32;
-        let h = self.height as i32;
-        let w_f = self.width as f32;
-        let h_f = self.height as f32;
-        let num_tris = mesh.indices.len() / 3;
-        let r2 = radius_3d * radius_3d;
-        let mut bbox = [w, h, 0, 0];
-        let mut any_painted = false;
-
-        // Sample center color to blend towards
-        let mut center_color = [0.5f32, 0.5, 0.5, 1.0];
-        let mut center_met = 0.0f32;
-        let mut center_rough = 0.5f32;
-        let mut found_center = false;
-
-        for t in 0..num_tris {
-            let i0 = mesh.indices[t * 3] as usize;
-            let i1 = mesh.indices[t * 3 + 1] as usize;
-            let i2 = mesh.indices[t * 3 + 2] as usize;
-            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() { continue; }
-            let uv0 = mesh.uvs[i0];
-            let px = ((uv0[0] * (w_f - 1.0)).round() as usize).min(self.width as usize - 1);
-            let py = ((uv0[1] * (h_f - 1.0)).round() as usize).min(self.height as usize - 1);
-            let idx = py * self.width as usize + px;
-            if idx < self.color_buffer.len() {
-                center_color = self.color_buffer[idx];
-                center_met = self.metallic_buffer[idx];
-                center_rough = self.roughness_buffer[idx];
-                found_center = true;
-                break;
-            }
-        }
-        if !found_center { return [0, 0, 0, 0]; }
-
-        for t in 0..num_tris {
-            let i0 = mesh.indices[t * 3] as usize;
-            let i1 = mesh.indices[t * 3 + 1] as usize;
-            let i2 = mesh.indices[t * 3 + 2] as usize;
-
-            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() { continue; }
-            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() { continue; }
-
-            let v0 = mesh.vertices[i0];
-            let v1 = mesh.vertices[i1];
-            let v2 = mesh.vertices[i2];
-
-            let tri_min_x = v0[0].min(v1[0]).min(v2[0]);
-            let tri_max_x = v0[0].max(v1[0]).max(v2[0]);
-            let tri_min_y = v0[1].min(v1[1]).min(v2[1]);
-            let tri_max_y = v0[1].max(v1[1]).max(v2[1]);
-            let tri_min_z = v0[2].min(v1[2]).min(v2[2]);
-            let tri_max_z = v0[2].max(v1[2]).max(v2[2]);
-
-            if hit_pos[0] + radius_3d < tri_min_x || hit_pos[0] - radius_3d > tri_max_x ||
-               hit_pos[1] + radius_3d < tri_min_y || hit_pos[1] - radius_3d > tri_max_y ||
-               hit_pos[2] + radius_3d < tri_min_z || hit_pos[2] - radius_3d > tri_max_z {
-                continue;
-            }
-
-            let n0 = mesh.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
-            let n1 = mesh.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
-            let n2 = mesh.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
-            let avg_n = [(n0[0] + n1[0] + n2[0]) * 0.3333, (n0[1] + n1[1] + n2[1]) * 0.3333, (n0[2] + n1[2] + n2[2]) * 0.3333];
-            if avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2] < 0.05 {
-                continue;
-            }
-
-            let uv0 = mesh.uvs[i0];
-            let uv1 = mesh.uvs[i1];
-            let uv2 = mesh.uvs[i2];
-
-            let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
-            let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
-            let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
-            let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
-
-            let px_min = ((min_u * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
-            let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
-            let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
-            let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
-
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
-
-            if let Some(ref mut hist) = history {
-                hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
-            }
-
-            for py in py_min..=py_max {
-                let v_px = py as f32 / (h_f - 1.0);
-                let row_offset = py as usize * self.width as usize;
-
-                for px in px_min..=px_max {
-                    let u_px = px as f32 / (w_f - 1.0);
-                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
-                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
-                    let b2 = 1.0 - b0 - b1;
-
-                    if b0 >= -0.05 && b1 >= -0.05 && b2 >= -0.05 {
-                        let p3d_x = b0 * v0[0] + b1 * v1[0] + b2 * v2[0];
-                        let p3d_y = b0 * v0[1] + b1 * v1[1] + b2 * v2[1];
-                        let p3d_z = b0 * v0[2] + b1 * v1[2] + b2 * v2[2];
-
-                        let dx = p3d_x - hit_pos[0];
-                        let dy = p3d_y - hit_pos[1];
-                        let dz = p3d_z - hit_pos[2];
-                        let dist2 = dx * dx + dy * dy + dz * dz;
-
-                        if dist2 <= r2 {
-                            let dist = dist2.sqrt();
-                            let norm_dist = dist / radius_3d;
-                            let alpha = ((1.0 - norm_dist) * brush.flow * 0.35).clamp(0.0, 1.0);
-                            let idx = row_offset + px as usize;
-
-                            if idx < self.color_buffer.len() {
-                                let cur = self.color_buffer[idx];
-                                self.color_buffer[idx] = [
-                                    cur[0] * (1.0 - alpha) + center_color[0] * alpha,
-                                    cur[1] * (1.0 - alpha) + center_color[1] * alpha,
-                                    cur[2] * (1.0 - alpha) + center_color[2] * alpha,
-                                    cur[3],
-                                ];
-                                self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + center_met * alpha;
-                                self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + center_rough * alpha;
-                            }
-
-                            bbox[0] = bbox[0].min(px);
-                            bbox[1] = bbox[1].min(py);
-                            bbox[2] = bbox[2].max(px);
-                            bbox[3] = bbox[3].max(py);
-                            any_painted = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if any_painted && bbox[2] >= bbox[0] && bbox[3] >= bbox[1] { bbox } else { [0, 0, 0, 0] }
-    }
-
-    /// 2D UV Smudge stamp
-    pub fn smudge_stamp(&mut self, uv: [f32; 2], brush: &Brush, mut history: Option<&mut HistoryManager>) -> [i32; 4] {
-        let w = self.width as i32;
-        let h = self.height as i32;
-        let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
-        let py_center = (uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
-        let radius = (brush.size * 0.5).round() as i32;
-
-        let min_x = (px_center - radius).clamp(0, w - 1);
-        let max_x = (px_center + radius).clamp(0, w - 1);
-        let min_y = (py_center - radius).clamp(0, h - 1);
-        let max_y = (py_center + radius).clamp(0, h - 1);
-
-        if min_x > max_x || min_y > max_y { return [0, 0, 0, 0]; }
-
-        if let Some(ref mut hist) = history {
-            hist.record_bbox_before_modify(self, [min_x, min_y, max_x, max_y]);
-        }
-
-        let center_idx = (py_center as usize * self.width as usize + px_center as usize).min(self.color_buffer.len().saturating_sub(1));
-        let c_color = self.color_buffer[center_idx];
-        let c_met = self.metallic_buffer[center_idx];
-        let c_rough = self.roughness_buffer[center_idx];
-        let rad_f = radius.max(1) as f32;
-
-        for y in min_y..=max_y {
-            let row_offset = y as usize * self.width as usize;
-            let dy = (y - py_center) as f32;
-            for x in min_x..=max_x {
-                let dx = (x - px_center) as f32;
-                let d = (dx * dx + dy * dy).sqrt();
-                if d <= rad_f {
-                    let norm_d = d / rad_f;
-                    let alpha = ((1.0 - norm_d) * brush.flow * 0.35).clamp(0.0, 1.0);
-                    let idx = row_offset + x as usize;
-                    if idx < self.color_buffer.len() {
-                        let cur = self.color_buffer[idx];
-                        self.color_buffer[idx] = [
-                            cur[0] * (1.0 - alpha) + c_color[0] * alpha,
-                            cur[1] * (1.0 - alpha) + c_color[1] * alpha,
-                            cur[2] * (1.0 - alpha) + c_color[2] * alpha,
-                            cur[3],
-                        ];
-                        self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + c_met * alpha;
-                        self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + c_rough * alpha;
-                    }
-                }
-            }
-        }
-        [min_x, min_y, max_x, max_y]
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -1273,6 +1333,873 @@ pub struct LayerStack {
 }
 
 impl LayerStack {
+    /// Alpha-falloff edge term shared by the stamp functions.
+    #[inline]
+    fn edge_alpha(norm_dist: f32, hardness: f32) -> f32 {
+        if norm_dist <= hardness {
+            1.0
+        } else {
+            (1.0 - (norm_dist - hardness) / (1.0 - hardness).max(0.001)).clamp(0.0, 1.0)
+        }
+    }
+
+    /// Writes one pixel of paint/erase into a layer (shared by 2D/3D/projection stamps).
+    #[inline]
+    fn apply_paint_px(
+        layer: &mut Layer,
+        idx: usize,
+        alpha: f32,
+        brush: &Brush,
+        is_eraser: bool,
+        on_mask: bool,
+    ) {
+        if on_mask {
+            if let Some(ref mut mask) = layer.mask {
+                if idx < mask.buffer.len() {
+                    if is_eraser {
+                        mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
+                    } else {
+                        mask.buffer[idx] =
+                            (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
+                    }
+                }
+            }
+            return;
+        }
+        if is_eraser {
+            if idx < layer.color_buffer.len() {
+                layer.color_buffer[idx][3] = (layer.color_buffer[idx][3] - alpha).max(0.0);
+            }
+            return;
+        }
+        if brush.paint_color && idx < layer.color_buffer.len() {
+            let cur = layer.color_buffer[idx];
+            layer.color_buffer[idx] = [
+                cur[0].mul_add(1.0 - alpha, brush.color[0] * alpha),
+                cur[1].mul_add(1.0 - alpha, brush.color[1] * alpha),
+                cur[2].mul_add(1.0 - alpha, brush.color[2] * alpha),
+                (cur[3] + alpha).min(1.0),
+            ];
+        }
+        if brush.paint_metallic && idx < layer.metallic_buffer.len() {
+            layer.metallic_buffer[idx] =
+                layer.metallic_buffer[idx].mul_add(1.0 - alpha, brush.metallic * alpha);
+        }
+        if brush.paint_roughness && idx < layer.roughness_buffer.len() {
+            layer.roughness_buffer[idx] =
+                layer.roughness_buffer[idx].mul_add(1.0 - alpha, brush.roughness * alpha);
+        }
+        if brush.paint_normal && idx < layer.normal_buffer.len() {
+            let cur = layer.normal_buffer[idx];
+            layer.normal_buffer[idx] = [
+                cur[0].mul_add(1.0 - alpha, brush.normal[0] * alpha),
+                cur[1].mul_add(1.0 - alpha, brush.normal[1] * alpha),
+                cur[2].mul_add(1.0 - alpha, brush.normal[2] * alpha),
+            ];
+        }
+        if brush.paint_height && idx < layer.height_buffer.len() {
+            layer.height_buffer[idx] =
+                layer.height_buffer[idx].mul_add(1.0 - alpha, brush.height * alpha);
+        }
+    }
+
+    /// Per-pixel clone write: copies full channel state from the sampled composite region.
+    #[inline]
+    fn apply_clone_px(
+        layer: &mut Layer,
+        idx: usize,
+        alpha: f32,
+        src: ([f32; 4], f32, f32, [f32; 3], f32),
+        brush: &Brush,
+        on_mask: bool,
+    ) {
+        let (sc, s_met, s_rough, s_norm, s_height) = src;
+        if on_mask {
+            if let Some(ref mut mask) = layer.mask {
+                if idx < mask.buffer.len() {
+                    let lum = (sc[0] * 0.299 + sc[1] * 0.587 + sc[2] * 0.114) * sc[3];
+                    mask.buffer[idx] =
+                        (mask.buffer[idx] * (1.0 - alpha) + lum * alpha).clamp(0.0, 1.0);
+                }
+            }
+            return;
+        }
+        if idx < layer.color_buffer.len() {
+            let cur = layer.color_buffer[idx];
+            layer.color_buffer[idx] = [
+                cur[0].mul_add(1.0 - alpha, sc[0] * alpha),
+                cur[1].mul_add(1.0 - alpha, sc[1] * alpha),
+                cur[2].mul_add(1.0 - alpha, sc[2] * alpha),
+                (cur[3] + alpha * sc[3]).min(1.0),
+            ];
+        }
+        if idx < layer.metallic_buffer.len() {
+            layer.metallic_buffer[idx] =
+                layer.metallic_buffer[idx].mul_add(1.0 - alpha, s_met * alpha);
+        }
+        if idx < layer.roughness_buffer.len() {
+            layer.roughness_buffer[idx] =
+                layer.roughness_buffer[idx].mul_add(1.0 - alpha, s_rough * alpha);
+        }
+        if brush.paint_normal && idx < layer.normal_buffer.len() {
+            let cur = layer.normal_buffer[idx];
+            layer.normal_buffer[idx] = [
+                cur[0].mul_add(1.0 - alpha, s_norm[0] * alpha),
+                cur[1].mul_add(1.0 - alpha, s_norm[1] * alpha),
+                cur[2].mul_add(1.0 - alpha, s_norm[2] * alpha),
+            ];
+        }
+        if brush.paint_height && idx < layer.height_buffer.len() {
+            layer.height_buffer[idx] =
+                layer.height_buffer[idx].mul_add(1.0 - alpha, s_height * alpha);
+        }
+    }
+
+    /// Transformed clone-source pixel for a destination local offset (dx, dy) in texture pixels.
+    /// Rotation/scale/mirror are applied around each waypoint's center.
+    #[inline]
+    fn clone_source_px(
+        dx: f32,
+        dy: f32,
+        src_center: [f32; 2],
+        w: i32,
+        h: i32,
+        brush: &Brush,
+    ) -> Option<usize> {
+        let a = brush.clone_rotation.to_radians();
+        let (ca, sa) = (a.cos(), a.sin());
+        let sc = brush.clone_scale.max(0.05);
+        let mut tx = (dx * ca - dy * sa) / sc;
+        let mut ty = (dx * sa + dy * ca) / sc;
+        if brush.clone_mirror_x {
+            tx = -tx;
+        }
+        if brush.clone_mirror_y {
+            ty = -ty;
+        }
+        let spx = (src_center[0] + tx).round() as i32;
+        let spy = (src_center[1] + ty).round() as i32;
+        if spx < 0 || spx >= w || spy < 0 || spy >= h {
+            return None;
+        }
+        Some((spy * w + spx) as usize)
+    }
+
+    #[inline]
+    fn sample_composite_src(&self, idx: usize) -> ([f32; 4], f32, f32, [f32; 3], f32) {
+        let n = self.composite_color.len();
+        let i = idx.min(n.saturating_sub(1));
+        (
+            self.composite_color[i],
+            self.composite_metallic[i.min(self.composite_metallic.len().saturating_sub(1))],
+            self.composite_roughness[i.min(self.composite_roughness.len().saturating_sub(1))],
+            self.composite_normal[i.min(self.composite_normal.len().saturating_sub(1))],
+            self.composite_height[i.min(self.composite_height.len().saturating_sub(1))],
+        )
+    }
+
+    // ───────────────────── Smudge (EngineActionSmudge parity) ─────────────────────
+
+    /// 2D UV displacement smudge. `delta` = current − previous texture-space stroke motion.
+    /// Pulls content from behind the stroke from the layer's own pre-stamp state, or from the
+    /// merged composite when `brush.smudge_sample_merged` is set. Finger Painting lays down
+    /// the brush color instead.
+    pub fn smudge_stamp_at(
+        &mut self,
+        uv: [f32; 2],
+        delta: [f32; 2],
+        brush: &Brush,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        if self.layers.is_empty() {
+            return [0, 0, 0, 0];
+        }
+        let li = self.active_layer_index.min(self.layers.len() - 1);
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
+        let py_center = (uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
+        let radius = (brush.size * 0.5).round() as i32;
+        let min_x = (px_center - radius).clamp(0, w - 1);
+        let max_x = (px_center + radius).clamp(0, w - 1);
+        let min_y = (py_center - radius).clamp(0, h - 1);
+        let max_y = (py_center + radius).clamp(0, h - 1);
+        if min_x > max_x || min_y > max_y {
+            return [0, 0, 0, 0];
+        }
+
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+        let rad_f = radius.max(1) as f32;
+        // Displacement opposite to stroke motion: new(p) += old(p - Δ') blended by flow
+        let dxp = -delta[0] * (w - 1) as f32;
+        let dyp = -delta[1] * (h - 1) as f32;
+        let finger = brush.smudge_finger_painting;
+        let merged = brush.smudge_sample_merged;
+        let brush_rgb = [brush.color[0], brush.color[1], brush.color[2]];
+
+        struct Pulled {
+            idx: usize,
+            rgb: [f32; 3],
+            met: f32,
+            rough: f32,
+            alpha: f32,
+            has_src: bool,
+        }
+        let mut pulls: Vec<Pulled> = Vec::new();
+        for py in min_y..=max_y {
+            for px in min_x..=max_x {
+                let dx = (px - px_center) as f32;
+                let dy = (py - py_center) as f32;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if dist > rad_f {
+                    continue;
+                }
+                let alpha = (Self::edge_alpha(dist / rad_f, hardness) * brush.flow).clamp(0.0, 1.0);
+                if alpha < 0.001 {
+                    continue;
+                }
+                let idx = (py * w + px) as usize;
+                let sx = ((px as f32 + dxp).round() as i32).clamp(0, w - 1);
+                let sy = ((py as f32 + dyp).round() as i32).clamp(0, h - 1);
+                let sidx = (sy * w + sx) as usize;
+                let (rgb, met, rough, has_src) = if finger {
+                    (brush_rgb, brush.metallic, brush.roughness, true)
+                } else if merged {
+                    let c = self.composite_color[sidx.min(self.composite_color.len())
+                        - if sidx < self.composite_color.len() {
+                            0
+                        } else {
+                            1
+                        }];
+                    (
+                        [c[0], c[1], c[2]],
+                        self.composite_metallic[sidx.min(self.composite_metallic.len() - 1)],
+                        self.composite_roughness[sidx.min(self.composite_roughness.len() - 1)],
+                        c[3] >= 0.01,
+                    )
+                } else {
+                    let buf = &self.layers[li].color_buffer;
+                    let c = buf[sidx.min(buf.len() - 1)];
+                    (
+                        [c[0], c[1], c[2]],
+                        self.layers[li].metallic_buffer
+                            [sidx.min(self.layers[li].metallic_buffer.len() - 1)],
+                        self.layers[li].roughness_buffer
+                            [sidx.min(self.layers[li].roughness_buffer.len() - 1)],
+                        c[3] >= 0.01,
+                    )
+                };
+                pulls.push(Pulled {
+                    idx,
+                    rgb,
+                    met,
+                    rough,
+                    alpha,
+                    has_src,
+                });
+            }
+        }
+        if pulls.is_empty() {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(&self.layers[li], [min_x, min_y, max_x, max_y]);
+        }
+
+        let layer = &mut self.layers[li];
+        for p in &pulls {
+            if !p.has_src {
+                continue;
+            }
+            let cur = layer.color_buffer[p.idx];
+            layer.color_buffer[p.idx] = [
+                cur[0].mul_add(1.0 - p.alpha, p.rgb[0] * p.alpha),
+                cur[1].mul_add(1.0 - p.alpha, p.rgb[1] * p.alpha),
+                cur[2].mul_add(1.0 - p.alpha, p.rgb[2] * p.alpha),
+                if finger {
+                    (cur[3] + p.alpha * 0.35).min(1.0)
+                } else {
+                    cur[3]
+                },
+            ];
+            if p.idx < layer.metallic_buffer.len() {
+                layer.metallic_buffer[p.idx] =
+                    layer.metallic_buffer[p.idx].mul_add(1.0 - p.alpha, p.met * p.alpha);
+            }
+            if p.idx < layer.roughness_buffer.len() {
+                layer.roughness_buffer[p.idx] =
+                    layer.roughness_buffer[p.idx].mul_add(1.0 - p.alpha, p.rough * p.alpha);
+            }
+        }
+        [min_x, min_y, max_x, max_y]
+    }
+
+    /// 3D surface displacement smudge. Same semantics as `smudge_stamp_at`, only the stamp is
+    /// rasterized across the tangent-space projection of the 3D brush sphere (`delta_uv` is the
+    /// texture-space motion of the hit).
+    pub fn smudge_3d_at(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        radius_3d: f32,
+        delta_uv: [f32; 2],
+        brush: &Brush,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        if self.layers.is_empty() {
+            return [0, 0, 0, 0];
+        }
+        let li = self.active_layer_index.min(self.layers.len() - 1);
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+        let num_tris = mesh.indices.len() / 3;
+        let r2 = radius_3d * radius_3d;
+        let rad_f = radius_3d.max(1e-6);
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+        let (tan_v, bin_v) = tangent_basis(hit_normal);
+        let finger = brush.smudge_finger_painting;
+        let merged = brush.smudge_sample_merged;
+        let brush_rgb = [brush.color[0], brush.color[1], brush.color[2]];
+
+        struct Pulled {
+            idx: usize,
+            rgb: [f32; 3],
+            met: f32,
+            rough: f32,
+            alpha: f32,
+            has_src: bool,
+        }
+        let mut pulls: Vec<Pulled> = Vec::new();
+        let mut bbox = [w, h, 0, 0];
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() {
+                continue;
+            }
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() {
+                continue;
+            }
+            let v0 = mesh.vertices[i0];
+            let v1 = mesh.vertices[i1];
+            let v2 = mesh.vertices[i2];
+            if hit_pos[0] + radius_3d < v0[0].min(v1[0]).min(v2[0])
+                || hit_pos[0] - radius_3d > v0[0].max(v1[0]).max(v2[0])
+                || hit_pos[1] + radius_3d < v0[1].min(v1[1]).min(v2[1])
+                || hit_pos[1] - radius_3d > v0[1].max(v1[1]).max(v2[1])
+                || hit_pos[2] + radius_3d < v0[2].min(v1[2]).min(v2[2])
+                || hit_pos[2] - radius_3d > v0[2].max(v1[2]).max(v2[2])
+            {
+                continue;
+            }
+            let n0 = mesh.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n1 = mesh.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n2 = mesh.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let avg_n = [
+                (n0[0] + n1[0] + n2[0]) * 0.3333,
+                (n0[1] + n1[1] + n2[1]) * 0.3333,
+                (n0[2] + n1[2] + n2[2]) * 0.3333,
+            ];
+            if avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2] < 0.05
+            {
+                continue;
+            }
+
+            let uv0 = mesh.uvs[i0];
+            let uv1 = mesh.uvs[i1];
+            let uv2 = mesh.uvs[i2];
+            let px_min =
+                ((uv0[0].min(uv1[0]).min(uv2[0]) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max =
+                ((uv0[0].max(uv1[0]).max(uv2[0]) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min =
+                ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max =
+                ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+                .max(1e-7);
+
+            for py in py_min..=py_max {
+                let v_px = py as f32 / (h_f - 1.0);
+                for px in px_min..=px_max {
+                    let u_px = px as f32 / (w_f - 1.0);
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                        + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                        + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b2 = 1.0 - b0 - b1;
+                    if b0 < -0.05 || b1 < -0.05 || b2 < -0.05 {
+                        continue;
+                    }
+                    let p3d = [
+                        b0 * v0[0] + b1 * v1[0] + b2 * v2[0],
+                        b0 * v0[1] + b1 * v1[1] + b2 * v2[1],
+                        b0 * v0[2] + b1 * v1[2] + b2 * v2[2],
+                    ];
+                    let dp = [
+                        p3d[0] - hit_pos[0],
+                        p3d[1] - hit_pos[1],
+                        p3d[2] - hit_pos[2],
+                    ];
+                    if dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] > r2 {
+                        continue;
+                    }
+                    // Shape/falloff in stamp-local tangent space (matches the 2D stamp and honors
+                    // alpha shapes, custom alphas, brushes' angle and stencils)
+                    let lt =
+                        ((dp[0] * tan_v[0] + dp[1] * tan_v[1] + dp[2] * tan_v[2]) / rad_f) * 64.0;
+                    let lb =
+                        ((dp[0] * bin_v[0] + dp[1] * bin_v[1] + dp[2] * bin_v[2]) / rad_f) * 64.0;
+                    let shape =
+                        sample_brush_alpha(lt, lb, 64.0, hardness, brush.angle.to_radians(), brush);
+                    let alpha = (shape * brush.flow).clamp(0.0, 1.0);
+                    if alpha < 0.001 {
+                        continue;
+                    }
+                    let idx = (py * w + px) as usize;
+                    if idx < self.layers[li].color_buffer.len() {
+                        let su = (u_px - delta_uv[0]).clamp(0.0, 1.0);
+                        let sv = (v_px - delta_uv[1]).clamp(0.0, 1.0);
+                        let sidx = (((sv * (h_f - 1.0)).round() as i32).clamp(0, h - 1) * w
+                            + ((su * (w_f - 1.0)).round() as i32).clamp(0, w - 1))
+                            as usize;
+                        let (rgb, met, rough, has_src) = if finger {
+                            (brush_rgb, brush.metallic, brush.roughness, true)
+                        } else if merged {
+                            let c = self.composite_color[sidx.min(self.composite_color.len() - 1)];
+                            (
+                                [c[0], c[1], c[2]],
+                                self.composite_metallic
+                                    [sidx.min(self.composite_metallic.len() - 1)],
+                                self.composite_roughness
+                                    [sidx.min(self.composite_roughness.len() - 1)],
+                                c[3] >= 0.01,
+                            )
+                        } else {
+                            let lb2 = &self.layers[li];
+                            let c = lb2.color_buffer[sidx.min(lb2.color_buffer.len() - 1)];
+                            (
+                                [c[0], c[1], c[2]],
+                                lb2.metallic_buffer[sidx.min(lb2.metallic_buffer.len() - 1)],
+                                lb2.roughness_buffer[sidx.min(lb2.roughness_buffer.len() - 1)],
+                                c[3] >= 0.01,
+                            )
+                        };
+                        pulls.push(Pulled {
+                            idx,
+                            rgb,
+                            met,
+                            rough,
+                            alpha,
+                            has_src,
+                        });
+                        bbox[0] = bbox[0].min(px);
+                        bbox[1] = bbox[1].min(py);
+                        bbox[2] = bbox[2].max(px);
+                        bbox[3] = bbox[3].max(py);
+                    }
+                }
+            }
+        }
+        if pulls.is_empty() || bbox[2] < bbox[0] {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(&self.layers[li], bbox);
+        }
+
+        let layer = &mut self.layers[li];
+        for p in &pulls {
+            if !p.has_src {
+                continue;
+            }
+            let cur = layer.color_buffer[p.idx];
+            layer.color_buffer[p.idx] = [
+                cur[0].mul_add(1.0 - p.alpha, p.rgb[0] * p.alpha),
+                cur[1].mul_add(1.0 - p.alpha, p.rgb[1] * p.alpha),
+                cur[2].mul_add(1.0 - p.alpha, p.rgb[2] * p.alpha),
+                if finger {
+                    (cur[3] + p.alpha * 0.35).min(1.0)
+                } else {
+                    cur[3]
+                },
+            ];
+            if p.idx < layer.metallic_buffer.len() {
+                layer.metallic_buffer[p.idx] =
+                    layer.metallic_buffer[p.idx].mul_add(1.0 - p.alpha, p.met * p.alpha);
+            }
+            if p.idx < layer.roughness_buffer.len() {
+                layer.roughness_buffer[p.idx] =
+                    layer.roughness_buffer[p.idx].mul_add(1.0 - p.alpha, p.rough * p.alpha);
+            }
+        }
+        bbox
+    }
+
+    // ───────────────────── Clone stamp v2 (full-parity aligned clone) ─────────────────────
+
+    /// UV-space clone stamp: copies full channel state (color, alpha, metallic, roughness and,
+    /// when enabled, normal/height) from the merged composite at `src_uv` into the active
+    /// layer at `dst_uv`, honoring rotation/scale/mirror pattern transforms.
+    pub fn clone_stamp_at(
+        &mut self,
+        dst_uv: [f32; 2],
+        src_uv: [f32; 2],
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        if self.layers.is_empty() {
+            return [0, 0, 0, 0];
+        }
+        let li = self.active_layer_index.min(self.layers.len() - 1);
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let px_center = (dst_uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
+        let py_center = (dst_uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
+        let radius = (brush.size * 0.5).round() as i32;
+        let min_x = (px_center - radius).clamp(0, w - 1);
+        let max_x = (px_center + radius).clamp(0, w - 1);
+        let min_y = (py_center - radius).clamp(0, h - 1);
+        let max_y = (py_center + radius).clamp(0, h - 1);
+        if min_x > max_x || min_y > max_y {
+            return [0, 0, 0, 0];
+        }
+
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+        let rad_f = radius.max(1) as f32;
+        let src_center = [
+            src_uv[0].clamp(0.0, 1.0) * (w - 1) as f32,
+            src_uv[1].clamp(0.0, 1.0) * (h - 1) as f32,
+        ];
+
+        struct CloneOp {
+            idx: usize,
+            alpha: f32,
+            src: ([f32; 4], f32, f32, [f32; 3], f32),
+        }
+        let mut ops: Vec<CloneOp> = Vec::new();
+        for py in min_y..=max_y {
+            for px in min_x..=max_x {
+                let dx = (px - px_center) as f32;
+                let dy = (py - py_center) as f32;
+                let shape = sample_brush_alpha(dx, dy, rad_f, hardness, 0.0, brush);
+                let alpha = (shape * brush.opacity * brush.flow).clamp(0.0, 1.0);
+                if alpha < 0.001 {
+                    continue;
+                }
+                if let Some(sidx) = Self::clone_source_px(dx, dy, src_center, w, h, brush) {
+                    let src = self.sample_composite_src(sidx);
+                    let idx = (py * w + px) as usize;
+                    if idx < self.layers[li].color_buffer.len() {
+                        ops.push(CloneOp { idx, alpha, src });
+                    }
+                }
+            }
+        }
+        if ops.is_empty() {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(&self.layers[li], [min_x, min_y, max_x, max_y]);
+        }
+
+        let layer = &mut self.layers[li];
+        for op in &ops {
+            Self::apply_clone_px(layer, op.idx, op.alpha, op.src, brush, on_mask);
+        }
+        [min_x, min_y, max_x, max_y]
+    }
+
+    /// 3D clone stamp: rasterizes over the touched mesh surface and clones from the merged
+    /// composite with the same pattern transform as `clone_stamp_at`.
+    pub fn clone_stamp_3d_at(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        hit_uv: [f32; 2],
+        radius_3d: f32,
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        if self.layers.is_empty() {
+            return [0, 0, 0, 0];
+        }
+        let li = self.active_layer_index.min(self.layers.len() - 1);
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+        let num_tris = mesh.indices.len() / 3;
+        let r2 = radius_3d * radius_3d;
+        let rad_f = radius_3d.max(1e-6);
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+        let (tan_v, bin_v) = tangent_basis(hit_normal);
+        let src_center = [
+            hit_uv[0].clamp(0.0, 1.0) * (w - 1) as f32,
+            hit_uv[1].clamp(0.0, 1.0) * (h - 1) as f32,
+        ];
+
+        struct CloneOp {
+            idx: usize,
+            alpha: f32,
+            src: ([f32; 4], f32, f32, [f32; 3], f32),
+        }
+        let mut ops: Vec<CloneOp> = Vec::new();
+        let mut bbox = [w, h, 0, 0];
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() {
+                continue;
+            }
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() {
+                continue;
+            }
+            let v0 = mesh.vertices[i0];
+            let v1 = mesh.vertices[i1];
+            let v2 = mesh.vertices[i2];
+            if hit_pos[0] + radius_3d < v0[0].min(v1[0]).min(v2[0])
+                || hit_pos[0] - radius_3d > v0[0].max(v1[0]).max(v2[0])
+                || hit_pos[1] + radius_3d < v0[1].min(v1[1]).min(v2[1])
+                || hit_pos[1] - radius_3d > v0[1].max(v1[1]).max(v2[1])
+                || hit_pos[2] + radius_3d < v0[2].min(v1[2]).min(v2[2])
+                || hit_pos[2] - radius_3d > v0[2].max(v1[2]).max(v2[2])
+            {
+                continue;
+            }
+            let n0 = mesh.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n1 = mesh.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n2 = mesh.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let avg_n = [
+                (n0[0] + n1[0] + n2[0]) * 0.3333,
+                (n0[1] + n1[1] + n2[1]) * 0.3333,
+                (n0[2] + n1[2] + n2[2]) * 0.3333,
+            ];
+            if avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2] < 0.05
+            {
+                continue;
+            }
+
+            let uv0 = mesh.uvs[i0];
+            let uv1 = mesh.uvs[i1];
+            let uv2 = mesh.uvs[i2];
+            let px_min =
+                ((uv0[0].min(uv1[0]).min(uv2[0]) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max =
+                ((uv0[0].max(uv1[0]).max(uv2[0]) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min =
+                ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max =
+                ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+                .max(1e-7);
+
+            for py in py_min..=py_max {
+                let v_px = py as f32 / (h_f - 1.0);
+                for px in px_min..=px_max {
+                    let u_px = px as f32 / (w_f - 1.0);
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                        + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                        + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b2 = 1.0 - b0 - b1;
+                    if b0 < -0.05 || b1 < -0.05 || b2 < -0.05 {
+                        continue;
+                    }
+                    let p3d = [
+                        b0 * v0[0] + b1 * v1[0] + b2 * v2[0],
+                        b0 * v0[1] + b1 * v1[1] + b2 * v2[1],
+                        b0 * v0[2] + b1 * v1[2] + b2 * v2[2],
+                    ];
+                    let dp = [
+                        p3d[0] - hit_pos[0],
+                        p3d[1] - hit_pos[1],
+                        p3d[2] - hit_pos[2],
+                    ];
+                    if dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] > r2 {
+                        continue;
+                    }
+                    let lt =
+                        ((dp[0] * tan_v[0] + dp[1] * tan_v[1] + dp[2] * tan_v[2]) / rad_f) * 64.0;
+                    let lb =
+                        ((dp[0] * bin_v[0] + dp[1] * bin_v[1] + dp[2] * bin_v[2]) / rad_f) * 64.0;
+                    let shape =
+                        sample_brush_alpha(lt, lb, 64.0, hardness, brush.angle.to_radians(), brush);
+                    let alpha = (shape * brush.opacity * brush.flow).clamp(0.0, 1.0);
+                    if alpha < 0.001 {
+                        continue;
+                    }
+                    let idx = (py * w + px) as usize;
+                    if idx < self.layers[li].color_buffer.len() {
+                        // Pattern transform in texture space, anchored at the hit texel
+                        let dx = (u_px - hit_uv[0]) * (w - 1) as f32;
+                        let dy = (v_px - hit_uv[1]) * (h - 1) as f32;
+                        if let Some(sidx) = Self::clone_source_px(dx, dy, src_center, w, h, brush) {
+                            let src = self.sample_composite_src(sidx);
+                            ops.push(CloneOp { idx, alpha, src });
+                            bbox[0] = bbox[0].min(px);
+                            bbox[1] = bbox[1].min(py);
+                            bbox[2] = bbox[2].max(px);
+                            bbox[3] = bbox[3].max(py);
+                        }
+                    }
+                }
+            }
+        }
+        if ops.is_empty() || bbox[2] < bbox[0] {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(&self.layers[li], bbox);
+        }
+
+        let layer = &mut self.layers[li];
+        for op in &ops {
+            Self::apply_clone_px(layer, op.idx, op.alpha, op.src, brush, on_mask);
+        }
+        bbox
+    }
+
+    // ───────────────────── Projection tool (screen-space projection stamping) ─────────────────────
+
+    /// Screen-space projection painting: `screen_alpha` maps a 3D surface point to stamp alpha
+    /// (screen-space brush shape × depth window), like Substance's projection paint with a
+    /// constrained `udepthscale` window.
+    pub fn paint_3d_projection_at(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        screen_alpha: &dyn Fn([f32; 3]) -> f32,
+        brush: &Brush,
+        is_eraser: bool,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        if self.layers.is_empty() {
+            return [0, 0, 0, 0];
+        }
+        let li = self.active_layer_index.min(self.layers.len() - 1);
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+        let num_tris = mesh.indices.len() / 3;
+
+        struct ProjOp {
+            idx: usize,
+            alpha: f32,
+        }
+        let mut ops: Vec<ProjOp> = Vec::new();
+        let mut bbox = [w, h, 0, 0];
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() {
+                continue;
+            }
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() {
+                continue;
+            }
+            let v0 = mesh.vertices[i0];
+            let v1 = mesh.vertices[i1];
+            let v2 = mesh.vertices[i2];
+            let uv0 = mesh.uvs[i0];
+            let uv1 = mesh.uvs[i1];
+            let uv2 = mesh.uvs[i2];
+
+            // Cheap screen-space culling: skip triangles that project fully outside the stamp
+            let a0 = screen_alpha(v0);
+            let a1 = screen_alpha(v1);
+            let a2 = screen_alpha(v2);
+            if a0 <= 0.0 && a1 <= 0.0 && a2 <= 0.0 {
+                continue;
+            }
+
+            let px_min =
+                ((uv0[0].min(uv1[0]).min(uv2[0]) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max =
+                ((uv0[0].max(uv1[0]).max(uv2[0]) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min =
+                ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max =
+                ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
+                .max(1e-7);
+
+            for py in py_min..=py_max {
+                let v_px = py as f32 / (h_f - 1.0);
+                for px in px_min..=px_max {
+                    let u_px = px as f32 / (w_f - 1.0);
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
+                        + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
+                        + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
+                        / denom;
+                    let b2 = 1.0 - b0 - b1;
+                    if b0 < -0.05 || b1 < -0.05 || b2 < -0.05 {
+                        continue;
+                    }
+                    let p3d = [
+                        b0 * v0[0] + b1 * v1[0] + b2 * v2[0],
+                        b0 * v0[1] + b1 * v1[1] + b2 * v2[1],
+                        b0 * v0[2] + b1 * v1[2] + b2 * v2[2],
+                    ];
+                    let shape = screen_alpha(p3d);
+                    let alpha = (shape * brush.opacity * brush.flow).clamp(0.0, 1.0);
+                    if alpha < 0.001 {
+                        continue;
+                    }
+                    let idx = (py * w + px) as usize;
+                    if idx < self.layers[li].color_buffer.len() {
+                        ops.push(ProjOp { idx, alpha });
+                        bbox[0] = bbox[0].min(px);
+                        bbox[1] = bbox[1].min(py);
+                        bbox[2] = bbox[2].max(px);
+                        bbox[3] = bbox[3].max(py);
+                    }
+                }
+            }
+        }
+        if ops.is_empty() || bbox[2] < bbox[0] {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(&self.layers[li], bbox);
+        }
+
+        let layer = &mut self.layers[li];
+        let bbox_guard = bbox;
+        for op in &ops {
+            Self::apply_paint_px(layer, op.idx, op.alpha, brush, is_eraser, on_mask);
+        }
+        let _ = bbox_guard;
+        bbox
+    }
+
     pub fn new(width: u32, height: u32) -> Self {
         let total = (width * height) as usize;
         let mut stack = Self {
@@ -1299,9 +2226,21 @@ impl LayerStack {
             height,
         );
         stack.layers.push(base_metal);
-        stack.layers.push(Layer::new_paint(2, "Paint Layer 1", width, height));
+        stack
+            .layers
+            .push(Layer::new_paint(2, "Paint Layer 1", width, height));
         stack.active_layer_index = 1;
-        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
         stack
     }
 
@@ -1328,12 +2267,32 @@ impl LayerStack {
                 mask.resize(new_w, new_h);
             }
         }
-        self.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        self.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
     }
 
     /// Recomputes the composite buffers using default environment
     pub fn recompute_composite(&mut self) {
-        self.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        self.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
     }
 
     /// Full PBR Stack Composite with Blend Modes, Channel Masking, and Rayon Multi-threaded Global Illumination
@@ -1366,10 +2325,15 @@ impl LayerStack {
             }
         }
 
-        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self.layers.iter().map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id)).collect();
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
+            .layers
+            .iter()
+            .map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id))
+            .collect();
 
         // Harvest available anchor points across layers
-        let mut anchor_maps: std::collections::HashMap<String, Vec<f32>> = std::collections::HashMap::new();
+        let mut anchor_maps: std::collections::HashMap<String, Vec<f32>> =
+            std::collections::HashMap::new();
         for l in &self.layers {
             if let Some(ref ap) = l.anchor_point {
                 let buf: Vec<f32> = match ap.channel {
@@ -1383,7 +2347,11 @@ impl LayerStack {
                     crate::painting::anchor::AnchorChannel::Height => l.height_buffer.clone(),
                     crate::painting::anchor::AnchorChannel::Roughness => l.roughness_buffer.clone(),
                     crate::painting::anchor::AnchorChannel::Metallic => l.metallic_buffer.clone(),
-                    _ => l.color_buffer.iter().map(|c| (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) * c[3]).collect(),
+                    _ => l
+                        .color_buffer
+                        .iter()
+                        .map(|c| (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) * c[3])
+                        .collect(),
                 };
                 anchor_maps.insert(ap.name.clone(), buf);
             }
@@ -1441,8 +2409,16 @@ impl LayerStack {
                     if layer.channel_color_enabled {
                         let eff_a = (base_alpha * layer.channel_color_opacity).clamp(0.0, 1.0);
                         if eff_a > 0.001 {
-                            let base_c = [self.composite_color[i][0], self.composite_color[i][1], self.composite_color[i][2]];
-                            let top_c = [layer.color_buffer[i][0], layer.color_buffer[i][1], layer.color_buffer[i][2]];
+                            let base_c = [
+                                self.composite_color[i][0],
+                                self.composite_color[i][1],
+                                self.composite_color[i][2],
+                            ];
+                            let top_c = [
+                                layer.color_buffer[i][0],
+                                layer.color_buffer[i][1],
+                                layer.color_buffer[i][2],
+                            ];
                             let blended = blend_colors(base_c, top_c, layer.channel_color_blend);
                             self.composite_color[i] = [
                                 base_c[0] * (1.0 - eff_a) + blended[0] * eff_a,
@@ -1457,8 +2433,13 @@ impl LayerStack {
                     if layer.channel_metallic_enabled {
                         let eff_a = (base_alpha * layer.channel_metallic_opacity).clamp(0.0, 1.0);
                         if eff_a > 0.001 {
-                            let blended = blend_scalar_channel(self.composite_metallic[i], layer.metallic_buffer[i], layer.channel_metallic_blend);
-                            self.composite_metallic[i] = self.composite_metallic[i] * (1.0 - eff_a) + blended * eff_a;
+                            let blended = blend_scalar_channel(
+                                self.composite_metallic[i],
+                                layer.metallic_buffer[i],
+                                layer.channel_metallic_blend,
+                            );
+                            self.composite_metallic[i] =
+                                self.composite_metallic[i] * (1.0 - eff_a) + blended * eff_a;
                         }
                     }
 
@@ -1466,8 +2447,13 @@ impl LayerStack {
                     if layer.channel_roughness_enabled {
                         let eff_a = (base_alpha * layer.channel_roughness_opacity).clamp(0.0, 1.0);
                         if eff_a > 0.001 {
-                            let blended = blend_scalar_channel(self.composite_roughness[i], layer.roughness_buffer[i], layer.channel_roughness_blend);
-                            self.composite_roughness[i] = self.composite_roughness[i] * (1.0 - eff_a) + blended * eff_a;
+                            let blended = blend_scalar_channel(
+                                self.composite_roughness[i],
+                                layer.roughness_buffer[i],
+                                layer.channel_roughness_blend,
+                            );
+                            self.composite_roughness[i] =
+                                self.composite_roughness[i] * (1.0 - eff_a) + blended * eff_a;
                         }
                     }
 
@@ -1475,8 +2461,13 @@ impl LayerStack {
                     if layer.channel_height_enabled {
                         let eff_a = (base_alpha * layer.channel_height_opacity).clamp(0.0, 1.0);
                         if eff_a > 0.001 {
-                            let blended = blend_scalar_channel(self.composite_height[i], layer.height_buffer[i], layer.channel_height_blend);
-                            self.composite_height[i] = self.composite_height[i] * (1.0 - eff_a) + blended * eff_a;
+                            let blended = blend_scalar_channel(
+                                self.composite_height[i],
+                                layer.height_buffer[i],
+                                layer.channel_height_blend,
+                            );
+                            self.composite_height[i] =
+                                self.composite_height[i] * (1.0 - eff_a) + blended * eff_a;
                         }
                     }
 
@@ -1525,7 +2516,11 @@ impl LayerStack {
                     let wx = w[0] * 2.0 - 1.0;
                     let wy = w[1] * 2.0 - 1.0;
                     let wz = w[2] * 2.0 - 1.0;
-                    (wx + nx_ts * 0.35, wy + ny_ts * 0.35, wz + (nz_ts - 1.0) * 0.35)
+                    (
+                        wx + nx_ts * 0.35,
+                        wy + ny_ts * 0.35,
+                        wz + (nz_ts - 1.0) * 0.35,
+                    )
                 } else {
                     (nx_ts, ny_ts, nz_ts.max(0.1))
                 };
@@ -1565,7 +2560,11 @@ impl LayerStack {
         let mut base_norm = [0.5f32, 0.5, 1.0];
         let mut base_height = 0.0f32;
 
-        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self.layers.iter().map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id)).collect();
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
+            .layers
+            .iter()
+            .map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id))
+            .collect();
 
         for layer in &self.layers {
             if layer.layer_type == LayerType::Folder || !layer.visible {
@@ -1596,13 +2595,18 @@ impl LayerStack {
             } else {
                 1.0
             };
-            let base_alpha = (layer.color_buffer[i][3] * layer.opacity * folder_opacity * mask_val).clamp(0.0, 1.0);
+            let base_alpha = (layer.color_buffer[i][3] * layer.opacity * folder_opacity * mask_val)
+                .clamp(0.0, 1.0);
             if base_alpha > 0.001 {
                 if layer.channel_color_enabled {
                     let eff_a = (base_alpha * layer.channel_color_opacity).clamp(0.0, 1.0);
                     if eff_a > 0.001 {
                         let b_c = [base_c[0], base_c[1], base_c[2]];
-                        let top_c = [layer.color_buffer[i][0], layer.color_buffer[i][1], layer.color_buffer[i][2]];
+                        let top_c = [
+                            layer.color_buffer[i][0],
+                            layer.color_buffer[i][1],
+                            layer.color_buffer[i][2],
+                        ];
                         let blended = blend_colors(b_c, top_c, layer.channel_color_blend);
                         base_c = [
                             base_c[0] * (1.0 - eff_a) + blended[0] * eff_a,
@@ -1616,7 +2620,11 @@ impl LayerStack {
                 if layer.channel_metallic_enabled {
                     let eff_a = (base_alpha * layer.channel_metallic_opacity).clamp(0.0, 1.0);
                     if eff_a > 0.001 {
-                        let blended = blend_scalar_channel(base_met, layer.metallic_buffer[i], layer.channel_metallic_blend);
+                        let blended = blend_scalar_channel(
+                            base_met,
+                            layer.metallic_buffer[i],
+                            layer.channel_metallic_blend,
+                        );
                         base_met = base_met * (1.0 - eff_a) + blended * eff_a;
                     }
                 }
@@ -1624,7 +2632,11 @@ impl LayerStack {
                 if layer.channel_roughness_enabled {
                     let eff_a = (base_alpha * layer.channel_roughness_opacity).clamp(0.0, 1.0);
                     if eff_a > 0.001 {
-                        let blended = blend_scalar_channel(base_rough, layer.roughness_buffer[i], layer.channel_roughness_blend);
+                        let blended = blend_scalar_channel(
+                            base_rough,
+                            layer.roughness_buffer[i],
+                            layer.channel_roughness_blend,
+                        );
                         base_rough = base_rough * (1.0 - eff_a) + blended * eff_a;
                     }
                 }
@@ -1632,7 +2644,11 @@ impl LayerStack {
                 if layer.channel_height_enabled {
                     let eff_a = (base_alpha * layer.channel_height_opacity).clamp(0.0, 1.0);
                     if eff_a > 0.001 {
-                        let blended = blend_scalar_channel(base_height, layer.height_buffer[i], layer.channel_height_blend);
+                        let blended = blend_scalar_channel(
+                            base_height,
+                            layer.height_buffer[i],
+                            layer.channel_height_blend,
+                        );
                         base_height = base_height * (1.0 - eff_a) + blended * eff_a;
                     }
                 }
@@ -1695,7 +2711,17 @@ impl LayerStack {
             return;
         }
         if (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
-            self.composite(None, baked_ao, None, None, None, None, env_preset, env_rotation_rad, light_intensity);
+            self.composite(
+                None,
+                baked_ao,
+                None,
+                None,
+                None,
+                None,
+                env_preset,
+                env_rotation_rad,
+                light_intensity,
+            );
             return;
         }
 
@@ -1728,20 +2754,53 @@ mod tests {
         let base = [0.5, 0.4, 0.3];
         let top = [0.8, 0.2, 0.6];
         let modes = [
-            BlendMode::Normal, BlendMode::PassThrough, BlendMode::Multiply, BlendMode::Screen,
-            BlendMode::Overlay, BlendMode::Add, BlendMode::Subtract, BlendMode::Darken,
-            BlendMode::Lighten, BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::LinearBurn,
-            BlendMode::HardLight, BlendMode::SoftLight, BlendMode::Difference, BlendMode::Exclusion,
-            BlendMode::Color, BlendMode::Luminosity,
+            BlendMode::Normal,
+            BlendMode::PassThrough,
+            BlendMode::Multiply,
+            BlendMode::Screen,
+            BlendMode::Overlay,
+            BlendMode::Add,
+            BlendMode::Subtract,
+            BlendMode::Darken,
+            BlendMode::Lighten,
+            BlendMode::ColorDodge,
+            BlendMode::ColorBurn,
+            BlendMode::LinearBurn,
+            BlendMode::HardLight,
+            BlendMode::SoftLight,
+            BlendMode::Difference,
+            BlendMode::Exclusion,
+            BlendMode::Color,
+            BlendMode::Luminosity,
         ];
         for mode in modes {
             let c = blend_colors(base, top, mode);
-            assert!(c[0] >= 0.0 && c[0] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
-            assert!(c[1] >= 0.0 && c[1] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
-            assert!(c[2] >= 0.0 && c[2] <= 1.0, "Mode {:?} out of bounds: {:?}", mode, c);
+            assert!(
+                c[0] >= 0.0 && c[0] <= 1.0,
+                "Mode {:?} out of bounds: {:?}",
+                mode,
+                c
+            );
+            assert!(
+                c[1] >= 0.0 && c[1] <= 1.0,
+                "Mode {:?} out of bounds: {:?}",
+                mode,
+                c
+            );
+            assert!(
+                c[2] >= 0.0 && c[2] <= 1.0,
+                "Mode {:?} out of bounds: {:?}",
+                mode,
+                c
+            );
 
             let s = blend_scalar_channel(0.5, 0.8, mode);
-            assert!(s >= 0.0 && s <= 1.0, "Scalar mode {:?} out of bounds: {}", mode, s);
+            assert!(
+                s >= 0.0 && s <= 1.0,
+                "Scalar mode {:?} out of bounds: {}",
+                mode,
+                s
+            );
         }
     }
 
@@ -1760,7 +2819,17 @@ mod tests {
         child.channel_roughness_enabled = false; // Override: do not contribute roughness
         stack.layers.push(child);
 
-        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
         // Child color should be visible because folder is visible
         assert_eq!(stack.composite_color[0], [1.0, 0.0, 0.0, 1.0]);
         // Metallic should be contributed
@@ -1770,9 +2839,290 @@ mod tests {
 
         // Now hide the folder
         stack.layers[0].visible = false;
-        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
         // Since parent folder is hidden, child should not contribute
         assert_eq!(stack.composite_color[0], [0.15, 0.15, 0.16, 1.0]);
         assert_eq!(stack.composite_metallic[0], 0.0);
+    }
+
+    // ───────────────── Tool-engine v2 tests (smudge / clone / projection / paint-through) ─────────────────
+
+    fn test_brush() -> Brush {
+        let mut b = Brush::default();
+        b.size = 8.0;
+        b.hardness = 0.99;
+        b.opacity = 1.0;
+        b.flow = 1.0;
+        b.smudge_sample_merged = false;
+        b
+    }
+
+    fn paint_stack(w: u32, h: u32) -> LayerStack {
+        let mut ls = LayerStack::new(w, h);
+        ls.layers.clear();
+        ls.layers.push(Layer::new_paint(1, "t", w, h));
+        ls.active_layer_index = 0;
+        ls
+    }
+
+    fn test_mesh_flat_quad_z() -> crate::graphics::mesh::Mesh {
+        crate::graphics::mesh::Mesh {
+            name: "t".into(),
+            vertices: vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            normals: vec![[0.0, 0.0, 1.0]; 4],
+            tangents: vec![[1.0, 0.0, 0.0, 1.0]; 4],
+            uvs: vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            indices: vec![0, 1, 2, 0, 2, 3],
+            submeshes: vec![],
+        }
+    }
+
+    #[test]
+    fn test_smudge_pulls_content_behind_stroke() {
+        let mut ls = paint_stack(32, 32);
+        for i in 0..ls.layers[0].color_buffer.len() {
+            ls.layers[0].color_buffer[i] = [0.1, 0.1, 0.1, 1.0];
+        }
+        // Bright texel at (8, 16)
+        ls.layers[0].color_buffer[16 * 32 + 8] = [1.0, 0.0, 0.0, 1.0];
+
+        // Stamp at (16, 16) while the stroke moved +8 px along +u
+        let brush = test_brush();
+        let bbox = ls.smudge_stamp_at([16.0 / 31.0, 16.0 / 31.0], [0.25, 0.0], &brush, None);
+        assert!(
+            bbox[2] > bbox[0] && bbox[3] > bbox[1],
+            "smudge stamp touched pixels: {:?}",
+            bbox
+        );
+        let got = ls.layers[0].color_buffer[16 * 32 + 16];
+        assert!(
+            got[0] > 0.9 && got[1] < 0.1,
+            "smudge pulled red behind the stroke: {:?}",
+            got
+        );
+        // Smudge copies rather than erases: the source texel is only partially drained
+        let orig = ls.layers[0].color_buffer[16 * 32 + 8];
+        assert_eq!(orig[0], 1.0, "source must keep its color: {:?}", orig);
+    }
+
+    #[test]
+    fn test_smudge_finger_painting_lays_brush_color() {
+        let mut ls = paint_stack(32, 32);
+        for i in 0..ls.layers[0].color_buffer.len() {
+            ls.layers[0].color_buffer[i] = [0.0, 0.0, 0.0, 0.0];
+        }
+        let mut brush = test_brush();
+        brush.smudge_finger_painting = true;
+        brush.color = [0.0, 1.0, 0.0, 1.0];
+        let delta = [0.25, 0.0]; // source has nothing painted: finger painting still lays color
+        let _ = ls.smudge_stamp_at([16.0 / 31.0, 16.0 / 31.0], delta, &brush, None);
+        let got = ls.layers[0].color_buffer[16 * 32 + 16];
+        assert!(
+            got[1] > 0.9,
+            "finger painting deposits brush color: {:?}",
+            got
+        );
+    }
+
+    #[test]
+    fn test_smudge_sample_merged_reads_composite() {
+        let mut ls = paint_stack(32, 32);
+        for i in 0..ls.layers[0].color_buffer.len() {
+            ls.layers[0].color_buffer[i] = [0.0, 0.0, 0.0, 0.0]; // active layer empty
+        }
+        for i in 0..ls.composite_color.len() {
+            ls.composite_color[i] = [0.0, 0.0, 1.0, 1.0]; // merged composite is blue
+        }
+        ls.composite_color[16 * 32 + 8] = [1.0, 0.0, 0.0, 1.0];
+        let mut brush = test_brush();
+        brush.smudge_sample_merged = true;
+        let _ = ls.smudge_stamp_at([16.0 / 31.0, 16.0 / 31.0], [0.25, 0.0], &brush, None);
+        let got = ls.layers[0].color_buffer[16 * 32 + 16];
+        assert!(
+            got[0] > 0.9 && got[2] < 0.1,
+            "Sample Merged must pull from the composite: {:?}",
+            got
+        );
+    }
+
+    #[test]
+    fn test_clone_copies_pattern_with_full_channels() {
+        let mut ls = paint_stack(32, 32);
+        for i in 0..ls.layers[0].color_buffer.len() {
+            ls.layers[0].color_buffer[i] = [0.0, 0.0, 0.0, 0.0];
+        }
+        for i in 0..ls.composite_color.len() {
+            ls.composite_color[i] = [0.0, 0.0, 0.0, 0.0];
+        }
+        // A pattern in the composite source area
+        for y in 2..7 {
+            for x in 2..7 {
+                ls.composite_color[y * 32 + x] = [0.9, 0.2, 0.7, 1.0];
+            }
+        }
+        ls.composite_roughness[4 * 32 + 4] = 0.95;
+
+        let mut brush = test_brush();
+        brush.clone_rotation = 0.0;
+        brush.clone_scale = 1.0;
+        let bbox = ls.clone_stamp_at(
+            [16.0 / 31.0, 16.0 / 31.0],
+            [4.0 / 31.0, 4.0 / 31.0],
+            &brush,
+            false,
+            None,
+        );
+        assert!(bbox[2] > bbox[0]);
+        let inner = ls.layers[0].color_buffer[16 * 32 + 18]; // dst (18,16) inside the cloned pattern
+        let outside = ls.layers[0].color_buffer[16 * 32 + 27]; // far from the stamp in-row
+        assert!(
+            inner[0] > 0.8 && inner[2] > 0.6 && inner[3] > 0.9,
+            "clone copied color+alpha, got {:?}",
+            inner
+        );
+        assert_eq!(outside[3], 0.0, "clone must not paint outside the stamp");
+        // Full channel fidelity: dst (18,16) ← src (6,4)
+        let met_area = ls.layers[0].metallic_buffer[16 * 32 + 18];
+        let rough_area = ls.layers[0].roughness_buffer[16 * 32 + 18];
+        assert!(
+            (met_area - ls.composite_metallic[4 * 32 + 6]).abs() < 0.02,
+            "metallic cloned"
+        );
+        assert!(
+            (rough_area - ls.composite_roughness[4 * 32 + 6]).abs() < 0.02,
+            "roughness cloned: {} vs {}",
+            rough_area,
+            ls.composite_roughness[4 * 32 + 6]
+        );
+    }
+
+    #[test]
+    fn test_clone_pattern_mirror_transform() {
+        let mut ls = paint_stack(32, 32);
+        for i in 0..ls.composite_color.len() {
+            ls.composite_color[i] = [0.0, 0.0, 0.0, 0.0];
+        }
+        // Asymmetric pattern: only src px (3, 4) is inked
+        ls.composite_color[4 * 32 + 3] = [1.0, 1.0, 1.0, 1.0];
+
+        let mut brush = test_brush();
+        brush.clone_mirror_x = true;
+        // Dst center (17,4), src center (4,4): mirrored local +1 → src px 3 (inked) lands at dst 18
+        let _ = ls.clone_stamp_at(
+            [17.0 / 31.0, 4.0 / 31.0],
+            [4.0 / 31.0, 4.0 / 31.0],
+            &brush,
+            false,
+            None,
+        );
+        let mirror_on = ls.layers[0].color_buffer[4 * 32 + 18];
+        assert!(
+            mirror_on[3] > 0.9,
+            "mirrored clone pulls px (3,4), got {:?}",
+            mirror_on
+        );
+
+        // Without mirroring, local +1 maps to src 5 which is empty
+        let mut ls2 = paint_stack(32, 32);
+        ls2.composite_color = ls.composite_color.clone();
+        let mut brush2 = test_brush();
+        brush2.clone_mirror_x = false;
+        let _ = ls2.clone_stamp_at(
+            [17.0 / 31.0, 4.0 / 31.0],
+            [4.0 / 31.0, 4.0 / 31.0],
+            &brush2,
+            false,
+            None,
+        );
+        assert!(
+            ls2.layers[0].color_buffer[4 * 32 + 18][3] < 0.9,
+            "unmirrored clone pulls empty src (5,4)"
+        );
+    }
+
+    #[test]
+    fn test_paint_through_backface_toggle() {
+        let mut ls = paint_stack(16, 16);
+        let mesh = test_mesh_flat_quad_z();
+
+        let mut brush = test_brush();
+        brush.paint_through = false;
+        // Hit from the back side: normal flipped
+        let b0 = ls.layers[0].paint_3d_surface(
+            &mesh,
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, -1.0],
+            0.35,
+            &brush,
+            false,
+            false,
+            None,
+        );
+        assert!(b0[2] <= b0[0], "backface culled by default");
+
+        brush.paint_through = true;
+        let b1 = ls.layers[0].paint_3d_surface(
+            &mesh,
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, -1.0],
+            0.35,
+            &brush,
+            false,
+            false,
+            None,
+        );
+        assert!(
+            b1[2] > b1[0] && b1[3] > b1[1],
+            "paint-through paints back-facing geometry"
+        );
+        let painted = ls.layers[0]
+            .color_buffer
+            .iter()
+            .filter(|c| c[3] > 0.5)
+            .count();
+        assert!(painted > 0, "pixels received paint");
+    }
+
+    #[test]
+    fn test_projection_closure_alpha_paints() {
+        let mut ls = paint_stack(16, 16);
+        let mesh = test_mesh_flat_quad_z();
+        // Screen-space closure: alpha 1 over the plan corner area (x<0.6, y<0.6)
+        let screen_alpha = |p3: [f32; 3]| -> f32 {
+            if p3[0] <= 0.6 && p3[1] <= 0.6 {
+                1.0
+            } else {
+                0.0
+            }
+        };
+        let brush = test_brush();
+        let _ = ls.paint_3d_projection_at(&mesh, &screen_alpha, &brush, false, false, None);
+        let painted: usize = ls.layers[0]
+            .color_buffer
+            .iter()
+            .filter(|c| c[3] > 0.8)
+            .count();
+        assert!(
+            painted > 16,
+            "projection painted the screen-space region: {}",
+            painted
+        );
+        // The corner texel inside the closure region is painted
+        assert!(ls.layers[0].color_buffer[3 * 16 + 3][3] > 0.8);
     }
 }

@@ -71,7 +71,11 @@ const SH_WARM_COOL: [[f32; 3]; 9] = [
 ];
 
 /// Evaluates Global Illumination Diffuse Irradiance for any world normal
-pub fn eval_diffuse_irradiance(preset: EnvironmentPreset, normal: [f32; 3], env_rotation_rad: f32) -> [f32; 3] {
+pub fn eval_diffuse_irradiance(
+    preset: EnvironmentPreset,
+    normal: [f32; 3],
+    env_rotation_rad: f32,
+) -> [f32; 3] {
     let sh = match preset {
         EnvironmentPreset::StudioTomoco => &SH_STUDIO_TOMOCO,
         EnvironmentPreset::GlazedPatio => &SH_GLAZED_PATIO,
@@ -145,9 +149,15 @@ pub fn eval_specular_environment(
 
     // Interpolate environment radiance
     let mut rad = [
-        sky_col[0] * sky_factor + ground_col[0] * (1.0 - sky_factor) + horizon_col[0] * horizon_factor * 0.35,
-        sky_col[1] * sky_factor + ground_col[1] * (1.0 - sky_factor) + horizon_col[1] * horizon_factor * 0.35,
-        sky_col[2] * sky_factor + ground_col[2] * (1.0 - sky_factor) + horizon_col[2] * horizon_factor * 0.35,
+        sky_col[0] * sky_factor
+            + ground_col[0] * (1.0 - sky_factor)
+            + horizon_col[0] * horizon_factor * 0.35,
+        sky_col[1] * sky_factor
+            + ground_col[1] * (1.0 - sky_factor)
+            + horizon_col[1] * horizon_factor * 0.35,
+        sky_col[2] * sky_factor
+            + ground_col[2] * (1.0 - sky_factor)
+            + horizon_col[2] * horizon_factor * 0.35,
     ];
 
     // Sharp specular highlights for key studio lights in environment
@@ -167,7 +177,11 @@ pub fn eval_specular_environment(
 
     // Roughness blur attenuation
     let blur_factor = 1.0 / (1.0 + roughness * 4.0);
-    [rad[0] * blur_factor, rad[1] * blur_factor, rad[2] * blur_factor]
+    [
+        rad[0] * blur_factor,
+        rad[1] * blur_factor,
+        rad[2] * blur_factor,
+    ]
 }
 
 /// Complete Cook-Torrance GGX Physically-Based Rendering Equation with Global Illumination
@@ -175,7 +189,7 @@ pub fn pbr_shade(
     base_color: [f32; 4],
     metallic: f32,
     roughness: f32,
-    normal: [f32; 3], // World space normal
+    normal: [f32; 3],   // World space normal
     view_dir: [f32; 3], // World space direction to camera
     ao: f32,
     preset: EnvironmentPreset,
@@ -199,7 +213,8 @@ pub fn pbr_shade(
         0.04 * (1.0 - metallic) + base_rgb[2] * metallic,
     ];
 
-    let n_dot_v = (normal[0] * view_dir[0] + normal[1] * view_dir[1] + normal[2] * view_dir[2]).clamp(0.0, 1.0);
+    let n_dot_v = (normal[0] * view_dir[0] + normal[1] * view_dir[1] + normal[2] * view_dir[2])
+        .clamp(0.0, 1.0);
 
     // Fresnel-Schlick reflection term
     let fresnel = [
@@ -231,14 +246,22 @@ pub fn pbr_shade(
 
     // 3. Direct Directional Key Light with GGX Specular
     let key_light_dir = [0.577f32, 0.707, 0.408];
-    let n_dot_l = (normal[0] * key_light_dir[0] + normal[1] * key_light_dir[1] + normal[2] * key_light_dir[2]).max(0.0);
+    let n_dot_l = (normal[0] * key_light_dir[0]
+        + normal[1] * key_light_dir[1]
+        + normal[2] * key_light_dir[2])
+        .max(0.0);
     let half_vec = [
         key_light_dir[0] + view_dir[0],
         key_light_dir[1] + view_dir[1],
         key_light_dir[2] + view_dir[2],
     ];
-    let half_len = (half_vec[0] * half_vec[0] + half_vec[1] * half_vec[1] + half_vec[2] * half_vec[2]).sqrt().max(0.0001);
-    let n_dot_h = ((normal[0] * half_vec[0] + normal[1] * half_vec[1] + normal[2] * half_vec[2]) / half_len).max(0.0);
+    let half_len =
+        (half_vec[0] * half_vec[0] + half_vec[1] * half_vec[1] + half_vec[2] * half_vec[2])
+            .sqrt()
+            .max(0.0001);
+    let n_dot_h = ((normal[0] * half_vec[0] + normal[1] * half_vec[1] + normal[2] * half_vec[2])
+        / half_len)
+        .max(0.0);
 
     // GGX Normal Distribution Function D
     let a = roughness * roughness;

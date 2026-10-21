@@ -20,7 +20,9 @@ pub fn configure_substance_fonts(ctx: &egui::Context) {
     );
     fonts.font_data.insert(
         "OpenSans-SemiBold".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../../assets/fonts/OpenSans-SemiBold.ttf")),
+        egui::FontData::from_static(include_bytes!(
+            "../../../assets/fonts/OpenSans-SemiBold.ttf"
+        )),
     );
 
     if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {

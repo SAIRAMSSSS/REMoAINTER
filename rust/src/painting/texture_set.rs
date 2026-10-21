@@ -97,7 +97,11 @@ impl TextureSet {
 
     /// Adds a channel if it doesn't already exist
     pub fn add_channel(&mut self, channel: TextureChannelDef) -> bool {
-        if self.channels.iter().any(|c| c.name.eq_ignore_ascii_case(&channel.name)) {
+        if self
+            .channels
+            .iter()
+            .any(|c| c.name.eq_ignore_ascii_case(&channel.name))
+        {
             return false;
         }
         self.channels.push(channel);
@@ -227,7 +231,8 @@ impl TextureSetManager {
             } else {
                 format!("{}_Mat", mesh.name.replace(' ', "_"))
             };
-            self.sets.push(TextureSet::new(id, mesh_mat_name, default_res));
+            self.sets
+                .push(TextureSet::new(id, mesh_mat_name, default_res));
             self.active_index = 0;
         }
     }

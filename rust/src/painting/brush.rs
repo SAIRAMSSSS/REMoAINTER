@@ -133,6 +133,22 @@ pub struct Brush {
     pub paint_normal: bool,
     pub paint_height: bool,
 
+    // Smudge dynamics (EngineActionSmudge parity: smudgeSampleMerged / smudgeFingerPainting)
+    pub smudge_sample_merged: bool,
+    pub smudge_finger_painting: bool,
+
+    // Clone tool transform (stroke-relative offset alignment is stroke state in the App layer)
+    pub clone_rotation: f32, // degrees, rotates the sampled pattern
+    pub clone_scale: f32,    // pattern scale factor (1.0 = 1:1)
+    pub clone_mirror_x: bool,
+    pub clone_mirror_y: bool,
+
+    // Paint-through modifier (PaintThroughModifier parity): paint hidden geometry
+    pub paint_through: bool,
+
+    // Projection tool depth window (world units along the view ray)
+    pub projection_depth: f32,
+
     // Channel values
     pub color: [f32; 4],
     pub metallic: f32,
@@ -180,6 +196,18 @@ impl Default for Brush {
             paint_normal: false,
             paint_height: false,
 
+            smudge_sample_merged: true,
+            smudge_finger_painting: false,
+
+            clone_rotation: 0.0,
+            clone_scale: 1.0,
+            clone_mirror_x: false,
+            clone_mirror_y: false,
+
+            paint_through: false,
+
+            projection_depth: 0.35,
+
             color: [0.85, 0.82, 0.78, 1.0], // Cream base
             metallic: 0.0,
             roughness: 0.35,
@@ -195,7 +223,11 @@ impl Default for Brush {
 
 impl Brush {
     /// Computes effective brush parameters for an individual stamp factoring in pressure curves and jitters
-    pub fn compute_stamp_params(&self, pressure: Option<f32>, stamp_seed: u32) -> (f32, f32, f32, f32) {
+    pub fn compute_stamp_params(
+        &self,
+        pressure: Option<f32>,
+        stamp_seed: u32,
+    ) -> (f32, f32, f32, f32) {
         let mut eff_size = self.size;
         let mut eff_flow = self.flow;
         let mut eff_angle = self.angle;
@@ -213,7 +245,8 @@ impl Brush {
 
         // Pseudo-random deterministic hash jitter based on stamp_seed
         if self.size_jitter > 0.001 {
-            let h = ((stamp_seed.wrapping_mul(1664525).wrapping_add(1013904223)) >> 16) as f32 / 65535.0; // 0..1
+            let h = ((stamp_seed.wrapping_mul(1664525).wrapping_add(1013904223)) >> 16) as f32
+                / 65535.0; // 0..1
             let jitter_factor = 1.0 - (h * self.size_jitter);
             eff_size *= jitter_factor.clamp(0.05, 1.0);
         }
@@ -223,7 +256,8 @@ impl Brush {
             eff_flow *= jitter_factor.clamp(0.01, 1.0);
         }
         if self.angle_jitter > 0.001 {
-            let h = ((stamp_seed.wrapping_mul(1103515245).wrapping_add(12345)) >> 16) as f32 / 65535.0; // 0..1
+            let h =
+                ((stamp_seed.wrapping_mul(1103515245).wrapping_add(12345)) >> 16) as f32 / 65535.0; // 0..1
             eff_angle = (eff_angle + (h * 2.0 - 1.0) * 180.0 * self.angle_jitter).rem_euclid(360.0);
         }
 
@@ -271,7 +305,11 @@ pub fn sample_brush_alpha(
             AlphaShape::Circle => 1.0,
             AlphaShape::Square => {
                 let max_coord = (rx.abs()).max(ry.abs()) / radius;
-                if max_coord <= 1.0 { 1.0 } else { 0.0 }
+                if max_coord <= 1.0 {
+                    1.0
+                } else {
+                    0.0
+                }
             }
             AlphaShape::SoftRound => (1.0 - norm_dist).powf(2.0),
             AlphaShape::Gaussian => (-4.0 * norm_dist * norm_dist).exp(),

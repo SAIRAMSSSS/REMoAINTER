@@ -21,7 +21,12 @@ pub enum AnchorChannel {
 }
 
 impl AnchorPoint {
-    pub fn new(id: usize, name: impl Into<String>, source_layer_id: usize, channel: AnchorChannel) -> Self {
+    pub fn new(
+        id: usize,
+        name: impl Into<String>,
+        source_layer_id: usize,
+        channel: AnchorChannel,
+    ) -> Self {
         Self {
             id,
             name: name.into(),

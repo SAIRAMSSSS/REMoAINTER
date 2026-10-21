@@ -16,11 +16,21 @@ pub enum MaskBlendMode {
     Subtract,
 }
 
-fn default_grunge_amount() -> f32 { 0.35 }
-fn default_grunge_scale() -> f32 { 6.0 }
-fn default_normal_dir() -> [f32; 3] { [0.0, 1.0, 0.0] }
-fn default_target_color() -> [f32; 4] { [1.0, 0.0, 0.0, 1.0] }
-fn default_tolerance() -> f32 { 0.2 }
+fn default_grunge_amount() -> f32 {
+    0.35
+}
+fn default_grunge_scale() -> f32 {
+    6.0
+}
+fn default_normal_dir() -> [f32; 3] {
+    [0.0, 1.0, 0.0]
+}
+fn default_target_color() -> [f32; 4] {
+    [1.0, 0.0, 0.0, 1.0]
+}
+fn default_tolerance() -> f32 {
+    0.2
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MaskEffect {
@@ -163,8 +173,12 @@ impl LayerMask {
             let mut pmin = [f32::MAX, f32::MAX, f32::MAX];
             let mut pmax = [f32::MIN, f32::MIN, f32::MIN];
             for p in pos_slice {
-                pmin[0] = pmin[0].min(p[0]); pmin[1] = pmin[1].min(p[1]); pmin[2] = pmin[2].min(p[2]);
-                pmax[0] = pmax[0].max(p[0]); pmax[1] = pmax[1].max(p[1]); pmax[2] = pmax[2].max(p[2]);
+                pmin[0] = pmin[0].min(p[0]);
+                pmin[1] = pmin[1].min(p[1]);
+                pmin[2] = pmin[2].min(p[2]);
+                pmax[0] = pmax[0].max(p[0]);
+                pmax[1] = pmax[1].max(p[1]);
+                pmax[2] = pmax[2].max(p[2]);
             }
             (pmin, pmax)
         } else {
@@ -178,7 +192,12 @@ impl LayerMask {
 
         for effect in &self.effects {
             match effect {
-                MaskEffect::Fill { value, noise_frequency, blend_mode, opacity } => {
+                MaskEffect::Fill {
+                    value,
+                    noise_frequency,
+                    blend_mode,
+                    opacity,
+                } => {
                     for y in 0..h {
                         for x in 0..w {
                             let idx = (y * w + x) as usize;
@@ -186,13 +205,18 @@ impl LayerMask {
                             if *noise_frequency > 0.01 {
                                 let nx = (x as f32 * noise_frequency * 0.05).sin();
                                 let ny = (y as f32 * noise_frequency * 0.05).cos();
-                                sample = (sample * 0.7 + (nx * ny * 0.5 + 0.5) * 0.3).clamp(0.0, 1.0);
+                                sample =
+                                    (sample * 0.7 + (nx * ny * 0.5 + 0.5) * 0.3).clamp(0.0, 1.0);
                             }
-                            self.buffer[idx] = blend_scalar(self.buffer[idx], sample, *blend_mode, *opacity);
+                            self.buffer[idx] =
+                                blend_scalar(self.buffer[idx], sample, *blend_mode, *opacity);
                         }
                     }
                 }
-                MaskEffect::Paint { blend_mode: _, opacity: _ } => {
+                MaskEffect::Paint {
+                    blend_mode: _,
+                    opacity: _,
+                } => {
                     // Paint buffer contents are preserved
                 }
                 MaskEffect::Generator {
@@ -216,11 +240,15 @@ impl LayerMask {
                 } => {
                     let gen_lower = name.to_lowercase();
                     let is_dust = gen_lower.contains("dust");
-                    let is_gradient = gen_lower.contains("gradient") || gen_lower.contains("position");
-                    let is_orientation = gen_lower.contains("normal") || gen_lower.contains("world");
+                    let is_gradient =
+                        gen_lower.contains("gradient") || gen_lower.contains("position");
+                    let is_orientation =
+                        gen_lower.contains("normal") || gen_lower.contains("world");
                     let is_thickness = gen_lower.contains("thickness");
                     let is_id = gen_lower.contains("id") || gen_lower.contains("color selection");
-                    let is_dirt = gen_lower.contains("dirt") || gen_lower.contains("cavity") || gen_lower.contains("crevice");
+                    let is_dirt = gen_lower.contains("dirt")
+                        || gen_lower.contains("cavity")
+                        || gen_lower.contains("crevice");
 
                     for y in 0..h {
                         let v_coord = y as f32 / h_f;
@@ -239,10 +267,18 @@ impl LayerMask {
                                         let range = (pos_max[ax] - pos_min[ax]).max(1e-5);
                                         (pos_slice[idx][ax] - pos_min[ax]) / range
                                     } else {
-                                        match *axis { 0 => u_coord, 1 => 1.0 - v_coord, _ => (u_coord + v_coord) * 0.5 }
+                                        match *axis {
+                                            0 => u_coord,
+                                            1 => 1.0 - v_coord,
+                                            _ => (u_coord + v_coord) * 0.5,
+                                        }
                                     }
                                 } else {
-                                    match *axis { 0 => u_coord, 1 => 1.0 - v_coord, _ => (u_coord + v_coord) * 0.5 }
+                                    match *axis {
+                                        0 => u_coord,
+                                        1 => 1.0 - v_coord,
+                                        _ => (u_coord + v_coord) * 0.5,
+                                    }
                                 };
                                 gen_val = t.clamp(0.0, 1.0);
                             }
@@ -253,7 +289,9 @@ impl LayerMask {
                                 } else {
                                     [0.0, 1.0, 0.0]
                                 };
-                                let dot = n[0] * normal_direction[0] + n[1] * normal_direction[1] + n[2] * normal_direction[2];
+                                let dot = n[0] * normal_direction[0]
+                                    + n[1] * normal_direction[1]
+                                    + n[2] * normal_direction[2];
                                 gen_val = (dot * 0.5 + 0.5).clamp(0.0, 1.0);
                             }
                             // 3. Dust Accumulation (Top/Upward Facing + Cavity Occlusion)
@@ -354,7 +392,8 @@ impl LayerMask {
                             if *grunge_amount > 0.001 && !is_id {
                                 let g_scale = *grunge_scale;
                                 let noise = fbm_noise(u_coord * g_scale, v_coord * g_scale, 3);
-                                let mod_factor = (1.0 - grunge_amount) + noise * grunge_amount * 1.5;
+                                let mod_factor =
+                                    (1.0 - grunge_amount) + noise * grunge_amount * 1.5;
                                 gen_val *= mod_factor;
                             }
 
@@ -364,11 +403,16 @@ impl LayerMask {
                                 gen_val = 1.0 - gen_val;
                             }
 
-                            self.buffer[idx] = blend_scalar(self.buffer[idx], gen_val, *blend_mode, *opacity);
+                            self.buffer[idx] =
+                                blend_scalar(self.buffer[idx], gen_val, *blend_mode, *opacity);
                         }
                     }
                 }
-                MaskEffect::Levels { black_in, white_in, gamma } => {
+                MaskEffect::Levels {
+                    black_in,
+                    white_in,
+                    gamma,
+                } => {
                     let range = (white_in - black_in).max(0.001);
                     for v in &mut self.buffer {
                         let normalized = ((*v - black_in) / range).clamp(0.0, 1.0);
@@ -475,7 +519,10 @@ mod tests {
 
         mask.recompute(Some(&curvature), Some(&ao), None, None, None, None);
         assert!(mask.buffer[0] > 0.5, "Pixel 0 should have high edge wear");
-        assert!(mask.buffer[1] <= 0.5, "Flat surface should not have high edge wear");
+        assert!(
+            mask.buffer[1] <= 0.5,
+            "Flat surface should not have high edge wear"
+        );
 
         // 2. Dirt Crevices
         let mut dirt_mask = LayerMask::new(MaskType::Black, 2, 2);
@@ -498,14 +545,27 @@ mod tests {
             tolerance: 0.2,
         });
         dirt_mask.recompute(Some(&curvature), Some(&ao), None, None, None, None);
-        assert!(dirt_mask.buffer[2] > 0.5, "Crevice in pixel 2 should accumulate dirt");
+        assert!(
+            dirt_mask.buffer[2] > 0.5,
+            "Crevice in pixel 2 should accumulate dirt"
+        );
     }
 
     #[test]
     fn test_position_gradient_and_id_selection() {
         let mut mask = LayerMask::new(MaskType::Black, 2, 2);
-        let pos = vec![[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 2.0, 0.0], [0.0, 10.0, 0.0]];
-        let id_map = vec![[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0], [1.0, 1.0, 0.0, 1.0]];
+        let pos = vec![
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, 10.0, 0.0],
+        ];
+        let id_map = vec![
+            [1.0, 0.0, 0.0, 1.0],
+            [0.0, 1.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0, 1.0],
+            [1.0, 1.0, 0.0, 1.0],
+        ];
 
         // Position Gradient along Y (axis = 1)
         mask.effects.push(MaskEffect::Generator {

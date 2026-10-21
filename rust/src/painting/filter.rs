@@ -69,7 +69,14 @@ impl FilterEffect {
 // Filter Algorithms
 // ─────────────────────────────────────────────────────────────────────────────
 
-pub fn apply_levels_scalar(v: f32, min_in: f32, max_in: f32, gamma: f32, min_out: f32, max_out: f32) -> f32 {
+pub fn apply_levels_scalar(
+    v: f32,
+    min_in: f32,
+    max_in: f32,
+    gamma: f32,
+    min_out: f32,
+    max_out: f32,
+) -> f32 {
     let range_in = (max_in - min_in).max(0.001);
     let norm = ((v - min_in) / range_in).clamp(0.0, 1.0);
     let g = norm.powf(1.0 / gamma.max(0.01));
@@ -86,11 +93,19 @@ pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     }
 
     let d = max - min;
-    let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) };
+    let s = if l > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
 
     let h = if (max - r).abs() < 1e-6 {
         let seg = (g - b) / d;
-        if g < b { seg + 6.0 } else { seg }
+        if g < b {
+            seg + 6.0
+        } else {
+            seg
+        }
     } else if (max - g).abs() < 1e-6 {
         (b - r) / d + 2.0
     } else {
@@ -105,7 +120,11 @@ pub fn hsl_to_rgb(h: f32, s: f32, l: f32) -> (f32, f32, f32) {
         return (l, l, l);
     }
 
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s };
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - l * s
+    };
     let p = 2.0 * l - q;
     let hk = h / 360.0;
 
@@ -155,7 +174,8 @@ pub fn gaussian_blur_f32(data: &[f32], width: usize, height: usize, radius: f32)
         for x in 0..width {
             let mut sum = 0.0f32;
             for (ki, &kw) in kernel.iter().enumerate() {
-                let sx = (x as isize + ki as isize - r as isize).clamp(0, width as isize - 1) as usize;
+                let sx =
+                    (x as isize + ki as isize - r as isize).clamp(0, width as isize - 1) as usize;
                 sum += data[row_offset + sx] * kw;
             }
             temp[row_offset + x] = sum;
@@ -168,7 +188,8 @@ pub fn gaussian_blur_f32(data: &[f32], width: usize, height: usize, radius: f32)
         for x in 0..width {
             let mut sum = 0.0f32;
             for (ki, &kw) in kernel.iter().enumerate() {
-                let sy = (y as isize + ki as isize - r as isize).clamp(0, height as isize - 1) as usize;
+                let sy =
+                    (y as isize + ki as isize - r as isize).clamp(0, height as isize - 1) as usize;
                 sum += temp[sy * width + x] * kw;
             }
             out[y * width + x] = sum;
@@ -178,7 +199,12 @@ pub fn gaussian_blur_f32(data: &[f32], width: usize, height: usize, radius: f32)
     out
 }
 
-pub fn gaussian_blur_rgba(data: &[[f32; 4]], width: usize, height: usize, radius: f32) -> Vec<[f32; 4]> {
+pub fn gaussian_blur_rgba(
+    data: &[[f32; 4]],
+    width: usize,
+    height: usize,
+    radius: f32,
+) -> Vec<[f32; 4]> {
     if radius < 0.5 || width == 0 || height == 0 {
         return data.to_vec();
     }
@@ -204,7 +230,8 @@ pub fn gaussian_blur_rgba(data: &[[f32; 4]], width: usize, height: usize, radius
         for x in 0..width {
             let mut sum = [0.0f32; 4];
             for (ki, &kw) in kernel.iter().enumerate() {
-                let sx = (x as isize + ki as isize - r as isize).clamp(0, width as isize - 1) as usize;
+                let sx =
+                    (x as isize + ki as isize - r as isize).clamp(0, width as isize - 1) as usize;
                 let c = data[row_offset + sx];
                 sum[0] += c[0] * kw;
                 sum[1] += c[1] * kw;
@@ -220,7 +247,8 @@ pub fn gaussian_blur_rgba(data: &[[f32; 4]], width: usize, height: usize, radius
         for x in 0..width {
             let mut sum = [0.0f32; 4];
             for (ki, &kw) in kernel.iter().enumerate() {
-                let sy = (y as isize + ki as isize - r as isize).clamp(0, height as isize - 1) as usize;
+                let sy =
+                    (y as isize + ki as isize - r as isize).clamp(0, height as isize - 1) as usize;
                 let c = temp[sy * width + x];
                 sum[0] += c[0] * kw;
                 sum[1] += c[1] * kw;
@@ -242,16 +270,23 @@ pub fn sharpen_f32(data: &[f32], width: usize, height: usize, strength: f32) -> 
         .collect()
 }
 
-pub fn sharpen_rgba(data: &[[f32; 4]], width: usize, height: usize, strength: f32) -> Vec<[f32; 4]> {
+pub fn sharpen_rgba(
+    data: &[[f32; 4]],
+    width: usize,
+    height: usize,
+    strength: f32,
+) -> Vec<[f32; 4]> {
     let blurred = gaussian_blur_rgba(data, width, height, 1.5);
     data.iter()
         .zip(blurred.iter())
-        .map(|(&orig, &blur)| [
-            (orig[0] + strength * (orig[0] - blur[0])).clamp(0.0, 1.0),
-            (orig[1] + strength * (orig[1] - blur[1])).clamp(0.0, 1.0),
-            (orig[2] + strength * (orig[2] - blur[2])).clamp(0.0, 1.0),
-            orig[3],
-        ])
+        .map(|(&orig, &blur)| {
+            [
+                (orig[0] + strength * (orig[0] - blur[0])).clamp(0.0, 1.0),
+                (orig[1] + strength * (orig[1] - blur[1])).clamp(0.0, 1.0),
+                (orig[2] + strength * (orig[2] - blur[2])).clamp(0.0, 1.0),
+                orig[3],
+            ]
+        })
         .collect()
 }
 
@@ -289,11 +324,10 @@ mod tests {
 
     #[test]
     fn test_gaussian_blur_and_sharpen() {
-        let data = vec![0.0, 0.0, 1.0, 0.0, 0.0,
-                        0.0, 1.0, 1.0, 1.0, 0.0,
-                        1.0, 1.0, 1.0, 1.0, 1.0,
-                        0.0, 1.0, 1.0, 1.0, 0.0,
-                        0.0, 0.0, 1.0, 0.0, 0.0];
+        let data = vec![
+            0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+        ];
         let blurred = gaussian_blur_f32(&data, 5, 5, 1.0);
         assert_eq!(blurred.len(), 25);
         // Center should be smoothed and neighbor non-zero

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 #![allow(unsafe_code)]
 
-use std::path::{Path, PathBuf};
 use glow::HasContext;
+use std::path::{Path, PathBuf};
 
 use super::mesh::Mesh;
 use crate::baker::engine::BakedMaps;
@@ -63,7 +63,11 @@ impl GpuMesh {
             let p = mesh.vertices[i];
             let n = mesh.normals.get(i).copied().unwrap_or([0.0, 1.0, 0.0]);
             let uv = mesh.uvs.get(i).copied().unwrap_or([0.0, 0.0]);
-            let t = mesh.tangents.get(i).copied().unwrap_or([1.0, 0.0, 0.0, 1.0]);
+            let t = mesh
+                .tangents
+                .get(i)
+                .copied()
+                .unwrap_or([1.0, 0.0, 0.0, 1.0]);
 
             gl_verts.push(GlVertex {
                 pos: [
@@ -117,12 +121,16 @@ impl GpuMesh {
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, None);
 
             self.index_count = mesh.indices.len() as i32;
-            self.submeshes = mesh.submeshes.iter().map(|sm| GpuSubMesh {
-                name: sm.name.clone(),
-                index_start: sm.index_start,
-                index_count: sm.index_count,
-                visible: true,
-            }).collect();
+            self.submeshes = mesh
+                .submeshes
+                .iter()
+                .map(|sm| GpuSubMesh {
+                    name: sm.name.clone(),
+                    index_start: sm.index_start,
+                    index_count: sm.index_count,
+                    visible: true,
+                })
+                .collect();
         }
     }
 
@@ -138,7 +146,12 @@ impl GpuMesh {
                 for sm in &self.submeshes {
                     if sm.visible && sm.index_count > 0 {
                         let byte_offset = (sm.index_start * std::mem::size_of::<u32>()) as i32;
-                        gl.draw_elements(glow::TRIANGLES, sm.index_count as i32, glow::UNSIGNED_INT, byte_offset);
+                        gl.draw_elements(
+                            glow::TRIANGLES,
+                            sm.index_count as i32,
+                            glow::UNSIGNED_INT,
+                            byte_offset,
+                        );
                     }
                 }
             }
@@ -514,7 +527,8 @@ void main() {
             let u_dof_enabled = gl.get_uniform_location(program, "u_dof_enabled");
             let u_dof_focal_distance = gl.get_uniform_location(program, "u_dof_focal_distance");
             let u_dof_aperture = gl.get_uniform_location(program, "u_dof_aperture");
-            let u_color_management_mode = gl.get_uniform_location(program, "u_color_management_mode");
+            let u_color_management_mode =
+                gl.get_uniform_location(program, "u_color_management_mode");
 
             gl.use_program(None);
 
@@ -635,12 +649,7 @@ void main() {
             let vao = gl.create_vertex_array().expect("VAO for skybox");
             let vbo = gl.create_buffer().expect("VBO for skybox");
 
-            let quad_verts: [f32; 8] = [
-                -1.0, -1.0,
-                 1.0, -1.0,
-                -1.0,  1.0,
-                 1.0,  1.0,
-            ];
+            let quad_verts: [f32; 8] = [-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0];
 
             gl.bind_vertex_array(Some(vao));
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(vbo));
@@ -701,12 +710,29 @@ pub struct GpuTextures {
 impl GpuTextures {
     pub fn new(gl: &glow::Context, width: u32, height: u32) -> Self {
         unsafe {
-            let base_color = create_texture_2d(gl, width, height, glow::RGBA8, glow::RGBA, glow::UNSIGNED_BYTE);
-            let metallic = create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
-            let roughness = create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
-            let normal = create_texture_2d(gl, width, height, glow::RGB8, glow::RGB, glow::UNSIGNED_BYTE);
+            let base_color = create_texture_2d(
+                gl,
+                width,
+                height,
+                glow::RGBA8,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+            );
+            let metallic =
+                create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
+            let roughness =
+                create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
+            let normal = create_texture_2d(
+                gl,
+                width,
+                height,
+                glow::RGB8,
+                glow::RGB,
+                glow::UNSIGNED_BYTE,
+            );
             let ao = create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
-            let curvature = create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
+            let curvature =
+                create_texture_2d(gl, width, height, glow::R8, glow::RED, glow::UNSIGNED_BYTE);
 
             Self {
                 base_color,
@@ -737,7 +763,11 @@ impl GpuTextures {
         let mut nrm_bytes = Vec::with_capacity(total * 3);
 
         for i in 0..total {
-            let c = stack.composite_color.get(i).copied().unwrap_or([0.5, 0.5, 0.5, 1.0]);
+            let c = stack
+                .composite_color
+                .get(i)
+                .copied()
+                .unwrap_or([0.5, 0.5, 0.5, 1.0]);
             bc_bytes.push((c[0].clamp(0.0, 1.0) * 255.0) as u8);
             bc_bytes.push((c[1].clamp(0.0, 1.0) * 255.0) as u8);
             bc_bytes.push((c[2].clamp(0.0, 1.0) * 255.0) as u8);
@@ -749,31 +779,79 @@ impl GpuTextures {
             let r = stack.composite_roughness.get(i).copied().unwrap_or(0.5);
             rgh_bytes.push((r.clamp(0.0, 1.0) * 255.0) as u8);
 
-            let n = stack.composite_normal.get(i).copied().unwrap_or([0.5, 0.5, 1.0]);
+            let n = stack
+                .composite_normal
+                .get(i)
+                .copied()
+                .unwrap_or([0.5, 0.5, 1.0]);
             nrm_bytes.push((n[0].clamp(0.0, 1.0) * 255.0) as u8);
             nrm_bytes.push((n[1].clamp(0.0, 1.0) * 255.0) as u8);
             nrm_bytes.push((n[2].clamp(0.0, 1.0) * 255.0) as u8);
         }
 
         let ao_bytes: Vec<u8> = if let Some(ref ao) = baked.ambient_occlusion {
-            ao.iter().map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8).collect()
+            ao.iter()
+                .map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8)
+                .collect()
         } else {
             vec![255u8; total]
         };
 
         let curv_bytes: Vec<u8> = if let Some(ref cur) = baked.curvature {
-            cur.iter().map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8).collect()
+            cur.iter()
+                .map(|v| (v.clamp(0.0, 1.0) * 255.0) as u8)
+                .collect()
         } else {
             vec![128u8; total]
         };
 
         unsafe {
-            update_tex_data(gl, self.base_color, w, h, glow::RGBA, glow::UNSIGNED_BYTE, &bc_bytes);
-            update_tex_data(gl, self.metallic, w, h, glow::RED, glow::UNSIGNED_BYTE, &met_bytes);
-            update_tex_data(gl, self.roughness, w, h, glow::RED, glow::UNSIGNED_BYTE, &rgh_bytes);
-            update_tex_data(gl, self.normal, w, h, glow::RGB, glow::UNSIGNED_BYTE, &nrm_bytes);
+            update_tex_data(
+                gl,
+                self.base_color,
+                w,
+                h,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                &bc_bytes,
+            );
+            update_tex_data(
+                gl,
+                self.metallic,
+                w,
+                h,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                &met_bytes,
+            );
+            update_tex_data(
+                gl,
+                self.roughness,
+                w,
+                h,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                &rgh_bytes,
+            );
+            update_tex_data(
+                gl,
+                self.normal,
+                w,
+                h,
+                glow::RGB,
+                glow::UNSIGNED_BYTE,
+                &nrm_bytes,
+            );
             update_tex_data(gl, self.ao, w, h, glow::RED, glow::UNSIGNED_BYTE, &ao_bytes);
-            update_tex_data(gl, self.curvature, w, h, glow::RED, glow::UNSIGNED_BYTE, &curv_bytes);
+            update_tex_data(
+                gl,
+                self.curvature,
+                w,
+                h,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                &curv_bytes,
+            );
         }
     }
 
@@ -799,7 +877,11 @@ impl GpuTextures {
         for y in y0..y1 {
             for x in x0..x1 {
                 let idx = (y * self.width + x) as usize;
-                let c = stack.composite_color.get(idx).copied().unwrap_or([0.5, 0.5, 0.5, 1.0]);
+                let c = stack
+                    .composite_color
+                    .get(idx)
+                    .copied()
+                    .unwrap_or([0.5, 0.5, 0.5, 1.0]);
                 bc_sub.push((c[0].clamp(0.0, 1.0) * 255.0) as u8);
                 bc_sub.push((c[1].clamp(0.0, 1.0) * 255.0) as u8);
                 bc_sub.push((c[2].clamp(0.0, 1.0) * 255.0) as u8);
@@ -811,7 +893,11 @@ impl GpuTextures {
                 let r = stack.composite_roughness.get(idx).copied().unwrap_or(0.5);
                 rgh_sub.push((r.clamp(0.0, 1.0) * 255.0) as u8);
 
-                let n = stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
+                let n = stack
+                    .composite_normal
+                    .get(idx)
+                    .copied()
+                    .unwrap_or([0.5, 0.5, 1.0]);
                 nrm_sub.push((n[0].clamp(0.0, 1.0) * 255.0) as u8);
                 nrm_sub.push((n[1].clamp(0.0, 1.0) * 255.0) as u8);
                 nrm_sub.push((n[2].clamp(0.0, 1.0) * 255.0) as u8);
@@ -819,10 +905,50 @@ impl GpuTextures {
         }
 
         unsafe {
-            update_sub_tex(gl, self.base_color, x0, y0, sub_w, sub_h, glow::RGBA, glow::UNSIGNED_BYTE, &bc_sub);
-            update_sub_tex(gl, self.metallic, x0, y0, sub_w, sub_h, glow::RED, glow::UNSIGNED_BYTE, &met_sub);
-            update_sub_tex(gl, self.roughness, x0, y0, sub_w, sub_h, glow::RED, glow::UNSIGNED_BYTE, &rgh_sub);
-            update_sub_tex(gl, self.normal, x0, y0, sub_w, sub_h, glow::RGB, glow::UNSIGNED_BYTE, &nrm_sub);
+            update_sub_tex(
+                gl,
+                self.base_color,
+                x0,
+                y0,
+                sub_w,
+                sub_h,
+                glow::RGBA,
+                glow::UNSIGNED_BYTE,
+                &bc_sub,
+            );
+            update_sub_tex(
+                gl,
+                self.metallic,
+                x0,
+                y0,
+                sub_w,
+                sub_h,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                &met_sub,
+            );
+            update_sub_tex(
+                gl,
+                self.roughness,
+                x0,
+                y0,
+                sub_w,
+                sub_h,
+                glow::RED,
+                glow::UNSIGNED_BYTE,
+                &rgh_sub,
+            );
+            update_sub_tex(
+                gl,
+                self.normal,
+                x0,
+                y0,
+                sub_w,
+                sub_h,
+                glow::RGB,
+                glow::UNSIGNED_BYTE,
+                &nrm_sub,
+            );
         }
     }
 
@@ -888,12 +1014,18 @@ void main() {
             let u_mvp = gl.get_uniform_location(program, "u_mvp");
             let u_wire_color = gl.get_uniform_location(program, "u_wire_color");
             gl.use_program(None);
-            Ok(Self { program, u_mvp, u_wire_color })
+            Ok(Self {
+                program,
+                u_mvp,
+                u_wire_color,
+            })
         }
     }
 
     pub fn destroy(&self, gl: &glow::Context) {
-        unsafe { gl.delete_program(self.program); }
+        unsafe {
+            gl.delete_program(self.program);
+        }
     }
 }
 
@@ -940,11 +1072,14 @@ impl GpuGrid {
 
             let axes_verts: [[f32; 3]; 6] = [
                 // X (Red)
-                [0.0, y_plane, 0.0], [0.6, y_plane, 0.0],
+                [0.0, y_plane, 0.0],
+                [0.6, y_plane, 0.0],
                 // Y (Green)
-                [0.0, y_plane, 0.0], [0.0, y_plane + 0.6, 0.0],
+                [0.0, y_plane, 0.0],
+                [0.0, y_plane + 0.6, 0.0],
                 // Z (Blue)
-                [0.0, y_plane, 0.0], [0.0, y_plane, 0.6],
+                [0.0, y_plane, 0.0],
+                [0.0, y_plane, 0.6],
             ];
 
             let axes_vao = gl.create_vertex_array().expect("Failed to create Axes VAO");
@@ -1012,7 +1147,12 @@ pub struct ViewportGl {
 }
 
 impl ViewportGl {
-    pub fn new(gl: &glow::Context, mesh: &Mesh, stack: &LayerStack, baked: &BakedMaps) -> Result<Self, String> {
+    pub fn new(
+        gl: &glow::Context,
+        mesh: &Mesh,
+        stack: &LayerStack,
+        baked: &BakedMaps,
+    ) -> Result<Self, String> {
         let gpu_mesh = GpuMesh::new(gl, mesh);
         let grid = GpuGrid::new(gl);
         let pbr_shader = PbrShader::new(gl)?;
@@ -1084,9 +1224,16 @@ impl ViewportGl {
         &self.mesh.submeshes
     }
 
-    pub fn load_environment(&mut self, gl: &glow::Context, path: impl AsRef<Path>) -> Result<(), String> {
+    pub fn load_environment(
+        &mut self,
+        gl: &glow::Context,
+        path: impl AsRef<Path>,
+    ) -> Result<(), String> {
         let path_ref = path.as_ref();
-        let stem = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Environment");
+        let stem = path_ref
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Environment");
 
         let (w, h, rgba_data) = if path_ref.extension().and_then(|s| s.to_str()) == Some("exr") {
             load_exr_hdr(path_ref)?
@@ -1114,9 +1261,21 @@ impl ViewportGl {
             );
             gl.generate_mipmap(glow::TEXTURE_2D);
             gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::REPEAT as i32);
-            gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::CLAMP_TO_EDGE as i32);
-            gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR_MIPMAP_LINEAR as i32);
-            gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::LINEAR as i32);
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::LINEAR_MIPMAP_LINEAR as i32,
+            );
+            gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::LINEAR as i32,
+            );
             gl.bind_texture(glow::TEXTURE_2D, None);
 
             self.env_texture = Some(tex);
@@ -1184,11 +1343,21 @@ impl ViewportGl {
                 gl.depth_mask(false);
                 gl.use_program(Some(self.skybox_shader.program));
 
-                gl.uniform_matrix_4_f32_slice(self.skybox_shader.u_inv_view_proj.as_ref(), false, &inv_view_proj.to_cols_array());
+                gl.uniform_matrix_4_f32_slice(
+                    self.skybox_shader.u_inv_view_proj.as_ref(),
+                    false,
+                    &inv_view_proj.to_cols_array(),
+                );
                 gl.uniform_1_f32(self.skybox_shader.u_env_rotation.as_ref(), env_rotation);
                 gl.uniform_1_f32(self.skybox_shader.u_blur.as_ref(), self.skybox_blur);
-                gl.uniform_1_f32(self.skybox_shader.u_intensity.as_ref(), self.skybox_intensity);
-                gl.uniform_1_i32(self.skybox_shader.u_has_env_map.as_ref(), if self.env_texture.is_some() { 1 } else { 0 });
+                gl.uniform_1_f32(
+                    self.skybox_shader.u_intensity.as_ref(),
+                    self.skybox_intensity,
+                );
+                gl.uniform_1_i32(
+                    self.skybox_shader.u_has_env_map.as_ref(),
+                    if self.env_texture.is_some() { 1 } else { 0 },
+                );
 
                 if let Some(env_tex) = self.env_texture {
                     gl.active_texture(glow::TEXTURE6);
@@ -1206,31 +1375,82 @@ impl ViewportGl {
             let model = glam::Mat4::IDENTITY;
             let normal_mat = glam::Mat3::IDENTITY;
 
-            gl.uniform_matrix_4_f32_slice(self.pbr_shader.u_model.as_ref(), false, &model.to_cols_array());
-            gl.uniform_matrix_4_f32_slice(self.pbr_shader.u_view.as_ref(), false, &view.to_cols_array());
-            gl.uniform_matrix_4_f32_slice(self.pbr_shader.u_proj.as_ref(), false, &proj.to_cols_array());
-            gl.uniform_matrix_3_f32_slice(self.pbr_shader.u_normal_mat.as_ref(), false, &normal_mat.to_cols_array());
+            gl.uniform_matrix_4_f32_slice(
+                self.pbr_shader.u_model.as_ref(),
+                false,
+                &model.to_cols_array(),
+            );
+            gl.uniform_matrix_4_f32_slice(
+                self.pbr_shader.u_view.as_ref(),
+                false,
+                &view.to_cols_array(),
+            );
+            gl.uniform_matrix_4_f32_slice(
+                self.pbr_shader.u_proj.as_ref(),
+                false,
+                &proj.to_cols_array(),
+            );
+            gl.uniform_matrix_3_f32_slice(
+                self.pbr_shader.u_normal_mat.as_ref(),
+                false,
+                &normal_mat.to_cols_array(),
+            );
 
-            gl.uniform_3_f32(self.pbr_shader.u_cam_pos.as_ref(), cam_pos.x, cam_pos.y, cam_pos.z);
+            gl.uniform_3_f32(
+                self.pbr_shader.u_cam_pos.as_ref(),
+                cam_pos.x,
+                cam_pos.y,
+                cam_pos.z,
+            );
             gl.uniform_1_f32(self.pbr_shader.u_light_intensity.as_ref(), light_intensity);
             gl.uniform_1_f32(self.pbr_shader.u_env_rotation.as_ref(), env_rotation);
             gl.uniform_1_f32(self.pbr_shader.u_exposure.as_ref(), self.exposure);
-            gl.uniform_1_i32(self.pbr_shader.u_display_channel.as_ref(), display_channel as i32);
-            gl.uniform_1_i32(self.pbr_shader.u_has_env_map.as_ref(), if self.env_texture.is_some() { 1 } else { 0 });
+            gl.uniform_1_i32(
+                self.pbr_shader.u_display_channel.as_ref(),
+                display_channel as i32,
+            );
+            gl.uniform_1_i32(
+                self.pbr_shader.u_has_env_map.as_ref(),
+                if self.env_texture.is_some() { 1 } else { 0 },
+            );
             gl.uniform_1_i32(self.pbr_shader.u_has_brdf_lut.as_ref(), 1);
             gl.uniform_1_f32(self.pbr_shader.u_uv_scale.as_ref(), self.uv_scale);
 
-            gl.uniform_1_i32(self.pbr_shader.u_bloom_enabled.as_ref(), if self.bloom_enabled { 1 } else { 0 });
-            gl.uniform_1_f32(self.pbr_shader.u_bloom_intensity.as_ref(), self.bloom_intensity);
-            gl.uniform_1_f32(self.pbr_shader.u_bloom_threshold.as_ref(), self.bloom_threshold);
+            gl.uniform_1_i32(
+                self.pbr_shader.u_bloom_enabled.as_ref(),
+                if self.bloom_enabled { 1 } else { 0 },
+            );
+            gl.uniform_1_f32(
+                self.pbr_shader.u_bloom_intensity.as_ref(),
+                self.bloom_intensity,
+            );
+            gl.uniform_1_f32(
+                self.pbr_shader.u_bloom_threshold.as_ref(),
+                self.bloom_threshold,
+            );
 
-            gl.uniform_1_i32(self.pbr_shader.u_ssao_enabled.as_ref(), if self.ssao_enabled { 1 } else { 0 });
-            gl.uniform_1_f32(self.pbr_shader.u_ssao_intensity.as_ref(), self.ssao_intensity);
+            gl.uniform_1_i32(
+                self.pbr_shader.u_ssao_enabled.as_ref(),
+                if self.ssao_enabled { 1 } else { 0 },
+            );
+            gl.uniform_1_f32(
+                self.pbr_shader.u_ssao_intensity.as_ref(),
+                self.ssao_intensity,
+            );
 
-            gl.uniform_1_i32(self.pbr_shader.u_dof_enabled.as_ref(), if self.dof_enabled { 1 } else { 0 });
-            gl.uniform_1_f32(self.pbr_shader.u_dof_focal_distance.as_ref(), self.dof_focal_distance);
+            gl.uniform_1_i32(
+                self.pbr_shader.u_dof_enabled.as_ref(),
+                if self.dof_enabled { 1 } else { 0 },
+            );
+            gl.uniform_1_f32(
+                self.pbr_shader.u_dof_focal_distance.as_ref(),
+                self.dof_focal_distance,
+            );
             gl.uniform_1_f32(self.pbr_shader.u_dof_aperture.as_ref(), self.dof_aperture);
-            gl.uniform_1_i32(self.pbr_shader.u_color_management_mode.as_ref(), self.color_management_mode as i32);
+            gl.uniform_1_i32(
+                self.pbr_shader.u_color_management_mode.as_ref(),
+                self.color_management_mode as i32,
+            );
 
             // Bind PBR textures (Units 0..5)
             self.textures.bind(gl);
@@ -1253,23 +1473,51 @@ impl ViewportGl {
             // 3. Render Ground Plane Grid and World Axes if enabled
             if self.show_grid {
                 gl.use_program(Some(self.wireframe_shader.program));
-                gl.uniform_matrix_4_f32_slice(self.wireframe_shader.u_mvp.as_ref(), false, &view_proj.to_cols_array());
+                gl.uniform_matrix_4_f32_slice(
+                    self.wireframe_shader.u_mvp.as_ref(),
+                    false,
+                    &view_proj.to_cols_array(),
+                );
 
                 // Subtle dark slate grid
-                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.25, 0.27, 0.30, 0.65);
+                gl.uniform_4_f32(
+                    self.wireframe_shader.u_wire_color.as_ref(),
+                    0.25,
+                    0.27,
+                    0.30,
+                    0.65,
+                );
                 gl.bind_vertex_array(Some(self.grid.grid_vao));
                 gl.draw_arrays(glow::LINES, 0, self.grid.grid_vert_count);
 
                 // World coordinate axes
                 gl.bind_vertex_array(Some(self.grid.axes_vao));
                 // X (Red)
-                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.95, 0.22, 0.22, 0.95);
+                gl.uniform_4_f32(
+                    self.wireframe_shader.u_wire_color.as_ref(),
+                    0.95,
+                    0.22,
+                    0.22,
+                    0.95,
+                );
                 gl.draw_arrays(glow::LINES, 0, 2);
                 // Y (Green)
-                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.22, 0.92, 0.22, 0.95);
+                gl.uniform_4_f32(
+                    self.wireframe_shader.u_wire_color.as_ref(),
+                    0.22,
+                    0.92,
+                    0.22,
+                    0.95,
+                );
                 gl.draw_arrays(glow::LINES, 2, 2);
                 // Z (Blue)
-                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.25, 0.55, 0.98, 0.95);
+                gl.uniform_4_f32(
+                    self.wireframe_shader.u_wire_color.as_ref(),
+                    0.25,
+                    0.55,
+                    0.98,
+                    0.95,
+                );
                 gl.draw_arrays(glow::LINES, 4, 2);
             }
 
@@ -1279,8 +1527,18 @@ impl ViewportGl {
                 gl.polygon_offset(-1.0, -1.0);
                 gl.polygon_mode(glow::FRONT_AND_BACK, glow::LINE);
                 gl.use_program(Some(self.wireframe_shader.program));
-                gl.uniform_matrix_4_f32_slice(self.wireframe_shader.u_mvp.as_ref(), false, &view_proj.to_cols_array());
-                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.15, 0.75, 1.0, 0.85); // Substance Cyan
+                gl.uniform_matrix_4_f32_slice(
+                    self.wireframe_shader.u_mvp.as_ref(),
+                    false,
+                    &view_proj.to_cols_array(),
+                );
+                gl.uniform_4_f32(
+                    self.wireframe_shader.u_wire_color.as_ref(),
+                    0.15,
+                    0.75,
+                    1.0,
+                    0.85,
+                ); // Substance Cyan
                 self.mesh.draw(gl);
                 gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
                 gl.disable(glow::POLYGON_OFFSET_LINE);
@@ -1330,8 +1588,16 @@ pub fn list_available_environments() -> Vec<(String, PathBuf)> {
                 let ep = entry.path();
                 if let Some(ext) = ep.extension().and_then(|s| s.to_str()) {
                     let ext_lower = ext.to_lowercase();
-                    if ext_lower == "exr" || ext_lower == "hdr" || ext_lower == "png" || ext_lower == "jpg" {
-                        let stem = ep.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_string();
+                    if ext_lower == "exr"
+                        || ext_lower == "hdr"
+                        || ext_lower == "png"
+                        || ext_lower == "jpg"
+                    {
+                        let stem = ep
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("")
+                            .to_string();
                         if !list.iter().any(|(s, _)| s == &stem) {
                             list.push((stem, ep));
                         }
@@ -1355,10 +1621,15 @@ fn load_exr_hdr(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<f32>), String> 
         |pixel_vector, position, (r, g, b, a): (f32, f32, f32, f32)| {
             pixel_vector[position.y()][position.x()] = [r, g, b, a];
         },
-    ).map_err(|e| format!("Failed to read EXR {:?}: {}", path_ref, e))?;
+    )
+    .map_err(|e| format!("Failed to read EXR {:?}: {}", path_ref, e))?;
 
     let h = image.layer_data.channel_data.pixels.len();
-    let w = if h > 0 { image.layer_data.channel_data.pixels[0].len() } else { 0 };
+    let w = if h > 0 {
+        image.layer_data.channel_data.pixels[0].len()
+    } else {
+        0
+    };
     let mut flat = Vec::with_capacity(w * h * 4);
     for row in image.layer_data.channel_data.pixels {
         for px in row {
@@ -1369,7 +1640,9 @@ fn load_exr_hdr(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<f32>), String> 
 }
 
 fn load_ldr_image(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<f32>), String> {
-    let img = image::open(path.as_ref()).map_err(|e| e.to_string())?.to_rgba8();
+    let img = image::open(path.as_ref())
+        .map_err(|e| e.to_string())?
+        .to_rgba8();
     let (w, h) = img.dimensions();
     let raw = img.into_raw();
     let mut flat = Vec::with_capacity(raw.len());
@@ -1383,10 +1656,16 @@ fn load_ldr_image(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<f32>), String
 // GL Helper Functions
 // =========================================================================
 
-unsafe fn create_program(gl: &glow::Context, vert_src: &str, frag_src: &str) -> Result<glow::Program, String> {
+unsafe fn create_program(
+    gl: &glow::Context,
+    vert_src: &str,
+    frag_src: &str,
+) -> Result<glow::Program, String> {
     let program = gl.create_program().map_err(|e| e.to_string())?;
 
-    let vs = gl.create_shader(glow::VERTEX_SHADER).map_err(|e| e.to_string())?;
+    let vs = gl
+        .create_shader(glow::VERTEX_SHADER)
+        .map_err(|e| e.to_string())?;
     gl.shader_source(vs, vert_src);
     gl.compile_shader(vs);
     if !gl.get_shader_compile_status(vs) {
@@ -1396,7 +1675,9 @@ unsafe fn create_program(gl: &glow::Context, vert_src: &str, frag_src: &str) -> 
         return Err(format!("Vertex shader compilation failed: {}", log));
     }
 
-    let fs = gl.create_shader(glow::FRAGMENT_SHADER).map_err(|e| e.to_string())?;
+    let fs = gl
+        .create_shader(glow::FRAGMENT_SHADER)
+        .map_err(|e| e.to_string())?;
     gl.shader_source(fs, frag_src);
     gl.compile_shader(fs);
     if !gl.get_shader_compile_status(fs) {
@@ -1456,8 +1737,16 @@ unsafe fn create_texture_2d(
     );
     gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::REPEAT as i32);
     gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::REPEAT as i32);
-    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR_MIPMAP_LINEAR as i32);
-    gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::LINEAR as i32);
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_MIN_FILTER,
+        glow::LINEAR_MIPMAP_LINEAR as i32,
+    );
+    gl.tex_parameter_i32(
+        glow::TEXTURE_2D,
+        glow::TEXTURE_MAG_FILTER,
+        glow::LINEAR as i32,
+    );
     gl.generate_mipmap(glow::TEXTURE_2D);
     gl.bind_texture(glow::TEXTURE_2D, None);
     tex
@@ -1476,7 +1765,13 @@ unsafe fn update_tex_data(
     gl.tex_image_2d(
         glow::TEXTURE_2D,
         0,
-        if format == glow::RGBA { glow::RGBA8 as i32 } else if format == glow::RGB { glow::RGB8 as i32 } else { glow::R8 as i32 },
+        if format == glow::RGBA {
+            glow::RGBA8 as i32
+        } else if format == glow::RGB {
+            glow::RGB8 as i32
+        } else {
+            glow::R8 as i32
+        },
         width as i32,
         height as i32,
         0,
@@ -1542,10 +1837,26 @@ pub fn generate_and_upload_brdf_lut(gl: &glow::Context) -> glow::Texture {
             glow::UNSIGNED_BYTE,
             Some(&lut_bytes),
         );
-        gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::CLAMP_TO_EDGE as i32);
-        gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::CLAMP_TO_EDGE as i32);
-        gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR as i32);
-        gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::LINEAR as i32);
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_WRAP_S,
+            glow::CLAMP_TO_EDGE as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_WRAP_T,
+            glow::CLAMP_TO_EDGE as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MIN_FILTER,
+            glow::LINEAR as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MAG_FILTER,
+            glow::LINEAR as i32,
+        );
         gl.bind_texture(glow::TEXTURE_2D, None);
         tex
     }
@@ -1570,11 +1881,7 @@ pub fn compute_brdf_lut(size: usize) -> Vec<(f32, f32)> {
 }
 
 fn integrate_brdf(n_dot_v: f32, roughness: f32) -> (f32, f32) {
-    let v = glam::Vec3::new(
-        (1.0 - n_dot_v * n_dot_v).max(0.0).sqrt(),
-        0.0,
-        n_dot_v,
-    );
+    let v = glam::Vec3::new((1.0 - n_dot_v * n_dot_v).max(0.0).sqrt(), 0.0, n_dot_v);
 
     let mut a = 0.0f32;
     let mut b = 0.0f32;
@@ -1624,7 +1931,11 @@ fn importance_sample_ggx(xi: glam::Vec2, n: glam::Vec3, roughness: f32) -> glam:
 
     let h = glam::Vec3::new(phi.cos() * sin_theta, phi.sin() * sin_theta, cos_theta);
 
-    let up = if n.z.abs() < 0.999 { glam::Vec3::Z } else { glam::Vec3::X };
+    let up = if n.z.abs() < 0.999 {
+        glam::Vec3::Z
+    } else {
+        glam::Vec3::X
+    };
     let tangent = up.cross(n).normalize();
     let bitangent = n.cross(tangent);
 
@@ -1661,9 +1972,24 @@ mod tests {
             ebo: glow::NativeBuffer(dummy_id),
             index_count: 60,
             submeshes: vec![
-                GpuSubMesh { name: "Head".into(), index_start: 0, index_count: 20, visible: true },
-                GpuSubMesh { name: "Body".into(), index_start: 20, index_count: 20, visible: true },
-                GpuSubMesh { name: "Limbs".into(), index_start: 40, index_count: 20, visible: true },
+                GpuSubMesh {
+                    name: "Head".into(),
+                    index_start: 0,
+                    index_count: 20,
+                    visible: true,
+                },
+                GpuSubMesh {
+                    name: "Body".into(),
+                    index_start: 20,
+                    index_count: 20,
+                    visible: true,
+                },
+                GpuSubMesh {
+                    name: "Limbs".into(),
+                    index_start: 40,
+                    index_count: 20,
+                    visible: true,
+                },
             ],
         };
 

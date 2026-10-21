@@ -103,7 +103,8 @@ impl ExportPreset {
     pub fn unreal_engine() -> Self {
         Self {
             name: "Unreal Engine 4/5 (Packed ORM)".into(),
-            description: "BaseColor (sRGB), Normal (DirectX -Y), ORM (R=AO, G=Roughness, B=Metallic)".into(),
+            description:
+                "BaseColor (sRGB), Normal (DirectX -Y), ORM (R=AO, G=Roughness, B=Metallic)".into(),
             outputs: vec![
                 ExportTextureOutput {
                     filename_suffix: "_BaseColor".into(),
@@ -111,9 +112,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::SRgb,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::BaseColor, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::BaseColor, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::BaseColor, component: SourceComponent::B },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::B,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -122,9 +135,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::AmbientOcclusion, component: SourceComponent::Gray },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::Roughness, component: SourceComponent::Gray },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Metallic, component: SourceComponent::Gray },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::AmbientOcclusion,
+                            component: SourceComponent::Gray,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::Roughness,
+                            component: SourceComponent::Gray,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::Metallic,
+                            component: SourceComponent::Gray,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -133,9 +158,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::NormalDirectX, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::NormalDirectX, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::NormalDirectX, component: SourceComponent::B },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::NormalDirectX,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::NormalDirectX,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::NormalDirectX,
+                            component: SourceComponent::B,
+                        },
                     ],
                 },
             ],
@@ -280,7 +317,8 @@ impl ExportPreset {
     pub fn generic_pbr() -> Self {
         Self {
             name: "Generic PBR (Individual Maps)".into(),
-            description: "BaseColor, Metallic, Roughness, Normal, Height, AO, Curvature split maps".into(),
+            description: "BaseColor, Metallic, Roughness, Normal, Height, AO, Curvature split maps"
+                .into(),
             outputs: vec![
                 ExportTextureOutput {
                     filename_suffix: "_BaseColor".into(),
@@ -288,9 +326,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::SRgb,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::BaseColor, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::BaseColor, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::BaseColor, component: SourceComponent::B },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::B,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -298,18 +348,22 @@ impl ExportPreset {
                     format: OutputFormat::Png,
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::Linear,
-                    channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::Metallic, component: SourceComponent::Gray },
-                    ],
+                    channels: vec![ChannelMapping {
+                        target: TargetChannel::Red,
+                        source: SourceMap::Metallic,
+                        component: SourceComponent::Gray,
+                    }],
                 },
                 ExportTextureOutput {
                     filename_suffix: "_Roughness".into(),
                     format: OutputFormat::Png,
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::Linear,
-                    channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::Roughness, component: SourceComponent::Gray },
-                    ],
+                    channels: vec![ChannelMapping {
+                        target: TargetChannel::Red,
+                        source: SourceMap::Roughness,
+                        component: SourceComponent::Gray,
+                    }],
                 },
                 ExportTextureOutput {
                     filename_suffix: "_Normal".into(),
@@ -317,9 +371,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::U16,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::Normal, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::Normal, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Normal, component: SourceComponent::B },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::B,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -327,18 +393,22 @@ impl ExportPreset {
                     format: OutputFormat::Png,
                     bit_depth: BitDepth::U16,
                     color_space: ColorSpace::Linear,
-                    channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::Height, component: SourceComponent::Gray },
-                    ],
+                    channels: vec![ChannelMapping {
+                        target: TargetChannel::Red,
+                        source: SourceMap::Height,
+                        component: SourceComponent::Gray,
+                    }],
                 },
                 ExportTextureOutput {
                     filename_suffix: "_AmbientOcclusion".into(),
                     format: OutputFormat::Png,
                     bit_depth: BitDepth::U8,
                     color_space: ColorSpace::Linear,
-                    channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::AmbientOcclusion, component: SourceComponent::Gray },
-                    ],
+                    channels: vec![ChannelMapping {
+                        target: TargetChannel::Red,
+                        source: SourceMap::AmbientOcclusion,
+                        component: SourceComponent::Gray,
+                    }],
                 },
             ],
         }
@@ -348,7 +418,8 @@ impl ExportPreset {
     pub fn studio_exr() -> Self {
         Self {
             name: "VFX / Film Studio (32-bit OpenEXR)".into(),
-            description: "High-dynamic range 32-bit float EXR files for VFX and film production".into(),
+            description: "High-dynamic range 32-bit float EXR files for VFX and film production"
+                .into(),
             outputs: vec![
                 ExportTextureOutput {
                     filename_suffix: "_BaseColor".into(),
@@ -356,10 +427,26 @@ impl ExportPreset {
                     bit_depth: BitDepth::F32,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::BaseColor, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::BaseColor, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::BaseColor, component: SourceComponent::B },
-                        ChannelMapping { target: TargetChannel::Alpha, source: SourceMap::BaseColor, component: SourceComponent::A },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::B,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Alpha,
+                            source: SourceMap::BaseColor,
+                            component: SourceComponent::A,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -368,9 +455,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::F32,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::Normal, component: SourceComponent::R },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::Normal, component: SourceComponent::G },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Normal, component: SourceComponent::B },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::R,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::G,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::Normal,
+                            component: SourceComponent::B,
+                        },
                     ],
                 },
                 ExportTextureOutput {
@@ -379,9 +478,21 @@ impl ExportPreset {
                     bit_depth: BitDepth::F32,
                     color_space: ColorSpace::Linear,
                     channels: vec![
-                        ChannelMapping { target: TargetChannel::Red, source: SourceMap::AmbientOcclusion, component: SourceComponent::Gray },
-                        ChannelMapping { target: TargetChannel::Green, source: SourceMap::Roughness, component: SourceComponent::Gray },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Metallic, component: SourceComponent::Gray },
+                        ChannelMapping {
+                            target: TargetChannel::Red,
+                            source: SourceMap::AmbientOcclusion,
+                            component: SourceComponent::Gray,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Green,
+                            source: SourceMap::Roughness,
+                            component: SourceComponent::Gray,
+                        },
+                        ChannelMapping {
+                            target: TargetChannel::Blue,
+                            source: SourceMap::Metallic,
+                            component: SourceComponent::Gray,
+                        },
                     ],
                 },
             ],
@@ -412,9 +523,18 @@ pub fn rasterize_uv_coverage(mesh: &Mesh, width: usize, height: usize) -> Vec<bo
         let uv2 = mesh.uvs[i2];
 
         // Convert UV to raster pixel coordinates
-        let p0 = [uv0[0].fract().abs() * width as f32, (1.0 - uv0[1].fract().abs()) * height as f32];
-        let p1 = [uv1[0].fract().abs() * width as f32, (1.0 - uv1[1].fract().abs()) * height as f32];
-        let p2 = [uv2[0].fract().abs() * width as f32, (1.0 - uv2[1].fract().abs()) * height as f32];
+        let p0 = [
+            uv0[0].fract().abs() * width as f32,
+            (1.0 - uv0[1].fract().abs()) * height as f32,
+        ];
+        let p1 = [
+            uv1[0].fract().abs() * width as f32,
+            (1.0 - uv1[1].fract().abs()) * height as f32,
+        ];
+        let p2 = [
+            uv2[0].fract().abs() * width as f32,
+            (1.0 - uv2[1].fract().abs()) * height as f32,
+        ];
 
         // Triangle bounding box
         let min_x = p0[0].min(p1[0]).min(p2[0]).floor().max(0.0) as usize;
@@ -500,7 +620,11 @@ pub fn dilate_rgba(
                 if x > 0 { Some(idx - 1) } else { None },
                 if x + 1 < width { Some(idx + 1) } else { None },
                 if y > 0 { Some(idx - width) } else { None },
-                if y + 1 < height { Some(idx + width) } else { None },
+                if y + 1 < height {
+                    Some(idx + width)
+                } else {
+                    None
+                },
             ];
 
             for n_opt in neighbors {
@@ -517,7 +641,12 @@ pub fn dilate_rgba(
             }
 
             if count > 0.0 {
-                let avg = [sum[0] / count, sum[1] / count, sum[2] / count, sum[3] / count];
+                let avg = [
+                    sum[0] / count,
+                    sum[1] / count,
+                    sum[2] / count,
+                    sum[3] / count,
+                ];
                 updates.push((idx, avg));
             }
         }
@@ -535,7 +664,11 @@ pub fn dilate_rgba(
                 if x > 0 { Some(idx - 1) } else { None },
                 if x + 1 < width { Some(idx + 1) } else { None },
                 if y > 0 { Some(idx - width) } else { None },
-                if y + 1 < height { Some(idx + width) } else { None },
+                if y + 1 < height {
+                    Some(idx + width)
+                } else {
+                    None
+                },
             ];
 
             for n_opt in neighbors {
@@ -584,32 +717,50 @@ fn sample_source_component(
 ) -> f32 {
     let val = match source {
         SourceMap::BaseColor => {
-            let c = layer_stack.composite_color.get(idx).copied().unwrap_or([0.8, 0.8, 0.8, 1.0]);
+            let c = layer_stack
+                .composite_color
+                .get(idx)
+                .copied()
+                .unwrap_or([0.8, 0.8, 0.8, 1.0]);
             match component {
                 SourceComponent::R => c[0],
                 SourceComponent::G => c[1],
                 SourceComponent::B => c[2],
                 SourceComponent::A => c[3],
                 SourceComponent::Gray => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2],
-                SourceComponent::InvertedGray => 1.0 - (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]),
+                SourceComponent::InvertedGray => {
+                    1.0 - (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2])
+                }
             }
         }
         SourceMap::Roughness => {
-            let r = layer_stack.composite_roughness.get(idx).copied().unwrap_or(0.5);
+            let r = layer_stack
+                .composite_roughness
+                .get(idx)
+                .copied()
+                .unwrap_or(0.5);
             match component {
                 SourceComponent::InvertedGray => 1.0 - r,
                 _ => r,
             }
         }
         SourceMap::Metallic => {
-            let m = layer_stack.composite_metallic.get(idx).copied().unwrap_or(0.0);
+            let m = layer_stack
+                .composite_metallic
+                .get(idx)
+                .copied()
+                .unwrap_or(0.0);
             match component {
                 SourceComponent::InvertedGray => 1.0 - m,
                 _ => m,
             }
         }
         SourceMap::Normal => {
-            let n = layer_stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
+            let n = layer_stack
+                .composite_normal
+                .get(idx)
+                .copied()
+                .unwrap_or([0.5, 0.5, 1.0]);
             match component {
                 SourceComponent::R => n[0],
                 SourceComponent::G => n[1],
@@ -620,7 +771,11 @@ fn sample_source_component(
             }
         }
         SourceMap::NormalDirectX => {
-            let n = layer_stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
+            let n = layer_stack
+                .composite_normal
+                .get(idx)
+                .copied()
+                .unwrap_or([0.5, 0.5, 1.0]);
             match component {
                 SourceComponent::R => n[0],
                 SourceComponent::G => 1.0 - n[1], // Invert Y for DirectX
@@ -631,28 +786,47 @@ fn sample_source_component(
             }
         }
         SourceMap::AmbientOcclusion => {
-            let ao = baked_maps.ambient_occlusion.as_ref().and_then(|b| b.get(idx)).copied().unwrap_or(1.0);
+            let ao = baked_maps
+                .ambient_occlusion
+                .as_ref()
+                .and_then(|b| b.get(idx))
+                .copied()
+                .unwrap_or(1.0);
             match component {
                 SourceComponent::InvertedGray => 1.0 - ao,
                 _ => ao,
             }
         }
         SourceMap::Curvature => {
-            let c = baked_maps.curvature.as_ref().and_then(|b| b.get(idx)).copied().unwrap_or(0.5);
+            let c = baked_maps
+                .curvature
+                .as_ref()
+                .and_then(|b| b.get(idx))
+                .copied()
+                .unwrap_or(0.5);
             match component {
                 SourceComponent::InvertedGray => 1.0 - c,
                 _ => c,
             }
         }
         SourceMap::Height => {
-            let h = layer_stack.composite_height.get(idx).copied().unwrap_or(0.0);
+            let h = layer_stack
+                .composite_height
+                .get(idx)
+                .copied()
+                .unwrap_or(0.0);
             match component {
                 SourceComponent::InvertedGray => 1.0 - h,
                 _ => h,
             }
         }
         SourceMap::Thickness => {
-            let t = baked_maps.thickness.as_ref().and_then(|b| b.get(idx)).copied().unwrap_or(0.0);
+            let t = baked_maps
+                .thickness
+                .as_ref()
+                .and_then(|b| b.get(idx))
+                .copied()
+                .unwrap_or(0.0);
             match component {
                 SourceComponent::InvertedGray => 1.0 - t,
                 _ => t,
@@ -665,12 +839,20 @@ fn sample_source_component(
 
 /// Executes export of all maps defined in the preset
 pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String> {
-    std::fs::create_dir_all(ctx.output_dir)
-        .map_err(|e| format!("Failed to create output directory {}: {}", ctx.output_dir.display(), e))?;
+    std::fs::create_dir_all(ctx.output_dir).map_err(|e| {
+        format!(
+            "Failed to create output directory {}: {}",
+            ctx.output_dir.display(),
+            e
+        )
+    })?;
 
     let src_w = ctx.layer_stack.width as usize;
     let src_h = ctx.layer_stack.height as usize;
-    let (dst_w, dst_h) = ctx.resolution_override.map(|(w, h)| (w as usize, h as usize)).unwrap_or((src_w, src_h));
+    let (dst_w, dst_h) = ctx
+        .resolution_override
+        .map(|(w, h)| (w as usize, h as usize))
+        .unwrap_or((src_w, src_h));
 
     let mut result = ExportResult {
         exported_files: Vec::new(),
@@ -696,12 +878,25 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
     for output in &ctx.preset.outputs {
         let format = ctx.file_format_override.unwrap_or(output.format);
         let bit_depth = ctx.bit_depth_override.unwrap_or(output.bit_depth);
-        let file_name = format!("{}{}.{}", mesh_clean_name, output.filename_suffix, format.extension());
+        let file_name = format!(
+            "{}{}.{}",
+            mesh_clean_name,
+            output.filename_suffix,
+            format.extension()
+        );
         let file_path = ctx.output_dir.join(&file_name);
 
-        let num_channels = if output.channels.iter().any(|c| c.target == TargetChannel::Alpha) {
+        let num_channels = if output
+            .channels
+            .iter()
+            .any(|c| c.target == TargetChannel::Alpha)
+        {
             4
-        } else if output.channels.iter().any(|c| c.target == TargetChannel::Blue) {
+        } else if output
+            .channels
+            .iter()
+            .any(|c| c.target == TargetChannel::Blue)
+        {
             3
         } else {
             1
@@ -721,7 +916,13 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
                 let mut pixel = [0.0f32, 0.0f32, 0.0f32, 1.0f32];
 
                 for mapping in &output.channels {
-                    let val = sample_source_component(mapping.source, mapping.component, src_idx, ctx.layer_stack, ctx.baked_maps);
+                    let val = sample_source_component(
+                        mapping.source,
+                        mapping.component,
+                        src_idx,
+                        ctx.layer_stack,
+                        ctx.baked_maps,
+                    );
                     match mapping.target {
                         TargetChannel::Red => pixel[0] = val,
                         TargetChannel::Green => pixel[1] = val,
@@ -742,7 +943,13 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
 
         // Apply UV Island Edge Dilation / Seam Padding
         if ctx.padding_radius > 0 {
-            dilate_rgba(&mut float_buffer, &uv_mask, dst_w, dst_h, ctx.padding_radius);
+            dilate_rgba(
+                &mut float_buffer,
+                &uv_mask,
+                dst_w,
+                dst_h,
+                ctx.padding_radius,
+            );
         }
 
         // Write file depending on format & bit depth
@@ -751,14 +958,20 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
                 match bit_depth {
                     BitDepth::U16 => {
                         if num_channels == 1 {
-                            let mut img = image::ImageBuffer::<image::Luma<u16>, Vec<u16>>::new(dst_w as u32, dst_h as u32);
+                            let mut img = image::ImageBuffer::<image::Luma<u16>, Vec<u16>>::new(
+                                dst_w as u32,
+                                dst_h as u32,
+                            );
                             for (idx, pixel) in img.pixels_mut().enumerate() {
                                 let v = (float_buffer[idx][0].clamp(0.0, 1.0) * 65535.0) as u16;
                                 *pixel = image::Luma([v]);
                             }
                             img.save(&file_path).map_err(|e| e.to_string())?;
                         } else if num_channels == 3 {
-                            let mut img = image::ImageBuffer::<image::Rgb<u16>, Vec<u16>>::new(dst_w as u32, dst_h as u32);
+                            let mut img = image::ImageBuffer::<image::Rgb<u16>, Vec<u16>>::new(
+                                dst_w as u32,
+                                dst_h as u32,
+                            );
                             for (idx, pixel) in img.pixels_mut().enumerate() {
                                 let c = float_buffer[idx];
                                 *pixel = image::Rgb([
@@ -769,7 +982,10 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
                             }
                             img.save(&file_path).map_err(|e| e.to_string())?;
                         } else {
-                            let mut img = image::ImageBuffer::<image::Rgba<u16>, Vec<u16>>::new(dst_w as u32, dst_h as u32);
+                            let mut img = image::ImageBuffer::<image::Rgba<u16>, Vec<u16>>::new(
+                                dst_w as u32,
+                                dst_h as u32,
+                            );
                             for (idx, pixel) in img.pixels_mut().enumerate() {
                                 let c = float_buffer[idx];
                                 *pixel = image::Rgba([
@@ -858,18 +1074,16 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
             }
             OutputFormat::Exr => {
                 // Write 32-bit floating point OpenEXR using exr crate
-                let fpath = file_path.to_str().ok_or_else(|| "Invalid UTF-8 in file path".to_string())?;
+                let fpath = file_path
+                    .to_str()
+                    .ok_or_else(|| "Invalid UTF-8 in file path".to_string())?;
                 if num_channels <= 3 {
-                    exr::prelude::write_rgb_file(
-                        fpath,
-                        dst_w,
-                        dst_h,
-                        |x, y| -> (f32, f32, f32) {
-                            let idx = y * dst_w + x;
-                            let c = float_buffer[idx];
-                            (c[0], c[1], c[2])
-                        },
-                    ).map_err(|e| format!("EXR export error: {:?}", e))?;
+                    exr::prelude::write_rgb_file(fpath, dst_w, dst_h, |x, y| -> (f32, f32, f32) {
+                        let idx = y * dst_w + x;
+                        let c = float_buffer[idx];
+                        (c[0], c[1], c[2])
+                    })
+                    .map_err(|e| format!("EXR export error: {:?}", e))?;
                 } else {
                     exr::prelude::write_rgba_file(
                         fpath,
@@ -880,12 +1094,16 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
                             let c = float_buffer[idx];
                             (c[0], c[1], c[2], c[3])
                         },
-                    ).map_err(|e| format!("EXR export error: {:?}", e))?;
+                    )
+                    .map_err(|e| format!("EXR export error: {:?}", e))?;
                 }
             }
         }
 
-        result.logs.push(format!("Exported {} ({}×{}, {:?}, {:?})", file_name, dst_w, dst_h, format, bit_depth));
+        result.logs.push(format!(
+            "Exported {} ({}×{}, {:?}, {:?})",
+            file_name, dst_w, dst_h, format, bit_depth
+        ));
         result.exported_files.push(file_path);
     }
 
@@ -947,11 +1165,23 @@ mod tests {
         let baked = BakedMaps::default();
 
         // Sample roughness from stack
-        let r = sample_source_component(SourceMap::Roughness, SourceComponent::Gray, 0, &stack, &baked);
+        let r = sample_source_component(
+            SourceMap::Roughness,
+            SourceComponent::Gray,
+            0,
+            &stack,
+            &baked,
+        );
         assert!((0.0..=1.0).contains(&r));
 
         // Sample smoothness (inverted roughness)
-        let smooth = sample_source_component(SourceMap::Roughness, SourceComponent::InvertedGray, 0, &stack, &baked);
+        let smooth = sample_source_component(
+            SourceMap::Roughness,
+            SourceComponent::InvertedGray,
+            0,
+            &stack,
+            &baked,
+        );
         assert!((smooth - (1.0 - r)).abs() < 1e-5);
     }
 

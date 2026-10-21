@@ -1,17 +1,17 @@
+use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::{ZipArchive, ZipWriter};
 
 use crate::baker::engine::{BakedMaps, BakerOptions};
 use crate::graphics::mesh::Mesh;
-use crate::painting::layer::{BlendMode, Layer, LayerStack, LayerType};
-use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
 use crate::painting::anchor::AnchorPoint;
 use crate::painting::filter::FilterEffect;
+use crate::painting::layer::{BlendMode, Layer, LayerStack, LayerType};
+use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
 
 pub mod config;
 pub use config::AppConfig;
@@ -58,10 +58,18 @@ pub struct ProjectManifest {
     pub layers: Vec<LayerManifest>,
 }
 
-fn default_low_suffix() -> String { "_low".to_string() }
-fn default_high_suffix() -> String { "_high".to_string() }
-fn default_one() -> u32 { 1 }
-fn default_true() -> bool { true }
+fn default_low_suffix() -> String {
+    "_low".to_string()
+}
+fn default_high_suffix() -> String {
+    "_high".to_string()
+}
+fn default_one() -> u32 {
+    1
+}
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BakerOptionsManifest {
@@ -94,6 +102,17 @@ pub struct BakerOptionsManifest {
     pub average_normals: bool,
     #[serde(default)]
     pub ignore_backfaces: bool,
+    // Skew correction persistence (skew map bitmap itself is not stored in the project)
+    #[serde(default)]
+    pub use_skew_correction: bool,
+    #[serde(default)]
+    pub skew_invert: bool,
+    #[serde(default = "default_skew_strength")]
+    pub skew_strength: f32,
+}
+
+pub fn default_skew_strength() -> f32 {
+    0.6
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,7 +154,7 @@ impl ProjectManager {
         layer_stack: &LayerStack,
         baked_maps: &BakedMaps,
         baker_options: &BakerOptions,
-        camera: (f32, f32, f32), // yaw, pitch, dist
+        camera: (f32, f32, f32),          // yaw, pitch, dist
         lighting: (f32, f32, f32, usize), // exposure, intensity, env_rot, env_idx
     ) -> Result<(), String> {
         // Ensure parent directory exists
@@ -145,11 +164,11 @@ impl ProjectManager {
 
         // Write to temporary file first for atomic transaction safety
         let temp_path = path.with_extension("rmp.tmp");
-        let file = File::create(&temp_path).map_err(|e| format!("Failed to create temp project file: {}", e))?;
+        let file = File::create(&temp_path)
+            .map_err(|e| format!("Failed to create temp project file: {}", e))?;
         let mut zip = ZipWriter::new(file);
 
-        let options = SimpleFileOptions::default()
-            .compression_method(CompressionMethod::Deflated);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
 
         // 1. Build Manifest
         let now = chrono::Local::now().to_rfc3339();
@@ -248,6 +267,9 @@ impl ProjectManager {
                 relative_to_bbox: baker_options.relative_to_bbox,
                 average_normals: baker_options.average_normals,
                 ignore_backfaces: baker_options.ignore_backfaces,
+                use_skew_correction: baker_options.use_skew_correction,
+                skew_invert: baker_options.skew_invert,
+                skew_strength: baker_options.skew_strength,
             },
             camera_yaw: camera.0,
             camera_pitch: camera.1,
@@ -281,35 +303,40 @@ impl ProjectManager {
                 zip.start_file(format!("layers/{}_color.raw", i), options)
                     .map_err(|e| format!("Zip error: {}", e))?;
                 let slice: &[u8] = bytemuck::cast_slice(&layer.color_buffer);
-                zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
             }
             // Metallic buffer
             if !layer.metallic_buffer.is_empty() {
                 zip.start_file(format!("layers/{}_metallic.raw", i), options)
                     .map_err(|e| format!("Zip error: {}", e))?;
                 let slice: &[u8] = bytemuck::cast_slice(&layer.metallic_buffer);
-                zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
             }
             // Roughness buffer
             if !layer.roughness_buffer.is_empty() {
                 zip.start_file(format!("layers/{}_roughness.raw", i), options)
                     .map_err(|e| format!("Zip error: {}", e))?;
                 let slice: &[u8] = bytemuck::cast_slice(&layer.roughness_buffer);
-                zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
             }
             // Normal buffer
             if !layer.normal_buffer.is_empty() {
                 zip.start_file(format!("layers/{}_normal.raw", i), options)
                     .map_err(|e| format!("Zip error: {}", e))?;
                 let slice: &[u8] = bytemuck::cast_slice(&layer.normal_buffer);
-                zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
             }
             // Height buffer
             if !layer.height_buffer.is_empty() {
                 zip.start_file(format!("layers/{}_height.raw", i), options)
                     .map_err(|e| format!("Zip error: {}", e))?;
                 let slice: &[u8] = bytemuck::cast_slice(&layer.height_buffer);
-                zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
             }
             // Mask buffer
             if let Some(ref m) = layer.mask {
@@ -317,73 +344,82 @@ impl ProjectManager {
                     zip.start_file(format!("layers/{}_mask.raw", i), options)
                         .map_err(|e| format!("Zip error: {}", e))?;
                     let slice: &[u8] = bytemuck::cast_slice(&m.buffer);
-                    zip.write_all(slice).map_err(|e| format!("Zip write error: {}", e))?;
+                    zip.write_all(slice)
+                        .map_err(|e| format!("Zip write error: {}", e))?;
                 }
             }
         }
 
         // 4. Write Baked Mesh Maps
         if let Some(ref ao) = baked_maps.ambient_occlusion {
-            zip.start_file("baked/ao.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/ao.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(ao);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref curv) = baked_maps.curvature {
-            zip.start_file("baked/curvature.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/curvature.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(curv);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref norm) = baked_maps.normal {
-            zip.start_file("baked/normal.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/normal.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(norm);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref wsn) = baked_maps.world_space_normal {
-            zip.start_file("baked/world_space_normal.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/world_space_normal.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(wsn);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref pos) = baked_maps.position {
-            zip.start_file("baked/position.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/position.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(pos);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref thick) = baked_maps.thickness {
-            zip.start_file("baked/thickness.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/thickness.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(thick);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
         if let Some(ref id_map) = baked_maps.id {
-            zip.start_file("baked/id.raw", options).map_err(|e| e.to_string())?;
+            zip.start_file("baked/id.raw", options)
+                .map_err(|e| e.to_string())?;
             let slice: &[u8] = bytemuck::cast_slice(id_map);
             zip.write_all(slice).map_err(|e| e.to_string())?;
         }
 
-        zip.finish().map_err(|e| format!("Zip finish error: {}", e))?;
+        zip.finish()
+            .map_err(|e| format!("Zip finish error: {}", e))?;
 
         // Atomic file replacement
-        fs::rename(&temp_path, path).map_err(|e| format!("Failed to finalize project file: {}", e))?;
+        fs::rename(&temp_path, path)
+            .map_err(|e| format!("Failed to finalize project file: {}", e))?;
 
         Ok(())
     }
 
     /// Loads a project from a `.rmp` archive
-    pub fn load_project(path: &Path) -> Result<(
-        ProjectManifest,
-        Mesh,
-        LayerStack,
-        BakedMaps,
-        BakerOptions,
-    ), String> {
+    pub fn load_project(
+        path: &Path,
+    ) -> Result<(ProjectManifest, Mesh, LayerStack, BakedMaps, BakerOptions), String> {
         let file = File::open(path).map_err(|e| format!("Failed to open project file: {}", e))?;
-        let mut zip = ZipArchive::new(file).map_err(|e| format!("Invalid project archive: {}", e))?;
+        let mut zip =
+            ZipArchive::new(file).map_err(|e| format!("Invalid project archive: {}", e))?;
 
         // 1. Read Manifest
         let manifest: ProjectManifest = {
-            let mut manifest_file = zip.by_name("project.json")
+            let mut manifest_file = zip
+                .by_name("project.json")
                 .map_err(|e| format!("Missing project.json: {}", e))?;
             let mut contents = String::new();
-            manifest_file.read_to_string(&mut contents)
+            manifest_file
+                .read_to_string(&mut contents)
                 .map_err(|e| format!("Failed to read project.json: {}", e))?;
             serde_json::from_str(&contents)
                 .map_err(|e| format!("Invalid project manifest format: {}", e))?
@@ -400,7 +436,8 @@ impl ProjectManager {
         // 2. Read Mesh
         let mesh = if let Ok(mut mesh_file) = zip.by_name("mesh/model.obj") {
             let mut obj_str = String::new();
-            mesh_file.read_to_string(&mut obj_str)
+            mesh_file
+                .read_to_string(&mut obj_str)
                 .map_err(|e| format!("Failed to read embedded mesh: {}", e))?;
             Mesh::from_obj_string(&obj_str, &manifest.mesh_name)
                 .unwrap_or_else(|_| Mesh::create_material_sphere(64, 64))
@@ -648,6 +685,10 @@ impl ProjectManager {
             relative_to_bbox: manifest.baker_options.relative_to_bbox,
             average_normals: manifest.baker_options.average_normals,
             ignore_backfaces: manifest.baker_options.ignore_backfaces,
+            use_skew_correction: manifest.baker_options.use_skew_correction,
+            skew_invert: manifest.baker_options.skew_invert,
+            skew_strength: manifest.baker_options.skew_strength,
+            skew_map: None,
         };
 
         Ok((manifest, mesh, layer_stack, baked_maps, baker_options))
@@ -716,6 +757,9 @@ mod tests {
                 relative_to_bbox: false,
                 average_normals: true,
                 ignore_backfaces: false,
+                use_skew_correction: false,
+                skew_invert: false,
+                skew_strength: 0.6,
             },
             camera_yaw: 45.0,
             camera_pitch: 15.0,
@@ -728,7 +772,8 @@ mod tests {
         };
 
         let json = serde_json::to_string(&manifest).expect("Serialize failed");
-        let deserialized: ProjectManifest = serde_json::from_str(&json).expect("Deserialize failed");
+        let deserialized: ProjectManifest =
+            serde_json::from_str(&json).expect("Deserialize failed");
         assert_eq!(deserialized.magic, RMP_MAGIC);
         assert_eq!(deserialized.format_version, 1);
         assert_eq!(deserialized.project_name, "TestProject");
@@ -762,16 +807,27 @@ mod tests {
             (45.0, 15.0, 2.5),
             (0.0, 1.0, 0.0, 0),
         );
-        assert!(save_res.is_ok(), "Project save failed: {:?}", save_res.err());
+        assert!(
+            save_res.is_ok(),
+            "Project save failed: {:?}",
+            save_res.err()
+        );
 
         let load_res = ProjectManager::load_project(&project_path);
-        assert!(load_res.is_ok(), "Project load failed: {:?}", load_res.err());
+        assert!(
+            load_res.is_ok(),
+            "Project load failed: {:?}",
+            load_res.err()
+        );
 
         let (manifest, loaded_mesh, loaded_stack, _, _) = load_res.unwrap();
         assert_eq!(manifest.project_name, "RoundtripProject");
         assert_eq!(loaded_stack.layers.len(), 1);
         assert_eq!(loaded_stack.layers[0].name, "Test Paint");
-        assert_eq!(loaded_stack.layers[0].color_buffer[0], [1.0, 0.5, 0.25, 1.0]);
+        assert_eq!(
+            loaded_stack.layers[0].color_buffer[0],
+            [1.0, 0.5, 0.25, 1.0]
+        );
         assert_eq!(loaded_mesh.vertices.len(), mesh.vertices.len());
 
         // Cleanup

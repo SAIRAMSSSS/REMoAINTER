@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 
 /// Persistent application configuration saved in ~/.remoainter/config.json
 #[derive(Debug, Clone, Serialize, Deserialize)]

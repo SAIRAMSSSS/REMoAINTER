@@ -1,5 +1,5 @@
 use super::layer::{Layer, LayerStack};
-use super::mask::{LayerMask, MaskType, MaskEffect, MaskBlendMode};
+use super::mask::{LayerMask, MaskBlendMode, MaskEffect, MaskType};
 use super::texture_importer::PbrTextureSet;
 use std::path::PathBuf;
 
@@ -28,7 +28,15 @@ pub fn generate_procedural_material(
     width: u32,
     height: u32,
 ) -> Layer {
-    load_real_pbr_material(id, name, base_color, base_metallic, base_roughness, width, height)
+    load_real_pbr_material(
+        id,
+        name,
+        base_color,
+        base_metallic,
+        base_roughness,
+        width,
+        height,
+    )
 }
 
 /// Generates a Smart Mask driven by baked Curvature and AO maps
@@ -41,10 +49,17 @@ pub fn generate_smart_mask(
 ) -> LayerMask {
     let mut mask = LayerMask::new(MaskType::Black, width, height);
     let lower = name.to_lowercase();
-    let is_cavity = lower.contains("cavity") || lower.contains("crevice") || lower.contains("dirt") || lower.contains("dust");
+    let is_cavity = lower.contains("cavity")
+        || lower.contains("crevice")
+        || lower.contains("dirt")
+        || lower.contains("dust");
 
     mask.effects.push(MaskEffect::Generator {
-        name: if is_cavity { "Dirt Crevices".into() } else { "Metal Edge Wear".into() },
+        name: if is_cavity {
+            "Dirt Crevices".into()
+        } else {
+            "Metal Edge Wear".into()
+        },
         wear_level: if is_cavity { 0.5 } else { 1.0 },
         contrast: 1.2,
         dirt_amount: if is_cavity { 1.0 } else { 0.0 },
@@ -76,8 +91,20 @@ pub fn load_real_pbr_material(
     width: u32,
     height: u32,
 ) -> Layer {
-    let clean_name = name.trim_end_matches(".png").trim_end_matches(".webp").trim_end_matches(".spsm").trim_end_matches(".sbsar");
-    let mut layer = Layer::new_fill(id, clean_name, default_color, default_metallic, default_roughness, width, height);
+    let clean_name = name
+        .trim_end_matches(".png")
+        .trim_end_matches(".webp")
+        .trim_end_matches(".spsm")
+        .trim_end_matches(".sbsar");
+    let mut layer = Layer::new_fill(
+        id,
+        clean_name,
+        default_color,
+        default_metallic,
+        default_roughness,
+        width,
+        height,
+    );
     let mat_dir = find_materials_dir().join(clean_name);
 
     let mut loaded = false;
@@ -98,7 +125,10 @@ pub fn load_real_pbr_material(
             for entry in entries.flatten() {
                 let entry_name = entry.file_name().to_string_lossy().to_string();
                 let entry_lower = entry_name.to_lowercase();
-                if entry_lower == lower || entry_lower.contains(&lower) || lower.contains(&entry_lower) {
+                if entry_lower == lower
+                    || entry_lower.contains(&lower)
+                    || lower.contains(&entry_lower)
+                {
                     let set = PbrTextureSet::from_folder(&entry.path());
                     if set.base_color.is_some() || set.normal.is_some() || set.roughness.is_some() {
                         let _ = set.load_into_layer(&mut layer, false);
@@ -121,7 +151,13 @@ pub fn load_real_pbr_material(
         for sdir in &shelf_dirs {
             let p_png = std::path::Path::new(sdir).join(format!("{}.png", clean_name));
             let p_webp = std::path::Path::new(sdir).join(format!("{}.webp", clean_name));
-            let found = if p_png.exists() { Some(p_png) } else if p_webp.exists() { Some(p_webp) } else { None };
+            let found = if p_png.exists() {
+                Some(p_png)
+            } else if p_webp.exists() {
+                Some(p_webp)
+            } else {
+                None
+            };
             if let Some(img_path) = found {
                 layer = Layer::from_texture_asset(
                     id,
@@ -170,7 +206,11 @@ pub fn load_real_pbr_material(
                 let ny = micro * 2.0;
                 let nz = 1.0f32;
                 let len = (nx * nx + ny * ny + nz * nz).sqrt();
-                layer.normal_buffer[idx] = [(nx / len) * 0.5 + 0.5, (ny / len) * 0.5 + 0.5, (nz / len) * 0.5 + 0.5];
+                layer.normal_buffer[idx] = [
+                    (nx / len) * 0.5 + 0.5,
+                    (ny / len) * 0.5 + 0.5,
+                    (nz / len) * 0.5 + 0.5,
+                ];
             }
         }
     }
@@ -201,7 +241,8 @@ pub fn apply_smart_material_hierarchy(
         "Brass Antique"
     } else if name.to_lowercase().contains("gold") {
         "Gold Pure"
-    } else if name.to_lowercase().contains("aluminium") || name.to_lowercase().contains("aluminum") {
+    } else if name.to_lowercase().contains("aluminium") || name.to_lowercase().contains("aluminum")
+    {
         "Aluminium Anodized Red"
     } else if name.to_lowercase().contains("bronze") {
         "Bronze Armor"
@@ -209,7 +250,15 @@ pub fn apply_smart_material_hierarchy(
         "Iron Rough"
     };
 
-    let base_metal = load_real_pbr_material(1, base_metal_name, [0.72, 0.74, 0.78, 1.0], 0.95, 0.28, w, h);
+    let base_metal = load_real_pbr_material(
+        1,
+        base_metal_name,
+        [0.72, 0.74, 0.78, 1.0],
+        0.95,
+        0.28,
+        w,
+        h,
+    );
     stack.layers.push(base_metal);
 
     // 2. Tier 2: Top Surface Coat (authentically loaded for the clicked Smart Material)
@@ -222,12 +271,17 @@ pub fn apply_smart_material_hierarchy(
         let x = (i % w as usize) as f32;
         let y = (i / w as usize) as f32;
 
-        let curv = baked_curvature.and_then(|c| c.get(i)).copied().unwrap_or(0.5);
+        let curv = baked_curvature
+            .and_then(|c| c.get(i))
+            .copied()
+            .unwrap_or(0.5);
         let ao = baked_ao.and_then(|a| a.get(i)).copied().unwrap_or(1.0);
 
         // High-frequency pseudo-random chipping noise for realistic paint peeling
         let n1 = (x * 0.12).sin() * (y * 0.12).cos() * 0.5 + 0.5;
-        let n2 = (((x * 0.31 + y * 0.27) * 12.9898).sin() * 43758.5453).fract().abs();
+        let n2 = (((x * 0.31 + y * 0.27) * 12.9898).sin() * 43758.5453)
+            .fract()
+            .abs();
         let noise = n1 * 0.6 + n2 * 0.4;
 
         // Curvature > 0.52 indicates exposed convex edges; peel paint at sharp edges
@@ -243,11 +297,7 @@ pub fn apply_smart_material_hierarchy(
         };
 
         // Dirt accumulation in concave crevices (AO < 0.65)
-        let crevice_dirt = if ao < 0.65 {
-            (0.65 - ao) * 1.8
-        } else {
-            0.0
-        };
+        let crevice_dirt = if ao < 0.65 { (0.65 - ao) * 1.8 } else { 0.0 };
 
         // Mask value: 1.0 = coat visible, 0.0 = coat stripped showing underlying bare metal
         let mask_val = (1.0 - edge_wear + crevice_dirt * 0.25).clamp(0.0, 1.0);

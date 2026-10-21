@@ -118,12 +118,12 @@ Status Legend:
 | :--- | :--- | :--- | :--- |
 | **Paint Brush** | `1` | **Implemented** | `ToolMode::Paint`. 3D Euclidean surface projection painting across UV seams. Modulates Color, Roughness, Metallic, Normal, Height. |
 | **Eraser** | `2` | **Implemented** | `ToolMode::Eraser`. Clears painted pixels to transparent background. |
-| **Projection Tool** | `3` | **Stub** | `ToolMode::Projection`. Tool mode exists, but stencil overlay and screen-space projection stamping logic is a stub. |
+| **Projection Tool** | `3` | **Implemented** | True screen-space projection painting (`paint_3d_projection_at`): every touched surface point is re-projected into screen space; alpha = screen brush shape × depth window along the view ray (`brush.projection_depth`,uprojfar/udepthscale parity). Symmetry supported. |
 | **Polygon Fill** | `4` | **Implemented** | `ToolMode::PolygonFill`. Supports Triangle, UV Island, and Mesh fill modes. |
-| **Smudge Tool** | `5` | **Partial** | `ToolMode::Smudge`. Basic local pixel blur convolution along stroke direction. |
-| **Clone Stamp** | `6` | **Partial** | `ToolMode::Clone`. Stores `clone_source_uv` on Alt+Click; samples from source UV into target. |
+| **Smudge Tool** | `5` | **Implemented** | Real displacement smudge (`smudge_stamp_at` / `smudge_3d_at`, EngineActionSmudge parity): content pulled behind the stroke motion; `Sample Merged` samples from the stack composite; `Finger Painting` deposits brush color. Works in 2D & 3D with tangent-space stamp alpha. |
+| **Clone Stamp** | `6` | **Implemented** | Full-pattern clone (`clone_stamp_at` / `clone_stamp_3d_at`): aligned stroke-relative offset locked per stroke; clones full channels (color, alpha, metallic, roughness + optional normal/height) from the merged composite; pattern rotation/scale/mirror transforms; 3D rasterization through the mesh. Fix: 3D Alt+Click (no drag) no longer conflicts with orbit. |
 | **Color Eyedropper / Picker**| `I` | **Implemented** | `ToolMode::Eyedropper`. Samples BaseColor, Metallic, Roughness, and Normal from clicked 3D surface. |
-| **Text / Decal Tool** | — | **Missing** | No vector text rasterization or decal stamping tool. |
+| **Text / Decal Tool** | `7` | **Implemented** (v1) | New `ToolMode::Decal` with embedded bitmap font rasterizer (`painting/text.rs`: multi-line ASCII → alpha mask, no external font deps) and image-file decal load; scale/rotation controls; stamps via the custom-alpha brush path in 2D & 3D. Real font (TTF/OTF) rasterization pending. |
 | **Symmetry Painting** | — | **Implemented** | Multi-axis (X/Y/Z) mirroring across 3D surface mesh and 2D UV layout. |
 | **Alpha / Stencil Shapes** | — | **Implemented** | Built-in procedural alphas, custom image alphas, angle rotation, and stencil masking support. |
 | **Hardness & Spacing** | — | **Implemented** | Smoothstep hardness falloff and distance-based spacing in brush pipeline. |
@@ -168,7 +168,7 @@ Status Legend:
 | **Cage / Ray Distances** | **Implemented** | Max frontal distance and max rear distance sliders. |
 | **Match by Mesh Name** | **Implemented** | Submesh name suffix stripping (`_low` / `_high`) with isolated BVH acceleration per submesh to eliminate inter-object ray bleed. |
 | **Antialiasing (AA)** | **Implemented** | Multi-sample accumulation buffer supporting None (1x), 2x2 (4 samples), and 4x4 (16 samples) supersampling rasterization. |
-| **Skew Correction** | **Missing** | Skew mesh painting/correction not implemented. |
+| **Skew Correction** | **Implemented** | Baking-time skew correction (USE_SKEW_MAP parity): external 2-channel skew texture (R/G → [-1,1] shear offsets), "Invert skew correction" toggle, strength slider; shears the high-poly ray origin along the tangent plane (texel-footprint scaled). Also fixed mirrored-UV bitangent handedness (negative UV det flips G channel, matches Substance's signed handedness). |
 | **Background Thread Baking** | **Implemented** | Non-blocking background baking with atomic cancelation (`AtomicBool`), progress bar (`AtomicUsize`), and UI cancel button. |
 
 ---
