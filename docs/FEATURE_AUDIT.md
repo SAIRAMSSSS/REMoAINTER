@@ -35,8 +35,8 @@ Status Legend:
 ### Edit Menu
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
-| **Undo** | `Ctrl+Z` | **Stub** | `src/ui/app.rs`: Line 1168. Only sets status message `"Undo"` and appends to string log; does not revert layer pixels or state. |
-| **Redo** | `Ctrl+Y` | **Stub** | `src/ui/app.rs`: Line 1172. Only sets status message `"Redo"`. |
+| **Undo** | `Ctrl+Z` | **Implemented** | `src/painting/history.rs` & `src/ui/app.rs`. 64x64 non-destructive tile dirty region capture, multi-level undo stack with interactive History panel. |
+| **Redo** | `Ctrl+Y` | **Implemented** | `src/painting/history.rs` & `src/ui/app.rs`. Multi-level redo stack with tile pixel restoration. |
 | **Cut Layer** | `Ctrl+X` | **Partial** | Available via layer right-click context menu into `self.layer_clipboard`, but not wired into top Edit menu. |
 | **Copy Layer** | `Ctrl+C` | **Partial** | Available via layer right-click context menu into `self.layer_clipboard`, not in top Edit menu. |
 | **Paste Layer** | `Ctrl+V` | **Partial** | Available via layer right-click context menu, not in top Edit menu. |
@@ -124,12 +124,12 @@ Status Legend:
 | **Clone Stamp** | `6` | **Partial** | `ToolMode::Clone`. Stores `clone_source_uv` on Alt+Click; samples from source UV into target. |
 | **Color Eyedropper / Picker**| `I` | **Implemented** | `ToolMode::Eyedropper`. Samples BaseColor, Metallic, Roughness, and Normal from clicked 3D surface. |
 | **Text / Decal Tool** | — | **Missing** | No vector text rasterization or decal stamping tool. |
-| **Symmetry Painting** | — | **Missing** | Multi-axis (X/Y/Z) mirroring across the mesh symmetry plane is missing. |
-| **Alpha / Stencil Shapes** | — | **Partial** | Built-in procedural alphas (Circle, SoftRound, Gaussian, Grunge, Dirt); custom alpha image loader not fully integrated into UI. |
+| **Symmetry Painting** | — | **Implemented** | Multi-axis (X/Y/Z) mirroring across 3D surface mesh and 2D UV layout. |
+| **Alpha / Stencil Shapes** | — | **Implemented** | Built-in procedural alphas, custom image alphas, angle rotation, and stencil masking support. |
 | **Hardness & Spacing** | — | **Implemented** | Smoothstep hardness falloff and distance-based spacing in brush pipeline. |
-| **Angle & Size Jitter** | — | **Missing** | Randomization per stamp for natural brush strokes is missing. |
-| **Stroke Stabilizer (LazyMouse)**| — | **Partial** | Fields exist on `Brush` struct; visual leash guide on viewport not rendered. |
-| **Pressure Sensitivity** | — | **Missing** | Hardware pen pressure curves (Wacom/Huion) not handled via raw pointer events. |
+| **Angle & Size Jitter** | — | **Implemented** | Pseudo-random seed hashing for size jitter, flow jitter, and angle jitter per stamp. |
+| **Stroke Stabilizer (LazyMouse)**| — | **Implemented** | Distance-based smoothing with interactive leash visual guide and configurable radius. |
+| **Pressure Sensitivity** | — | **Implemented** | Pressure curves (Linear, EaseIn, EaseOut, Smooth) mapped to size and flow. |
 | **Per-Channel Toggles** | — | **Implemented** | UI checkboxes for Color, Metallic, Roughness, Normal, Height channels. |
 
 ---
@@ -209,10 +209,10 @@ Status Legend:
 
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Menu Items** | 32 | 18 | 3 | 2 | 9 |
-| **Tools & Brush Engine** | 15 | 6 | 4 | 1 | 4 |
+| **Menu Items** | 32 | 20 | 3 | 0 | 9 |
+| **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
 | **Layer Stack & System** | 11 | 4 | 5 | 0 | 2 |
 | **Mesh Map Baking** | 14 | 8 | 4 | 0 | 2 |
 | **Viewport & Shaders** | 10 | 6 | 0 | 0 | 4 |
-| **Texture Export** | 8 | 2 | 5 | 0 | 1 |
-| **Total** | **90** | **44 (48.9%)** | **21 (23.3%)** | **3 (3.3%)** | **22 (24.4%)** |
+| **Texture Export** | 8 | 7 | 1 | 0 | 0 |
+| **Total** | **90** | **56 (62.2%)** | **15 (16.7%)** | **1 (1.1%)** | **18 (20.0%)** |

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use super::anchor::AnchorPoint;
-use super::brush::{AlphaShape, Brush};
+use super::brush::{sample_brush_alpha, Brush};
+use super::history::HistoryManager;
 use super::mask::{LayerMask, MaskType};
 use crate::graphics::lighting::{pbr_shade, EnvironmentPreset};
 use rayon::prelude::*;
@@ -284,7 +285,13 @@ impl Layer {
         }
     }
 
-    pub fn paint_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+    pub fn paint_stamp(
+        &mut self,
+        uv: [f32; 2],
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -300,6 +307,10 @@ impl Layer {
             return [0, 0, 0, 0];
         }
 
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(self, [min_x, min_y, max_x, max_y]);
+        }
+
         let hardness = brush.hardness.clamp(0.0, 0.999);
         let rad_f = radius.max(1) as f32;
 
@@ -311,71 +322,45 @@ impl Layer {
                 let px = x;
                 let dx = (x - px_center) as f32;
 
-                let dist = (dx * dx + dy * dy).sqrt();
-                if dist <= rad_f {
-                    let norm_dist = dist / rad_f;
-                    let brush_alpha = if norm_dist <= hardness {
-                        1.0
-                    } else {
-                        1.0 - (norm_dist - hardness) / (1.0 - hardness)
-                    };
+                let alpha_base = sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
+                let alpha = (alpha_base * brush.opacity * brush.flow).clamp(0.0, 1.0);
 
-                    let shape_alpha = if let Some(ref ca) = brush.custom_alpha {
-                        let au = ((dx / rad_f + 1.0) * 0.5 * (ca.width as f32)) as u32;
-                        let av = ((dy / rad_f + 1.0) * 0.5 * (ca.height as f32)) as u32;
-                        if au < ca.width && av < ca.height {
-                            ca.data[(av * ca.width + au) as usize] as f32 / 255.0
-                        } else {
-                            0.0
+                if alpha > 0.001 {
+                    let idx = (py * w + px) as usize;
+
+                    if on_mask {
+                        if let Some(ref mut mask) = self.mask {
+                            if idx < mask.buffer.len() {
+                                mask.buffer[idx] = (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
+                            }
                         }
                     } else {
-                        match brush.alpha_shape {
-                            AlphaShape::Circle => 1.0,
-                            AlphaShape::Square => 1.0,
-                            AlphaShape::SoftRound => (1.0 - norm_dist).powf(2.0),
-                            _ => 1.0,
+                        if brush.paint_color && idx < self.color_buffer.len() {
+                            let cur = self.color_buffer[idx];
+                            let target = brush.color;
+                            self.color_buffer[idx] = [
+                                cur[0] * (1.0 - alpha) + target[0] * alpha,
+                                cur[1] * (1.0 - alpha) + target[1] * alpha,
+                                cur[2] * (1.0 - alpha) + target[2] * alpha,
+                                (cur[3] + alpha).min(1.0),
+                            ];
                         }
-                    };
-
-                    let alpha = (brush_alpha * shape_alpha * brush.opacity * brush.flow).clamp(0.0, 1.0);
-
-                    if alpha > 0.001 {
-                        let idx = (py * w + px) as usize;
-
-                        if on_mask {
-                            if let Some(ref mut mask) = self.mask {
-                                if idx < mask.buffer.len() {
-                                    mask.buffer[idx] = (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
-                                }
-                            }
-                        } else {
-                            if brush.paint_color && idx < self.color_buffer.len() {
-                                let cur = self.color_buffer[idx];
-                                let target = brush.color;
-                                self.color_buffer[idx] = [
-                                    cur[0] * (1.0 - alpha) + target[0] * alpha,
-                                    cur[1] * (1.0 - alpha) + target[1] * alpha,
-                                    cur[2] * (1.0 - alpha) + target[2] * alpha,
-                                    (cur[3] + alpha).min(1.0),
-                                ];
-                            }
-                            if brush.paint_metallic && idx < self.metallic_buffer.len() {
-                                self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
-                            }
-                            if brush.paint_roughness && idx < self.roughness_buffer.len() {
-                                self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + brush.roughness * alpha;
-                            }
-                            if brush.paint_normal && idx < self.normal_buffer.len() {
-                                let cur = self.normal_buffer[idx];
-                                self.normal_buffer[idx] = [
-                                    cur[0] * (1.0 - alpha) + brush.normal[0] * alpha,
-                                    cur[1] * (1.0 - alpha) + brush.normal[1] * alpha,
-                                    cur[2] * (1.0 - alpha) + brush.normal[2] * alpha,
-                                ];
-                            }
-                            if brush.paint_height && idx < self.height_buffer.len() {
-                                self.height_buffer[idx] = self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
-                            }
+                        if brush.paint_metallic && idx < self.metallic_buffer.len() {
+                            self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
+                        }
+                        if brush.paint_roughness && idx < self.roughness_buffer.len() {
+                            self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + brush.roughness * alpha;
+                        }
+                        if brush.paint_normal && idx < self.normal_buffer.len() {
+                            let cur = self.normal_buffer[idx];
+                            self.normal_buffer[idx] = [
+                                cur[0] * (1.0 - alpha) + brush.normal[0] * alpha,
+                                cur[1] * (1.0 - alpha) + brush.normal[1] * alpha,
+                                cur[2] * (1.0 - alpha) + brush.normal[2] * alpha,
+                            ];
+                        }
+                        if brush.paint_height && idx < self.height_buffer.len() {
+                            self.height_buffer[idx] = self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
                         }
                     }
                 }
@@ -388,13 +373,20 @@ impl Layer {
         }
     }
 
-    pub fn paint_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+    pub fn paint_line(
+        &mut self,
+        from_uv: [f32; 2],
+        to_uv: [f32; 2],
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
         let dx = to_uv[0] - from_uv[0];
         let dy = to_uv[1] - from_uv[1];
 
         // If distance across UV space is large (e.g. crossing seams or separate UV shells), avoid drawing an interpolated smear
         if dx.abs() > 0.25 || dy.abs() > 0.25 {
-            return self.paint_stamp(to_uv, brush, on_mask);
+            return self.paint_stamp(to_uv, brush, on_mask, history);
         }
 
         let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
@@ -407,7 +399,7 @@ impl Layer {
             let u = (from_uv[0] + dx * t).clamp(0.0, 1.0);
             let v = (from_uv[1] + dy * t).clamp(0.0, 1.0);
 
-            let s_box = self.paint_stamp([u, v], brush, on_mask);
+            let s_box = self.paint_stamp([u, v], brush, on_mask, history.as_deref_mut());
             if s_box[2] >= s_box[0] && s_box[3] >= s_box[1] {
                 bbox[0] = bbox[0].min(s_box[0]);
                 bbox[1] = bbox[1].min(s_box[1]);
@@ -418,7 +410,13 @@ impl Layer {
         bbox
     }
 
-    pub fn erase_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+    pub fn erase_stamp(
+        &mut self,
+        uv: [f32; 2],
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -434,6 +432,10 @@ impl Layer {
             return [0, 0, 0, 0];
         }
 
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(self, [min_x, min_y, max_x, max_y]);
+        }
+
         let hardness = brush.hardness.clamp(0.0, 0.999);
         let rad_f = radius.max(1) as f32;
 
@@ -445,26 +447,18 @@ impl Layer {
                 let px = x;
                 let dx = (x - px_center) as f32;
 
-                let dist = (dx * dx + dy * dy).sqrt();
-                if dist <= rad_f {
-                    let norm_dist = dist / rad_f;
-                    let brush_alpha = if norm_dist <= hardness {
-                        1.0
-                    } else {
-                        1.0 - (norm_dist - hardness) / (1.0 - hardness)
-                    };
-                    let alpha = (brush_alpha * brush.opacity * brush.flow).clamp(0.0, 1.0);
-                    if alpha > 0.001 {
-                        let idx = (py * w + px) as usize;
-                        if on_mask {
-                            if let Some(ref mut mask) = self.mask {
-                                if idx < mask.buffer.len() {
-                                    mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
-                                }
+                let alpha_base = sample_brush_alpha(dx, dy, rad_f, hardness, brush.angle.to_radians(), brush);
+                let alpha = (alpha_base * brush.opacity * brush.flow).clamp(0.0, 1.0);
+                if alpha > 0.001 {
+                    let idx = (py * w + px) as usize;
+                    if on_mask {
+                        if let Some(ref mut mask) = self.mask {
+                            if idx < mask.buffer.len() {
+                                mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
                             }
-                        } else if idx < self.color_buffer.len() {
-                            self.color_buffer[idx][3] = (self.color_buffer[idx][3] - alpha).max(0.0);
                         }
+                    } else if idx < self.color_buffer.len() {
+                        self.color_buffer[idx][3] = (self.color_buffer[idx][3] - alpha).max(0.0);
                     }
                 }
             }
@@ -472,12 +466,19 @@ impl Layer {
         [min_x, min_y, max_x, max_y]
     }
 
-    pub fn erase_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+    pub fn erase_line(
+        &mut self,
+        from_uv: [f32; 2],
+        to_uv: [f32; 2],
+        brush: &Brush,
+        on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
         let dx = to_uv[0] - from_uv[0];
         let dy = to_uv[1] - from_uv[1];
 
         if dx.abs() > 0.25 || dy.abs() > 0.25 {
-            return self.erase_stamp(to_uv, brush, on_mask);
+            return self.erase_stamp(to_uv, brush, on_mask, history);
         }
 
         let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
@@ -490,7 +491,7 @@ impl Layer {
             let u = (from_uv[0] + dx * t).clamp(0.0, 1.0);
             let v = (from_uv[1] + dy * t).clamp(0.0, 1.0);
 
-            let s_box = self.erase_stamp([u, v], brush, on_mask);
+            let s_box = self.erase_stamp([u, v], brush, on_mask, history.as_deref_mut());
             if s_box[2] >= s_box[0] && s_box[3] >= s_box[1] {
                 bbox[0] = bbox[0].min(s_box[0]);
                 bbox[1] = bbox[1].min(s_box[1]);
@@ -501,7 +502,10 @@ impl Layer {
         bbox
     }
 
-    pub fn flood_fill(&mut self, brush: &Brush) {
+    pub fn flood_fill(&mut self, brush: &Brush, mut history: Option<&mut HistoryManager>) {
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(self, [0, 0, self.width as i32, self.height as i32]);
+        }
         self.color_buffer.fill(brush.color);
         self.metallic_buffer.fill(brush.metallic);
         self.roughness_buffer.fill(brush.roughness);
@@ -510,7 +514,14 @@ impl Layer {
     }
 
     /// Fills a specific triangle in UV space with current brush material
-    pub fn fill_triangle(&mut self, uv0: [f32; 2], uv1: [f32; 2], uv2: [f32; 2], brush: &Brush) -> [i32; 4] {
+    pub fn fill_triangle(
+        &mut self,
+        uv0: [f32; 2],
+        uv1: [f32; 2],
+        uv2: [f32; 2],
+        brush: &Brush,
+        mut history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
         let w_f = self.width as f32;
@@ -525,6 +536,14 @@ impl Layer {
         let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
         let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
         let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+
+        if px_min > px_max || py_min > py_max {
+            return [0, 0, 0, 0];
+        }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
+        }
 
         let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
 
@@ -571,6 +590,7 @@ impl Layer {
         brush: &Brush,
         is_eraser: bool,
         on_mask: bool,
+        mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
@@ -642,6 +662,10 @@ impl Layer {
             let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
 
             let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+
+            if let Some(ref mut hist) = history {
+                hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
+            }
 
             for py in py_min..=py_max {
                 let v_px = py as f32 / (h_f - 1.0);
@@ -747,6 +771,7 @@ impl Layer {
         hit_normal: [f32; 3],
         radius_3d: f32,
         brush: &Brush,
+        mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
@@ -831,6 +856,10 @@ impl Layer {
 
             let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
 
+            if let Some(ref mut hist) = history {
+                hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
+            }
+
             for py in py_min..=py_max {
                 let v_px = py as f32 / (h_f - 1.0);
                 let row_offset = py as usize * self.width as usize;
@@ -884,7 +913,7 @@ impl Layer {
     }
 
     /// 2D UV Smudge stamp
-    pub fn smudge_stamp(&mut self, uv: [f32; 2], brush: &Brush) -> [i32; 4] {
+    pub fn smudge_stamp(&mut self, uv: [f32; 2], brush: &Brush, mut history: Option<&mut HistoryManager>) -> [i32; 4] {
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -897,6 +926,10 @@ impl Layer {
         let max_y = (py_center + radius).clamp(0, h - 1);
 
         if min_x > max_x || min_y > max_y { return [0, 0, 0, 0]; }
+
+        if let Some(ref mut hist) = history {
+            hist.record_bbox_before_modify(self, [min_x, min_y, max_x, max_y]);
+        }
 
         let center_idx = (py_center as usize * self.width as usize + px_center as usize).min(self.color_buffer.len().saturating_sub(1));
         let c_color = self.color_buffer[center_idx];

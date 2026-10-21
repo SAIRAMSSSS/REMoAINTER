@@ -10,7 +10,7 @@ use crate::painting::{
 };
 use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
-use egui::{pos2, vec2, Align2, Color32, Rect, Stroke, Ui};
+use egui::{pos2, vec2, Align2, Color32, Rect, RichText, Stroke, Ui};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -83,6 +83,13 @@ pub struct RemoainterApp {
     pub camera_pitch: f32,
     pub camera_dist: f32,
     pub symmetry_x: bool,
+    pub symmetry_y: bool,
+    pub symmetry_z: bool,
+
+    // Brush Engine & Undo/Redo History
+    pub history_manager: crate::painting::HistoryManager,
+    pub lazy_mouse_tracker: crate::painting::brush::LazyMouseTracker,
+    pub is_in_stroke: bool,
 
     // Shelf & Asset Filter
     pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas
@@ -351,6 +358,11 @@ impl Default for RemoainterApp {
             camera_pitch: 18.0,
             camera_dist: 2.2,
             symmetry_x: false,
+            symmetry_y: false,
+            symmetry_z: false,
+            history_manager: crate::painting::HistoryManager::new(64),
+            lazy_mouse_tracker: crate::painting::brush::LazyMouseTracker::default(),
+            is_in_stroke: false,
 
             shelf_category: 0,
             search_query: String::new(),
@@ -544,6 +556,36 @@ impl RemoainterApp {
                     vp.textures.upload_dirty(gl, &self.layer_stack, bbox);
                 }
             }
+        }
+    }
+
+    pub fn perform_undo(&mut self) {
+        if let Some(desc) = self.history_manager.undo(&mut self.layer_stack) {
+            self.recompute_composite();
+            let msg = format!("Undo: {}", desc);
+            self.status_message = msg.clone();
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                msg,
+            ));
+        } else {
+            self.status_message = "Nothing to undo".into();
+        }
+    }
+
+    pub fn perform_redo(&mut self) {
+        if let Some(desc) = self.history_manager.redo(&mut self.layer_stack) {
+            self.recompute_composite();
+            let msg = format!("Redo: {}", desc);
+            self.status_message = msg.clone();
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                msg,
+            ));
+        } else {
+            self.status_message = "Nothing to redo".into();
         }
     }
 
@@ -1110,7 +1152,11 @@ impl eframe::App for RemoainterApp {
         }
 
         // Global hotkey processing (Substance Painter standard)
-        if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::S)) {
+        if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::Z)) {
+            self.perform_undo();
+        } else if ctx.input(|i| (i.modifiers.command && i.key_pressed(egui::Key::Y)) || (i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::Z))) {
+            self.perform_redo();
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::S)) {
             self.save_project();
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::S)) {
             self.save_project_as();
@@ -1347,12 +1393,23 @@ impl eframe::App for RemoainterApp {
                     });
 
                     ui.menu_button("Edit", |ui| {
-                        if ui.button("Undo (Ctrl+Z)").clicked() {
-                            self.status_message = "Undo".into();
+                        let undo_label = if let Some(last_cmd) = self.history_manager.undo_stack.last() {
+                            format!("Undo {} (Ctrl+Z)", last_cmd.description)
+                        } else {
+                            "Undo (Ctrl+Z)".into()
+                        };
+                        if ui.add_enabled(self.history_manager.can_undo(), egui::Button::new(undo_label)).clicked() {
+                            self.perform_undo();
                             ui.close_menu();
                         }
-                        if ui.button("Redo (Ctrl+Y)").clicked() {
-                            self.status_message = "Redo".into();
+
+                        let redo_label = if let Some(next_cmd) = self.history_manager.redo_stack.last() {
+                            format!("Redo {} (Ctrl+Y)", next_cmd.description)
+                        } else {
+                            "Redo (Ctrl+Y)".into()
+                        };
+                        if ui.add_enabled(self.history_manager.can_redo(), egui::Button::new(redo_label)).clicked() {
+                            self.perform_redo();
                             ui.close_menu();
                         }
                     });
@@ -1493,7 +1550,67 @@ impl eframe::App for RemoainterApp {
                 }
 
                 ui.checkbox(&mut self.brush.lazy_mouse, "Lazy");
-                ui.checkbox(&mut self.symmetry_x, "Symmetry");
+                if self.brush.lazy_mouse {
+                    ui.add(egui::Slider::new(&mut self.lazy_mouse_tracker.radius, 2.0..=60.0).suffix(" px").text("Radius"));
+                }
+                ui.checkbox(&mut self.symmetry_x, "Sym X");
+                ui.checkbox(&mut self.symmetry_y, "Sym Y");
+                ui.checkbox(&mut self.symmetry_z, "Sym Z");
+
+                ui.menu_button("Dynamics ⚙", |ui| {
+                    ui.label(RichText::new("Pressure Dynamics").strong());
+                    ui.checkbox(&mut self.brush.pressure_affects_size, "Pressure -> Size");
+                    ui.checkbox(&mut self.brush.pressure_affects_flow, "Pressure -> Flow");
+                    ui.horizontal(|ui| {
+                        ui.label("Curve:");
+                        let mut curve_idx = match self.brush.pressure_curve {
+                            crate::painting::brush::PressureCurve::Linear => 0,
+                            crate::painting::brush::PressureCurve::EaseIn => 1,
+                            crate::painting::brush::PressureCurve::EaseOut => 2,
+                            crate::painting::brush::PressureCurve::Smooth => 3,
+                        };
+                        egui::ComboBox::from_id_salt("dyn_curve")
+                            .selected_text(match curve_idx {
+                                0 => "Linear",
+                                1 => "Ease In",
+                                2 => "Ease Out",
+                                _ => "Smooth (S-Curve)",
+                            })
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut curve_idx, 0, "Linear");
+                                ui.selectable_value(&mut curve_idx, 1, "Ease In");
+                                ui.selectable_value(&mut curve_idx, 2, "Ease Out");
+                                ui.selectable_value(&mut curve_idx, 3, "Smooth (S-Curve)");
+                            });
+                        self.brush.pressure_curve = match curve_idx {
+                            0 => crate::painting::brush::PressureCurve::Linear,
+                            1 => crate::painting::brush::PressureCurve::EaseIn,
+                            2 => crate::painting::brush::PressureCurve::EaseOut,
+                            _ => crate::painting::brush::PressureCurve::Smooth,
+                        };
+                    });
+                    ui.separator();
+                    ui.label(RichText::new("Jitter Dynamics").strong());
+                    let mut sj = self.brush.size_jitter * 100.0;
+                    if ui.add(egui::Slider::new(&mut sj, 0.0..=100.0).text("Size Jitter %")).changed() {
+                        self.brush.size_jitter = sj / 100.0;
+                    }
+                    let mut fj = self.brush.flow_jitter * 100.0;
+                    if ui.add(egui::Slider::new(&mut fj, 0.0..=100.0).text("Flow Jitter %")).changed() {
+                        self.brush.flow_jitter = fj / 100.0;
+                    }
+                    let mut aj = self.brush.angle_jitter * 100.0;
+                    if ui.add(egui::Slider::new(&mut aj, 0.0..=100.0).text("Angle Jitter %")).changed() {
+                        self.brush.angle_jitter = aj / 100.0;
+                    }
+                    ui.separator();
+                    ui.label(RichText::new("Channels to Paint").strong());
+                    ui.checkbox(&mut self.brush.paint_color, "Color (BaseColor)");
+                    ui.checkbox(&mut self.brush.paint_metallic, "Metallic");
+                    ui.checkbox(&mut self.brush.paint_roughness, "Roughness");
+                    ui.checkbox(&mut self.brush.paint_normal, "Normal");
+                    ui.checkbox(&mut self.brush.paint_height, "Height");
+                });
 
                 ui.separator();
                 // 3D/2D View Mode Switchers (Substance Painter F1/F2/F3/F4)
@@ -2113,9 +2230,27 @@ impl RemoainterApp {
         if response.dragged() {
             if let Some(pos) = response.interact_pointer_pos() {
                 if canvas_rect.contains(pos) && !ctx.input(|i| i.modifiers.alt) {
-                    let u = ((pos.x - canvas_rect.left()) / canvas_rect.width()).clamp(0.0, 1.0);
-                    let v = ((pos.y - canvas_rect.top()) / canvas_rect.height()).clamp(0.0, 1.0);
+                    if !self.is_in_stroke {
+                        self.history_manager.begin_stroke();
+                        self.is_in_stroke = true;
+                    }
+
+                    let paint_pos = if self.brush.lazy_mouse {
+                        let smoothed = self.lazy_mouse_tracker.update([pos.x, pos.y]);
+                        if self.lazy_mouse_tracker.is_dragging {
+                            painter.line_segment([pos, pos2(smoothed[0], smoothed[1])], Stroke::new(1.2_f32, Color32::from_rgb(255, 120, 40)));
+                            painter.circle_stroke(pos2(smoothed[0], smoothed[1]), 2.5, Stroke::new(1.0_f32, Color32::WHITE));
+                        }
+                        pos2(smoothed[0], smoothed[1])
+                    } else {
+                        pos
+                    };
+
+                    let u = ((paint_pos.x - canvas_rect.left()) / canvas_rect.width()).clamp(0.0, 1.0);
+                    let v = ((paint_pos.y - canvas_rect.top()) / canvas_rect.height()).clamp(0.0, 1.0);
                     let uv = [u, v];
+
+                    let active_idx = self.layer_stack.active_layer_index;
 
                     let bbox = if self.active_tool == ToolMode::Eyedropper {
                         let px = (uv[0] * (self.layer_stack.width - 1) as f32) as usize;
@@ -2130,9 +2265,9 @@ impl RemoainterApp {
                         }
                         [0, 0, 0, 0]
                     } else if self.active_tool == ToolMode::PolygonFill {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                        if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
                             if self.poly_fill_mode == 2 {
-                                active_layer.flood_fill(&self.brush);
+                                active_layer.flood_fill(&self.brush, Some(&mut self.history_manager));
                             } else {
                                 let num_tris = self.mesh.indices.len() / 3;
                                 let mut hit_t = None;
@@ -2159,7 +2294,7 @@ impl RemoainterApp {
                                         let i0 = self.mesh.indices[t * 3] as usize;
                                         let i1 = self.mesh.indices[t * 3 + 1] as usize;
                                         let i2 = self.mesh.indices[t * 3 + 2] as usize;
-                                        active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush);
+                                        active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush, Some(&mut self.history_manager));
                                     } else {
                                         let island = self.mesh.find_uv_island(t);
                                         for it in island {
@@ -2167,20 +2302,20 @@ impl RemoainterApp {
                                             let i1 = self.mesh.indices[it * 3 + 1] as usize;
                                             let i2 = self.mesh.indices[it * 3 + 2] as usize;
                                             if i0 < self.mesh.uvs.len() && i1 < self.mesh.uvs.len() && i2 < self.mesh.uvs.len() {
-                                                active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush);
+                                                active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush, Some(&mut self.history_manager));
                                             }
                                         }
                                     }
                                 } else {
-                                    active_layer.flood_fill(&self.brush);
+                                    active_layer.flood_fill(&self.brush, Some(&mut self.history_manager));
                                 }
                             }
                         }
                         self.recompute_composite();
                         [0, 0, self.layer_stack.width as i32, self.layer_stack.height as i32]
                     } else if self.active_tool == ToolMode::Smudge {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                            active_layer.smudge_stamp(uv, &self.brush)
+                        if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                            active_layer.smudge_stamp(uv, &self.brush, Some(&mut self.history_manager))
                         } else {
                             [0, 0, 0, 0]
                         }
@@ -2200,8 +2335,8 @@ impl RemoainterApp {
                                 clone_brush.metallic = self.layer_stack.composite_metallic[idx];
                                 clone_brush.roughness = self.layer_stack.composite_roughness[idx];
                             }
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                active_layer.paint_stamp(uv, &clone_brush, false)
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                active_layer.paint_stamp(uv, &clone_brush, false, Some(&mut self.history_manager))
                             } else {
                                 [0, 0, 0, 0]
                             }
@@ -2209,38 +2344,72 @@ impl RemoainterApp {
                     } else {
                         let is_eraser = self.active_tool == ToolMode::Eraser;
                         if let Some(last_uv) = self.last_painted_uv {
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                if is_eraser {
-                                    active_layer.erase_line(last_uv, uv, &self.brush, false)
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                let mut b = if is_eraser {
+                                    active_layer.erase_line(last_uv, uv, &self.brush, false, Some(&mut self.history_manager))
                                 } else {
-                                    let mut b = active_layer.paint_line(last_uv, uv, &self.brush, false);
-                                    if self.symmetry_x {
-                                        let b_sym = active_layer.paint_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, false);
-                                        b[0] = b[0].min(b_sym[0]);
-                                        b[1] = b[1].min(b_sym[1]);
-                                        b[2] = b[2].max(b_sym[2]);
-                                        b[3] = b[3].max(b_sym[3]);
-                                    }
-                                    b
+                                    active_layer.paint_line(last_uv, uv, &self.brush, false, Some(&mut self.history_manager))
+                                };
+                                if self.symmetry_x {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_line([1.0 - last_uv[0], last_uv[1]], [1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
+                                if self.symmetry_y {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_line([last_uv[0], 1.0 - last_uv[1]], [uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
+                                }
+                                if self.symmetry_z {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_line([1.0 - last_uv[0], 1.0 - last_uv[1]], [1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
+                                }
+                                b
                             } else {
                                 [0, 0, 0, 0]
                             }
                         } else {
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                if is_eraser {
-                                    active_layer.erase_stamp(uv, &self.brush, false)
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                let mut b = if is_eraser {
+                                    active_layer.erase_stamp(uv, &self.brush, false, Some(&mut self.history_manager))
                                 } else {
-                                    let mut b = active_layer.paint_stamp(uv, &self.brush, false);
-                                    if self.symmetry_x {
-                                        let b_sym = active_layer.paint_stamp([1.0 - uv[0], uv[1]], &self.brush, false);
-                                        b[0] = b[0].min(b_sym[0]);
-                                        b[1] = b[1].min(b_sym[1]);
-                                        b[2] = b[2].max(b_sym[2]);
-                                        b[3] = b[3].max(b_sym[3]);
-                                    }
-                                    b
+                                    active_layer.paint_stamp(uv, &self.brush, false, Some(&mut self.history_manager))
+                                };
+                                if self.symmetry_x {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_stamp([1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_stamp([1.0 - uv[0], uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
                                 }
+                                if self.symmetry_y {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_stamp([uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_stamp([uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
+                                }
+                                if self.symmetry_z {
+                                    let b_sym = if is_eraser {
+                                        active_layer.erase_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    } else {
+                                        active_layer.paint_stamp([1.0 - uv[0], 1.0 - uv[1]], &self.brush, false, Some(&mut self.history_manager))
+                                    };
+                                    b[0] = b[0].min(b_sym[0]); b[1] = b[1].min(b_sym[1]); b[2] = b[2].max(b_sym[2]); b[3] = b[3].max(b_sym[3]);
+                                }
+                                b
                             } else {
                                 [0, 0, 0, 0]
                             }
@@ -2254,6 +2423,21 @@ impl RemoainterApp {
             }
         } else {
             self.last_painted_uv = None;
+            if self.is_in_stroke {
+                let tool_name = match self.active_tool {
+                    ToolMode::Paint => "Paint Stroke",
+                    ToolMode::Eraser => "Erase",
+                    ToolMode::PolygonFill => "Polygon Fill",
+                    ToolMode::Smudge => "Smudge",
+                    ToolMode::Clone => "Clone Stamp",
+                    _ => "Brush Tool",
+                };
+                self.history_manager.commit_stroke(tool_name);
+                self.history.push(format!("{:02}  {}", self.history.len() + 1, tool_name));
+                self.logs.push((chrono::Local::now().format("%H:%M:%S").to_string(), "INFO".into(), format!("Committed stroke: {}", tool_name)));
+                self.is_in_stroke = false;
+                self.lazy_mouse_tracker.reset();
+            }
         }
     }
 
@@ -2353,8 +2537,14 @@ impl RemoainterApp {
                 let ray_dir = (p_far - cam_pos).normalize();
 
                 if let Some(hit) = self.mesh.raycast_normalized(cam_pos, ray_dir, mesh_center, mesh_radius) {
+                    if !self.is_in_stroke {
+                        self.history_manager.begin_stroke();
+                        self.is_in_stroke = true;
+                    }
+
                     let uv = hit.uv;
                     let radius_3d = (self.brush.size / 200.0) * mesh_radius;
+                    let active_idx = self.layer_stack.active_layer_index;
 
                     let bbox = if self.active_tool == ToolMode::Eyedropper {
                         let px = (uv[0] * (self.layer_stack.width - 1) as f32) as usize;
@@ -2369,7 +2559,7 @@ impl RemoainterApp {
                         }
                         [0, 0, 0, 0]
                     } else if self.active_tool == ToolMode::PolygonFill {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
+                        if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
                             match self.poly_fill_mode {
                                 0 => {
                                     // Triangle Fill
@@ -2377,7 +2567,7 @@ impl RemoainterApp {
                                     let i1 = self.mesh.indices[hit.tri_idx * 3 + 1] as usize;
                                     let i2 = self.mesh.indices[hit.tri_idx * 3 + 2] as usize;
                                     if i0 < self.mesh.uvs.len() && i1 < self.mesh.uvs.len() && i2 < self.mesh.uvs.len() {
-                                        active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush);
+                                        active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush, Some(&mut self.history_manager));
                                     }
                                 }
                                 1 => {
@@ -2388,21 +2578,21 @@ impl RemoainterApp {
                                         let i1 = self.mesh.indices[t * 3 + 1] as usize;
                                         let i2 = self.mesh.indices[t * 3 + 2] as usize;
                                         if i0 < self.mesh.uvs.len() && i1 < self.mesh.uvs.len() && i2 < self.mesh.uvs.len() {
-                                            active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush);
+                                            active_layer.fill_triangle(self.mesh.uvs[i0], self.mesh.uvs[i1], self.mesh.uvs[i2], &self.brush, Some(&mut self.history_manager));
                                         }
                                     }
                                 }
                                 _ => {
                                     // Mesh / Chunk Fill
-                                    active_layer.flood_fill(&self.brush);
+                                    active_layer.flood_fill(&self.brush, Some(&mut self.history_manager));
                                 }
                             }
                         }
                         self.recompute_composite();
                         [0, 0, self.layer_stack.width as i32, self.layer_stack.height as i32]
                     } else if self.active_tool == ToolMode::Smudge {
-                        if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                            active_layer.smudge_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush)
+                        if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                            active_layer.smudge_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush, Some(&mut self.history_manager))
                         } else {
                             [0, 0, 0, 0]
                         }
@@ -2422,8 +2612,8 @@ impl RemoainterApp {
                                 clone_brush.metallic = self.layer_stack.composite_metallic[idx];
                                 clone_brush.roughness = self.layer_stack.composite_roughness[idx];
                             }
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &clone_brush, false, false)
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &clone_brush, false, false, Some(&mut self.history_manager))
                             } else {
                                 [0, 0, 0, 0]
                             }
@@ -2431,16 +2621,42 @@ impl RemoainterApp {
                     } else {
                         // Paint (1), Eraser (2), Projection (3)
                         let is_eraser = self.active_tool == ToolMode::Eraser;
-                        let mut b = if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                            active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush, is_eraser, false)
+                        let mut b = if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                            active_layer.paint_3d_surface(&self.mesh, hit.pos, hit.normal, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager))
                         } else {
                             [0, 0, 0, 0]
                         };
                         if self.symmetry_x {
                             let sym_pos = [-hit.pos[0], hit.pos[1], hit.pos[2]];
                             let sym_norm = [-hit.normal[0], hit.normal[1], hit.normal[2]];
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(self.layer_stack.active_layer_index) {
-                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false);
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
+                                if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
+                                    b[0] = b[0].min(b_sym[0]);
+                                    b[1] = b[1].min(b_sym[1]);
+                                    b[2] = b[2].max(b_sym[2]);
+                                    b[3] = b[3].max(b_sym[3]);
+                                }
+                            }
+                        }
+                        if self.symmetry_y {
+                            let sym_pos = [hit.pos[0], -hit.pos[1], hit.pos[2]];
+                            let sym_norm = [hit.normal[0], -hit.normal[1], hit.normal[2]];
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
+                                if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
+                                    b[0] = b[0].min(b_sym[0]);
+                                    b[1] = b[1].min(b_sym[1]);
+                                    b[2] = b[2].max(b_sym[2]);
+                                    b[3] = b[3].max(b_sym[3]);
+                                }
+                            }
+                        }
+                        if self.symmetry_z {
+                            let sym_pos = [hit.pos[0], hit.pos[1], -hit.pos[2]];
+                            let sym_norm = [hit.normal[0], hit.normal[1], -hit.normal[2]];
+                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx) {
+                                let b_sym = active_layer.paint_3d_surface(&self.mesh, sym_pos, sym_norm, radius_3d, &self.brush, is_eraser, false, Some(&mut self.history_manager));
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
                                     b[1] = b[1].min(b_sym[1]);
@@ -2459,6 +2675,21 @@ impl RemoainterApp {
             }
         } else {
             self.last_painted_uv = None;
+            if self.is_in_stroke {
+                let tool_name = match self.active_tool {
+                    ToolMode::Paint => "Paint 3D Surface",
+                    ToolMode::Eraser => "Erase 3D Surface",
+                    ToolMode::PolygonFill => "Polygon Fill",
+                    ToolMode::Smudge => "Smudge 3D Surface",
+                    ToolMode::Clone => "Clone Stamp 3D",
+                    _ => "Brush Tool",
+                };
+                self.history_manager.commit_stroke(tool_name);
+                self.history.push(format!("{:02}  {}", self.history.len() + 1, tool_name));
+                self.logs.push((chrono::Local::now().format("%H:%M:%S").to_string(), "INFO".into(), format!("Committed stroke: {}", tool_name)));
+                self.is_in_stroke = false;
+                self.lazy_mouse_tracker.reset();
+            }
         }
 
         // Brush cursor on 3D surface
@@ -3644,9 +3875,60 @@ impl RemoainterApp {
     fn ui_history_panel(&mut self, ui: &mut Ui) {
         ui.heading("HISTORY");
         ui.separator();
+
+        ui.horizontal(|ui| {
+            let undo_enabled = self.history_manager.can_undo();
+            if ui.add_enabled(undo_enabled, egui::Button::new("↶ Undo")).clicked() {
+                self.perform_undo();
+            }
+            let redo_enabled = self.history_manager.can_redo();
+            if ui.add_enabled(redo_enabled, egui::Button::new("↷ Redo")).clicked() {
+                self.perform_redo();
+            }
+            if ui.button("Clear History").clicked() {
+                self.history_manager.undo_stack.clear();
+                self.history_manager.redo_stack.clear();
+                self.status_message = "History cleared".into();
+            }
+        });
+        ui.separator();
+
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for h in &self.history {
-                ui.label(h);
+            ui.label(RichText::new("Undo Stack (Active / Past)").strong().color(Color32::from_rgb(180, 180, 180)));
+            let mut rollback_to = None;
+            let current_len = self.history_manager.undo_stack.len();
+            for (idx, cmd) in self.history_manager.undo_stack.iter().enumerate().rev() {
+                let is_latest = idx + 1 == current_len;
+                let text = format!("{:02}  {} ({} tiles)", idx + 1, cmd.description, cmd.tile_backups.len());
+                let row = if is_latest {
+                    ui.selectable_label(true, RichText::new(text).color(ACTIVE_BLUE).strong())
+                } else {
+                    ui.selectable_label(false, text)
+                };
+                if row.clicked() && !is_latest {
+                    rollback_to = Some(idx);
+                }
+            }
+
+            if let Some(target_idx) = rollback_to {
+                let steps = self.history_manager.undo_stack.len() - 1 - target_idx;
+                for _ in 0..steps {
+                    self.perform_undo();
+                }
+            }
+
+            if !self.history_manager.redo_stack.is_empty() {
+                ui.separator();
+                ui.label(RichText::new("Redo Stack (Undone actions)").italics().color(Color32::from_rgb(120, 120, 120)));
+                for cmd in self.history_manager.redo_stack.iter().rev() {
+                    let text = format!("--  {} ({} tiles)", cmd.description, cmd.tile_backups.len());
+                    ui.label(RichText::new(text).color(Color32::from_rgb(100, 100, 100)));
+                }
+            }
+
+            if self.history_manager.undo_stack.is_empty() && self.history_manager.redo_stack.is_empty() {
+                ui.add_space(8.0);
+                ui.label(RichText::new("No brush or tool actions recorded yet.").italics().color(TEXT_DIMMED));
             }
         });
     }
