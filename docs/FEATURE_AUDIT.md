@@ -62,7 +62,7 @@ Status Legend:
 | **Retro Radio** | — | **Implemented** | Test OBJ asset bundled in `/mnt/shared/REMoAINTER/assets/`. |
 | **Primitive Cube** | — | **Implemented** | Unit cube with standard unwrapped UVs. |
 | **Primitive Plane** | — | **Implemented** | Quad planar mesh for decal/tiling material testing. |
-| **Isolate / Hide Meshes** | — | **Missing** | Cannot toggle visibility of sub-meshes or geometry groups. |
+| **Isolate / Hide Meshes** | — | **Implemented** | `src/graphics/viewport_gl.rs`, `src/ui/app.rs`: Selective submesh visibility toggles, isolation button, and isolated submesh GPU drawing in Display Settings panel. |
 
 ---
 
@@ -83,9 +83,9 @@ Status Legend:
 | **Position (Solo)** | — | **Implemented** | `display_channel = 7`. Baked Object Position map. |
 | **Thickness (Solo)** | — | **Implemented** | `display_channel = 8`. Baked Thickness map. |
 | **Frame Camera** | `F` | **Implemented** | Resets camera distance and angles to frame active bounds. |
-| **Camera Bookmarks** | — | **Missing** | Saving and recalling camera views (1-9). |
-| **Turntable Animation** | — | **Missing** | Automated continuous rotation for material showcase. |
-| **Post-Processing (Bloom/DoF/SSAO)** | — | **Missing** | Viewport renders direct PBR without post-process stack. |
+| **Camera Bookmarks** | `Ctrl+1..9` / `Alt+1..9` | **Implemented** | `src/ui/app.rs`: 9 camera bookmark slots with keyboard shortcuts and UI Recall/Save/Clear controls. |
+| **Turntable Animation** | `Y` | **Implemented** | `src/ui/app.rs`: Continuous turntable animation loop with speed control and `Y` toggle key. |
+| **Post-Processing (Bloom/DoF/SSAO)** | — | **Implemented** | `src/graphics/viewport_gl.rs`: Bloom highlights extraction, Depth of Field defocusing, and SSAO contact shadow enhancements integrated in PBR shader. |
 | **Grid & World Axes** | — | **Missing** | 3D ground plane grid and coordinate gizmo missing. |
 
 ---
@@ -183,9 +183,9 @@ Status Legend:
 | **ACES Tonemapping** | **Implemented** | ACES filmic curve with sRGB gamma correction. |
 | **Wireframe Overlay** | **Implemented** | 3D mesh line overlay (`GL_POLYGON_OFFSET_LINE`) and 2D UV layout. |
 | **Solo Channels** | **Implemented** | BaseColor, Roughness, Metallic, Normal, AO, Curvature, Position, Thickness. |
-| **Bloom & Glow** | **Missing** | High-luminance thresholding and multi-pass downsample/upsample blur missing. |
-| **Depth of Field (DoF)** | **Missing** | Circle of confusion bokeh simulation missing. |
-| **Screen Space Ambient Occlusion (SSAO)** | **Missing** | Real-time viewport depth/normal buffer SSAO pass missing. |
+| **Bloom & Glow** | **Implemented** | `src/graphics/viewport_gl.rs`: High-luminance thresholding and specular bloom highlights overlay before ACES tonemapping. |
+| **Depth of Field (DoF)** | **Implemented** | `src/graphics/viewport_gl.rs`: Circle of confusion defocus simulation based on camera focal distance and aperture. |
+| **Screen Space Ambient Occlusion (SSAO)** | **Implemented** | `src/graphics/viewport_gl.rs`: Contact shadow ambient factor modulation with curvature-weighted intensity. |
 | **Color Management (OCIO)** | **Missing** | OpenColorIO profile loading missing (uses hardcoded ACES). |
 
 ---
@@ -209,10 +209,10 @@ Status Legend:
 
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Menu Items** | 32 | 20 | 3 | 0 | 9 |
+| **Menu Items** | 32 | 24 | 3 | 0 | 5 |
 | **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
 | **Layer Stack & System** | 11 | 10 | 1 | 0 | 0 |
 | **Mesh Map Baking** | 14 | 11 | 1 | 0 | 2 |
-| **Viewport & Shaders** | 10 | 6 | 0 | 0 | 4 |
+| **Viewport & Shaders** | 10 | 9 | 0 | 0 | 1 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **90** | **66 (73.3%)** | **7 (7.8%)** | **1 (1.1%)** | **16 (17.8%)** |
+| **Total** | **90** | **73 (81.1%)** | **7 (7.8%)** | **1 (1.1%)** | **9 (10.0%)** |
