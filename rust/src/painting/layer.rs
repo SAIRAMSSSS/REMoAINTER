@@ -1002,6 +1002,11 @@ impl LayerStack {
         self.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
     }
 
+    /// Recomputes the composite buffers using default environment
+    pub fn recompute_composite(&mut self) {
+        self.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+    }
+
     /// Full PBR Stack Composite with Blend Modes, Channel Masking, and Rayon Multi-threaded Global Illumination
     pub fn composite(
         &mut self,
