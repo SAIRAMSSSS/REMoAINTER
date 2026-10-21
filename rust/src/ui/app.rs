@@ -147,8 +147,12 @@ pub struct RemoainterApp {
 
     // Viewport GPU Texture & Multi-View Mode
     pub texture_handle: Option<egui::TextureHandle>,
+    pub checker_handle: Option<egui::TextureHandle>,
     pub texture_needs_update: bool,
-    pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 3D | 2D
+    pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 2D | 3D
+    // 2D UV View camera (Substance Painter parity: wheel zoom + middle-drag pan)
+    pub uv_zoom: f32,
+    pub uv_pan: [f32; 2], // screen-space offset of the texture square around its pane center
     pub show_wireframe: bool,
     pub show_uv_wireframe: bool,
     pub show_grid: bool,
@@ -462,6 +466,8 @@ impl Default for RemoainterApp {
             baker_ignore_backfaces: false,
 
             display_channel: 0,
+            uv_zoom: 1.0,
+            uv_pan: [0.0, 0.0],
             env_preset: 1, // Warm & Cool Studio
             env_rotation: 0.0,
             light_intensity: 1.0,
@@ -529,6 +535,7 @@ impl Default for RemoainterApp {
             layer_clipboard: None,
             texture_handle: None,
             texture_needs_update: true,
+            checker_handle: None,
             viewport_view_mode: 2, // 3D | 2D Split View as default on startup (Substance Painter parity)
             show_wireframe: false,
             show_uv_wireframe: true,
@@ -2163,7 +2170,7 @@ impl eframe::App for RemoainterApp {
                     });
 
                     ui.menu_button("Viewport", |ui| {
-                        if ui.button("3D | 2D Split View [F1]").clicked() {
+                        if ui.button("2D | 3D Split View [F1]").clicked() {
                             self.viewport_view_mode = 2;
                             self.status_message = "Viewport: 3D | 2D Split View (F1)".into();
                             ui.close_menu();
@@ -2544,8 +2551,8 @@ impl eframe::App for RemoainterApp {
                 ui.separator();
                 // 3D/2D View Mode Switchers (Substance Painter F1/F2/F3/F4)
                 if ui
-                    .selectable_label(self.viewport_view_mode == 2, "3D | 2D (F1)")
-                    .on_hover_text("Split 3D Viewport & 2D UV Texture Map View")
+                    .selectable_label(self.viewport_view_mode == 2, "2D | 3D (F1)")
+                    .on_hover_text("Split 2D UV Texture Map View & 3D Viewport (Substance default)")
                     .clicked()
                 {
                     self.viewport_view_mode = 2;
@@ -3293,7 +3300,7 @@ impl eframe::App for RemoainterApp {
             painter.text(
                 vm_split.center(),
                 Align2::CENTER_CENTER,
-                "3D|2D (F1)",
+                "2D|3D (F1)",
                 egui::FontId::proportional(10.5),
                 Color32::WHITE,
             );
@@ -3336,13 +3343,15 @@ impl eframe::App for RemoainterApp {
                     self.render_2d_canvas(painter, rect, &response, ctx);
                 }
                 _ => {
+                    // Substance Painter parity: 2D UV view on the LEFT, 3D viewport on the RIGHT
                     let half_w = rect.width() * 0.5;
-                    let rect_3d = Rect::from_min_size(rect.min, vec2(half_w - 2.0, rect.height()));
-                    let rect_2d = Rect::from_min_size(
-                        pos2(rect.min.x + half_w + 2.0, rect.min.y),
-                        vec2(half_w - 2.0, rect.height()),
+                    let rect_2d = Rect::from_min_size(rect.min, vec2(half_w, rect.height()));
+                    let rect_3d = Rect::from_min_size(
+                        pos2(rect.min.x + half_w, rect.min.y),
+                        vec2(half_w, rect.height()),
                     );
 
+                    painter.rect_filled(rect_2d, 0.0_f32, Color32::from_rgb(38, 38, 40));
                     painter.line_segment(
                         [
                             pos2(rect.min.x + half_w, rect.min.y),
@@ -3395,6 +3404,14 @@ impl eframe::App for RemoainterApp {
 
 // Right panel implementations
 impl RemoainterApp {
+    #[inline]
+    fn uv_to_2d_screen(&self, uv: [f32; 2], canvas_rect: Rect) -> egui::Pos2 {
+        pos2(
+            canvas_rect.left() + uv[0] * canvas_rect.width(),
+            canvas_rect.top() + uv[1] * canvas_rect.height(),
+        )
+    }
+
     fn render_2d_canvas(
         &mut self,
         painter: &egui::Painter,
@@ -3402,12 +3419,87 @@ impl RemoainterApp {
         response: &egui::Response,
         ctx: &egui::Context,
     ) {
-        let size = (canvas_bounds.width().min(canvas_bounds.height()) - 64.0).max(64.0);
-        let canvas_rect = Rect::from_center_size(canvas_bounds.center(), vec2(size, size));
+        // Substance Painter parity: a full-pane dark 2D UV viewport with the texture in a
+        // fit-to-pane window, checkerboard under transparent areas, wheel zoom and
+        // middle-drag pan around the pointer.
+        painter.rect_filled(canvas_bounds, 0.0_f32, Color32::from_rgb(38, 38, 40));
 
-        // Canvas frame & shadow
-        painter.rect_filled(canvas_rect, 2.0_f32, Color32::from_rgb(18, 18, 18));
-        painter.rect_stroke(canvas_rect, 2.0_f32, Stroke::new(1.0_f32, BORDER_COLOR));
+        let base_size = (canvas_bounds.width().min(canvas_bounds.height()) - 48.0).max(64.0);
+        let base_center = canvas_bounds.center();
+
+        // Wheel zoom around the pointer (Substance 2D view behavior)
+        if canvas_bounds.contains(
+            ctx.pointer_latest_pos()
+                .unwrap_or(egui::pos2(f32::INFINITY, f32::INFINITY)),
+        ) {
+            let scroll = ctx.input(|i| i.raw_scroll_delta.y);
+            if scroll.abs() > 0.05_f32 {
+                let old = self.uv_zoom;
+                let new = (self.uv_zoom * (1.0 + scroll * 0.0015)).clamp(0.1_f32, 16.0_f32);
+                if (new - old).abs() > f32::EPSILON {
+                    // Keep the texture point under the cursor pinned while zooming.
+                    let ptr = ctx
+                        .pointer_latest_pos()
+                        .unwrap_or_else(|| canvas_bounds.center());
+                    let rel = egui::vec2(
+                        ptr.x - base_center.x - self.uv_pan[0],
+                        ptr.y - base_center.y - self.uv_pan[1],
+                    ) / old;
+                    self.uv_pan = [
+                        ptr.x - base_center.x - rel.x * new,
+                        ptr.y - base_center.y - rel.y * new,
+                    ];
+                    self.uv_zoom = new;
+                }
+            }
+        }
+
+        // Middle-mouse-drag pan
+        if response.dragged() && ctx.input(|i| i.pointer.middle_down()) {
+            let d = response.drag_delta();
+            self.uv_pan[0] += d.x;
+            self.uv_pan[1] += d.y;
+        }
+
+        let size = base_size * self.uv_zoom;
+        let canvas_rect = Rect::from_center_size(
+            base_center + egui::vec2(self.uv_pan[0], self.uv_pan[1]),
+            vec2(size, size),
+        );
+
+        // Checkerboard behind the texture (Substance transparency indicator), 16px tile
+        let checker_id = self
+            .checker_handle
+            .get_or_insert_with(|| {
+                let mut px = Vec::with_capacity(4);
+                for y in 0..2 {
+                    for x in 0..2 {
+                        px.push(if (x ^ y) & 1 == 0 {
+                            Color32::from_rgb(70, 70, 70)
+                        } else {
+                            Color32::from_rgb(46, 46, 46)
+                        });
+                    }
+                }
+                ctx.load_texture(
+                    "2d_checker",
+                    egui::ColorImage {
+                        size: [2, 2],
+                        pixels: px,
+                    },
+                    egui::TextureOptions::LINEAR_REPEAT,
+                )
+            })
+            .id();
+        painter.image(
+            checker_id,
+            canvas_rect,
+            Rect::from_min_max(
+                pos2(0.0, 0.0),
+                pos2(canvas_rect.width() / 16.0, canvas_rect.height() / 16.0),
+            ),
+            Color32::WHITE,
+        );
 
         // Draw live GPU texture map
         if let Some(ref handle) = self.texture_handle {
@@ -3419,38 +3511,53 @@ impl RemoainterApp {
             );
         }
 
+        // Texture window border
+        painter.rect_stroke(canvas_rect, 2.0_f32, Stroke::new(1.0_f32, BORDER_COLOR));
+
         // Draw UV Mesh Wireframe Overlay (Substance Painter 2D UV Layout)
+        // Substance renders UV island outlines & seams (boundary edges), not the dense
+        // triangle soup — boundary edges (counted once) are exactly that.
         if self.show_uv_wireframe {
+            let mut edge_counts: std::collections::HashMap<(i64, i64, i64, i64), u32> =
+                std::collections::HashMap::new();
             let num_tris = self.mesh.indices.len() / 3;
-            let wire_color = Color32::from_rgba_unmultiplied(65, 175, 245, 140);
-            let wire_stroke = Stroke::new(0.85_f32, wire_color);
             for t in 0..num_tris {
                 let i0 = self.mesh.indices[t * 3] as usize;
                 let i1 = self.mesh.indices[t * 3 + 1] as usize;
                 let i2 = self.mesh.indices[t * 3 + 2] as usize;
                 if i0 < self.mesh.uvs.len() && i1 < self.mesh.uvs.len() && i2 < self.mesh.uvs.len()
                 {
-                    let uv0 = self.mesh.uvs[i0];
-                    let uv1 = self.mesh.uvs[i1];
-                    let uv2 = self.mesh.uvs[i2];
-
-                    let p0 = pos2(
-                        canvas_rect.left() + uv0[0] * canvas_rect.width(),
-                        canvas_rect.top() + uv0[1] * canvas_rect.height(),
-                    );
-                    let p1 = pos2(
-                        canvas_rect.left() + uv1[0] * canvas_rect.width(),
-                        canvas_rect.top() + uv1[1] * canvas_rect.height(),
-                    );
-                    let p2 = pos2(
-                        canvas_rect.left() + uv2[0] * canvas_rect.width(),
-                        canvas_rect.top() + uv2[1] * canvas_rect.height(),
-                    );
-
-                    painter.line_segment([p0, p1], wire_stroke);
-                    painter.line_segment([p1, p2], wire_stroke);
-                    painter.line_segment([p2, p0], wire_stroke);
+                    for (a, b) in [(i0, i1), (i1, i2), (i2, i0)] {
+                        let ua = self.mesh.uvs[a];
+                        let ub = self.mesh.uvs[b];
+                        let ka = (
+                            (ua[0] * 8192.0).round() as i64,
+                            (ua[1] * 8192.0).round() as i64,
+                        );
+                        let kb = (
+                            (ub[0] * 8192.0).round() as i64,
+                            (ub[1] * 8192.0).round() as i64,
+                        );
+                        let pair = if (ka, kb) < (kb, ka) {
+                            (ka.0, ka.1, kb.0, kb.1)
+                        } else {
+                            (kb.0, kb.1, ka.0, ka.1)
+                        };
+                        *edge_counts.entry(pair).or_insert(0) += 1;
+                    }
                 }
+            }
+            let outline_color = Color32::from_rgba_unmultiplied(65, 175, 245, 190);
+            let outline_stroke = Stroke::new(1.4_f32, outline_color);
+            for ((a0, a1, b0, b1), count) in edge_counts {
+                if count != 1 {
+                    continue; // interior (shared) edge — not an island outline
+                }
+                let pa =
+                    self.uv_to_2d_screen([a0 as f32 / 8192.0, a1 as f32 / 8192.0], canvas_rect);
+                let pb =
+                    self.uv_to_2d_screen([b0 as f32 / 8192.0, b1 as f32 / 8192.0], canvas_rect);
+                painter.line_segment([pa, pb], outline_stroke);
             }
         }
 
@@ -3459,18 +3566,29 @@ impl RemoainterApp {
             pos2(canvas_rect.left() + 8.0, canvas_rect.top() + 8.0),
             Align2::LEFT_TOP,
             format!(
-                "UV Layout ({}x{}) | Wire: {}",
+                "UV Layout ({}x{}) | Wire: {} | Zoom {:.0}%",
                 self.layer_stack.width,
                 self.layer_stack.height,
                 if self.show_uv_wireframe {
                     "ON (F4)"
                 } else {
                     "OFF"
-                }
+                },
+                self.uv_zoom * 100.0
             ),
             egui::FontId::monospace(10.5),
             TEXT_DIMMED,
         );
+        // Pan/zoom hint (Substance-style toolbar info)
+        if canvas_bounds.width() > 320.0 {
+            painter.text(
+                pos2(canvas_bounds.right() - 8.0, canvas_bounds.top() + 8.0),
+                Align2::RIGHT_TOP,
+                "Wheel: Zoom | MMB: Pan",
+                egui::FontId::monospace(10.0),
+                TEXT_DIMMED,
+            );
+        }
 
         // Brush cursor preview
         if let Some(pos) = ctx.pointer_hover_pos() {
@@ -3487,7 +3605,10 @@ impl RemoainterApp {
         // Paint handling inside 2D Canvas
         if response.dragged() {
             if let Some(pos) = response.interact_pointer_pos() {
-                if canvas_rect.contains(pos) && !ctx.input(|i| i.modifiers.alt) {
+                if canvas_rect.contains(pos)
+                    && !ctx.input(|i| i.modifiers.alt)
+                    && !ctx.input(|i| i.pointer.middle_down())
+                {
                     if !self.is_in_stroke {
                         self.history_manager.begin_stroke();
                         self.is_in_stroke = true;
@@ -3994,6 +4115,11 @@ impl RemoainterApp {
         if response.clicked()
             && ctx.input(|i| i.modifiers.alt)
             && self.active_tool == ToolMode::Clone
+            && view_bounds.contains(
+                response
+                    .interact_pointer_pos()
+                    .unwrap_or(egui::pos2(f32::INFINITY, f32::INFINITY)),
+            )
         {
             if let Some(pos) = response.interact_pointer_pos() {
                 let ndc_x = (pos.x - view_bounds.left()) / view_bounds.width() * 2.0 - 1.0;
@@ -4015,7 +4141,14 @@ impl RemoainterApp {
         }
 
         // Camera Orbit (Alt+LMB/MMB) / Zoom (Alt+RMB) / Environment Rotate (Shift+RMB) & 3D Surface Painting
-        if response.dragged() {
+        // (drag contained to this viewport pane so it cannot leak into the 2D pane in split layout)
+        if response.dragged()
+            && view_bounds.contains(
+                response
+                    .interact_pointer_pos()
+                    .unwrap_or(egui::pos2(f32::INFINITY, f32::INFINITY)),
+            )
+        {
             let delta = response.drag_delta();
             if ctx
                 .input(|i| i.modifiers.alt && i.pointer.button_down(egui::PointerButton::Secondary))
