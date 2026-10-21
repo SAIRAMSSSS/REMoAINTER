@@ -1,5 +1,5 @@
 use super::layer::{Layer, LayerStack};
-use super::mask::{LayerMask, MaskType};
+use super::mask::{LayerMask, MaskType, MaskEffect, MaskBlendMode};
 use super::texture_importer::PbrTextureSet;
 use std::path::PathBuf;
 
@@ -40,24 +40,29 @@ pub fn generate_smart_mask(
     height: u32,
 ) -> LayerMask {
     let mut mask = LayerMask::new(MaskType::Black, width, height);
-    let total = (width * height) as usize;
     let lower = name.to_lowercase();
     let is_cavity = lower.contains("cavity") || lower.contains("crevice") || lower.contains("dirt") || lower.contains("dust");
 
-    for i in 0..total {
-        let curv = baked_curvature.and_then(|c| c.get(i)).copied().unwrap_or(0.5);
-        let ao = baked_ao.and_then(|a| a.get(i)).copied().unwrap_or(1.0);
+    mask.effects.push(MaskEffect::Generator {
+        name: if is_cavity { "Dirt Crevices".into() } else { "Metal Edge Wear".into() },
+        wear_level: if is_cavity { 0.5 } else { 1.0 },
+        contrast: 1.2,
+        dirt_amount: if is_cavity { 1.0 } else { 0.0 },
+        invert: false,
+        use_ao: is_cavity,
+        use_curvature: !is_cavity,
+        anchor_name: None,
+        blend_mode: MaskBlendMode::Normal,
+        opacity: 1.0,
+        grunge_amount: 0.35,
+        grunge_scale: 6.0,
+        axis: 1,
+        normal_direction: [0.0, 1.0, 0.0],
+        target_color: [1.0, 0.0, 0.0, 1.0],
+        tolerance: 0.2,
+    });
 
-        let val = if is_cavity {
-            // Dirt in crevices
-            if ao < 0.70 { (0.70 - ao) * 2.5 } else { 0.0 }
-        } else {
-            // Edge wear on convex peaks
-            if curv > 0.53 { ((curv - 0.53) * 6.0).clamp(0.0, 1.0) } else { 0.0 }
-        };
-        mask.buffer[i] = val.clamp(0.0, 1.0);
-    }
-
+    mask.recompute(baked_curvature, baked_ao, None, None, None, None);
     mask
 }
 
