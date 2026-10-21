@@ -93,8 +93,8 @@ Status Legend:
 ### Window Menu
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
-| **Texture Set Settings** | — | **Implemented** | Right dock panel index 0. |
-| **Texture Set List** | — | **Implemented** | Right dock panel index 1. |
+| **Texture Set Settings** | — | **Implemented** | Right dock panel index 0. Full channel manager (add/remove channels), per-set resolution override (512–4096), format specification (sRGB8, L8, RGB16F, L16F, RGB32F), and normal mixing. |
+| **Texture Set List** | — | **Implemented** | Right dock panel index 1. Multi-texture set & UDIM multi-tile manager (`src/painting/texture_set.rs`), add/duplicate/delete sets, UDIM tile detection (1001, 1002...), visibility toggles, and live switching. |
 | **Layers** | `F4` / Strip | **Implemented** | Right dock panel index 2. |
 | **Display Settings** | — | **Implemented** | Right dock panel index 3. |
 | **Shader Settings** | — | **Implemented** | Right dock panel index 4. |

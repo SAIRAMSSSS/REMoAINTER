@@ -126,8 +126,9 @@ pub struct RemoainterApp {
     pub import_texture_set: PbrTextureSet,
     pub import_flip_normal_y: bool,
 
-    // Texture Channels (Texture Set Settings panel)
+    // Texture Channels & Texture Set Manager
     pub texture_channels: Vec<TextureChannel>,
+    pub texture_set_manager: crate::painting::TextureSetManager,
 
     // Export Textures Dialog (File > Export Textures, Substance Painter Parity)
     pub show_export_dialog: bool,
@@ -400,6 +401,7 @@ impl Default for RemoainterApp {
                 TextureChannel { name: "Normal".into(),     format: "RGB16F".into(), enabled: true },
                 TextureChannel { name: "Height".into(),     format: "L16F".into(),  enabled: true },
             ],
+            texture_set_manager: crate::painting::TextureSetManager::new(2048),
 
             show_export_dialog: false,
             export_output_dir: PathBuf::from("/mnt/shared/REMoAINTER/exports"),
@@ -732,6 +734,7 @@ impl RemoainterApp {
                     self.layer_stack.active_layer_index = 1;
                 }
 
+                self.texture_set_manager.configure_from_mesh(&self.mesh, self.layer_stack.width);
                 self.recompute_composite();
                 self.status_message = format!("Loaded {} ({} vertices, {} triangles) with baked mesh maps",
                     self.mesh.name, self.mesh.vertices.len(), self.mesh.indices.len() / 3);
@@ -990,6 +993,32 @@ impl RemoainterApp {
                 format!("Reloaded standard primitive model: {}", self.mesh.name),
             ));
         }
+    }
+
+    /// Switches the active Texture Set (Material Group / UDIM Tile)
+    pub fn switch_texture_set(&mut self, new_idx: usize) {
+        if new_idx >= self.texture_set_manager.sets.len() || new_idx == self.texture_set_manager.active_index {
+            return;
+        }
+
+        // 1. Sync current layer stack and baked maps into outgoing set
+        let cur_idx = self.texture_set_manager.active_index;
+        if cur_idx < self.texture_set_manager.sets.len() {
+            self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            self.texture_set_manager.sets[cur_idx].baked_maps = self.baked_maps.clone();
+        }
+
+        // 2. Activate incoming set and load its layers & baked maps
+        self.texture_set_manager.active_index = new_idx;
+        let incoming = &self.texture_set_manager.sets[new_idx];
+        self.layer_stack = incoming.layer_stack.clone();
+        self.baked_maps = incoming.baked_maps.clone();
+        self.texture_needs_update = true;
+
+        let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
+        let log_msg = format!("Switched active Texture Set to: {} (ID: {})", incoming.name, incoming.id);
+        self.status_message = log_msg.clone();
+        self.logs.push((time_str, "INFO".into(), log_msg));
     }
 
     /// Full Substance Painter-grade texture export (Unreal ORM, Unity URP/HDRP, glTF, Generic PBR, OpenEXR)
@@ -2437,81 +2466,203 @@ impl RemoainterApp {
     }
 
     fn ui_texture_set_list(&mut self, ui: &mut Ui) {
-        ui.heading("TEXTURE SET LIST");
+        ui.horizontal(|ui| {
+            ui.heading("TEXTURE SET LIST");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button(egui::RichText::new("+ Add").strong().color(Color32::WHITE)).on_hover_text("Add a new Texture Set (Material Group)").clicked() {
+                    let new_id = self.texture_set_manager.sets.len() + 1;
+                    let name = format!("TextureSet_{}", new_id);
+                    let res = self.layer_stack.width;
+                    let new_idx = self.texture_set_manager.add_set(name, res);
+                    self.status_message = format!("Added new Texture Set: TextureSet_{}", new_id);
+                    self.switch_texture_set(new_idx);
+                }
+            });
+        });
         ui.separator();
 
+        if self.texture_set_manager.is_udim_workflow {
+            ui.horizontal(|ui| {
+                ui.colored_label(ACTIVE_BLUE, "🗂 UDIM Multi-Tile Workflow Active");
+            });
+            ui.add_space(4.0);
+        }
+
+        // Texture Sets List
+        let active_set_idx = self.texture_set_manager.active_index;
+        let num_sets = self.texture_set_manager.sets.len();
+        let mut switch_to: Option<usize> = None;
+        let mut to_duplicate: Option<usize> = None;
+        let mut to_delete: Option<usize> = None;
+
+        for (idx, set) in self.texture_set_manager.sets.iter_mut().enumerate() {
+            let is_active = active_set_idx == idx;
+            let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), egui::Sense::click());
+
+            if is_active {
+                ui.painter().rect_filled(rect, 3.0_f32, ACTIVE_ROW_FILL);
+                ui.painter().rect_stroke(rect, 3.0_f32, Stroke::new(1.2_f32, ACTIVE_BLUE));
+            } else if resp.hovered() {
+                ui.painter().rect_filled(rect, 3.0_f32, Color32::from_rgb(38, 38, 44));
+            }
+
+            // Eye visibility dot/icon
+            let eye_rect = Rect::from_center_size(pos2(rect.left() + 12.0, rect.center().y), vec2(14.0, 14.0));
+            let eye_resp = ui.interact(eye_rect, ui.id().with(("ts_eye", idx)), egui::Sense::click());
+            if eye_resp.clicked() {
+                set.visible = !set.visible;
+            }
+            ui.painter().circle_filled(
+                eye_rect.center(),
+                4.5,
+                if set.visible { ACTIVE_BLUE } else { Color32::from_rgb(70, 70, 75) },
+            );
+
+            // Name + UDIM badge
+            let display_name = if let Some(udim) = set.udim_tile {
+                format!("{} [{}]", set.name, udim)
+            } else {
+                set.name.clone()
+            };
+            ui.painter().text(
+                pos2(rect.left() + 26.0, rect.center().y),
+                Align2::LEFT_CENTER,
+                &display_name,
+                egui::FontId::proportional(12.5),
+                Color32::WHITE,
+            );
+
+            // Resolution badge
+            let res_text = format!("{}×{}", set.resolution, set.resolution);
+            ui.painter().text(
+                pos2(rect.right() - 8.0, rect.center().y),
+                Align2::RIGHT_CENTER,
+                &res_text,
+                egui::FontId::proportional(10.0),
+                if is_active { ACTIVE_BLUE } else { TEXT_DIMMED },
+            );
+
+            if resp.clicked() && !is_active {
+                switch_to = Some(idx);
+            }
+
+            resp.context_menu(|ui| {
+                if ui.button("Select This Texture Set").clicked() {
+                    switch_to = Some(idx);
+                    ui.close_menu();
+                }
+                if ui.button("Duplicate Texture Set").clicked() {
+                    to_duplicate = Some(idx);
+                    ui.close_menu();
+                }
+                if num_sets > 1 {
+                    if ui.button("Delete Texture Set").clicked() {
+                        to_delete = Some(idx);
+                        ui.close_menu();
+                    }
+                }
+            });
+        }
+
+        if let Some(target) = switch_to {
+            self.switch_texture_set(target);
+        }
+        if let Some(dup_target) = to_duplicate {
+            if let Some(new_idx) = self.texture_set_manager.duplicate_set(dup_target) {
+                self.switch_texture_set(new_idx);
+                self.status_message = "Duplicated texture set".into();
+            }
+        }
+        if let Some(del_target) = to_delete {
+            self.texture_set_manager.remove_set(del_target);
+            self.status_message = "Removed texture set".into();
+        }
+
+        ui.add_space(10.0);
+        ui.separator();
+
+        // ── Preview Primitives ──────────────────────────────────────────
+        ui.strong("PREVIEW PRIMITIVE MESHES");
+        ui.add_space(2.0);
         let models = [
-            ("Material Sphere", 0usize),
+            ("Material Calibration Sphere", 0usize),
             ("Cube (Primitive)", 3),
             ("Plane (Primitive)", 4),
             ("Antique Lantern", 1),
             ("Retro Radio", 2),
         ];
-
         for (name, idx) in models {
             let active = self.selected_model_idx == idx;
-            let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 28.0), egui::Sense::click());
-            if active {
-                ui.painter().rect_filled(rect, 2.0_f32, ACTIVE_ROW_FILL);
-                ui.painter().rect_stroke(rect, 2.0_f32, Stroke::new(1.2_f32, ACTIVE_BLUE));
-            } else if resp.hovered() {
-                ui.painter().rect_filled(rect, 2.0_f32, Color32::from_rgb(38, 38, 44));
+            if ui.selectable_label(active, name).clicked() {
+                self.load_model(idx);
             }
-            // Eye/visibility dot
-            ui.painter().circle_filled(pos2(rect.left() + 9.0, rect.center().y), 4.0,
-                if active { ACTIVE_BLUE } else { Color32::from_rgb(80, 80, 90) });
-            ui.painter().text(pos2(rect.left() + 22.0, rect.center().y), Align2::LEFT_CENTER,
-                name, egui::FontId::proportional(12.0), Color32::WHITE);
-            ui.painter().text(pos2(rect.right() - 6.0, rect.center().y), Align2::RIGHT_CENTER,
-                if active { "●" } else { "" }, egui::FontId::proportional(10.0), ACTIVE_BLUE);
-
-            if resp.clicked() { self.load_model(idx); }
-            resp.context_menu(|ui| {
-                if ui.button("Load this Mesh").clicked() {
-                    self.load_model(idx);
-                    ui.close_menu();
-                }
-            });
         }
 
-        ui.add_space(6.0);
+        ui.add_space(8.0);
         ui.separator();
-
-        // ── Import Mesh ──────────────────────────────────────────────────
         ui.strong("IMPORT");
         ui.add_space(2.0);
         let import_btn = egui::Button::new(
-            egui::RichText::new("📂 Import Mesh (OBJ/FBX)...").color(Color32::WHITE)
+            egui::RichText::new("📂 Import Mesh (OBJ/FBX/glTF)...").color(Color32::WHITE)
         ).fill(Color32::from_rgb(40, 55, 75)).min_size(vec2(ui.available_width(), 26.0));
-        if ui.add(import_btn).on_hover_text("Open an OBJ or FBX mesh file to use as the painting target").clicked() {
+        if ui.add(import_btn).on_hover_text("Open a 3D mesh file with materials or UDIMs").clicked() {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title("Import Mesh — REMoAINTER")
-                .add_filter("3D Mesh (*.obj)", &["obj", "OBJ"])
+                .add_filter("3D Models (*.obj, *.gltf, *.glb)", &["obj", "OBJ", "gltf", "glb"])
                 .add_filter("All Files", &["*"])
                 .pick_file()
             {
                 self.import_mesh_file(&path);
             }
         }
-
-        ui.add_space(8.0);
-        ui.separator();
-        ui.strong("OUTPUT RESOLUTION");
-        ui.add_space(2.0);
-        ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("res_combo")
-                .selected_text(format!("{}×{}", self.baker_options.resolution, self.baker_options.resolution))
-                .show_ui(ui, |ui| {
-                    if ui.selectable_value(&mut self.baker_options.resolution, 512,  "512×512").clicked()  { self.layer_stack.resize(512,  512);  }
-                    if ui.selectable_value(&mut self.baker_options.resolution, 1024, "1024×1024").clicked() { self.layer_stack.resize(1024, 1024); }
-                    if ui.selectable_value(&mut self.baker_options.resolution, 2048, "2048×2048").clicked() { self.layer_stack.resize(2048, 2048); }
-                    if ui.selectable_value(&mut self.baker_options.resolution, 4096, "4096×4096").clicked() { self.layer_stack.resize(4096, 4096); }
-                });
-        });
     }
 
     fn ui_texture_set_settings(&mut self, ui: &mut Ui) {
         ui.heading("TEXTURE SET SETTINGS");
+        ui.separator();
+
+        let active_idx = self.texture_set_manager.active_index;
+        if active_idx >= self.texture_set_manager.sets.len() {
+            ui.label("No active texture set.");
+            return;
+        }
+
+        // Texture Set Name & Resolution
+        let mut cur_res = self.texture_set_manager.sets[active_idx].resolution;
+        let old_res = cur_res;
+        let mut set_name = self.texture_set_manager.sets[active_idx].name.clone();
+
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new("Name:").strong());
+            if ui.text_edit_singleline(&mut set_name).changed() {
+                self.texture_set_manager.sets[active_idx].name = set_name;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new("Size:").strong());
+            egui::ComboBox::from_id_salt("ts_size_combo")
+                .selected_text(format!("{}×{}", cur_res, cur_res))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut cur_res, 512, "512×512");
+                    ui.selectable_value(&mut cur_res, 1024, "1024×1024");
+                    ui.selectable_value(&mut cur_res, 2048, "2048×2048");
+                    ui.selectable_value(&mut cur_res, 4096, "4096×4096");
+                });
+        });
+
+        if cur_res != old_res {
+            self.texture_set_manager.sets[active_idx].resize(cur_res);
+            self.layer_stack.resize(cur_res, cur_res);
+            self.texture_needs_update = true;
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Resized Texture Set to {}×{}", cur_res, cur_res),
+            ));
+        }
+
+        ui.add_space(6.0);
         ui.separator();
 
         // ── CHANNELS Section ──────────────────────────────────────────────

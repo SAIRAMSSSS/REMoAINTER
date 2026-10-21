@@ -932,6 +932,7 @@ impl Layer {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct LayerStack {
     pub layers: Vec<Layer>,
     pub active_layer_index: usize,
@@ -987,6 +988,7 @@ impl LayerStack {
         self.composite_metallic.resize(total, 0.75);
         self.composite_roughness.resize(total, 0.32);
         self.composite_normal.resize(total, [0.5, 0.5, 1.0]);
+        self.composite_height.resize(total, 0.0);
         self.composite_lit.resize(total, [0.4, 0.4, 0.45, 1.0]);
 
         for layer in &mut self.layers {
