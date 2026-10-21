@@ -1368,6 +1368,27 @@ impl LayerStack {
 
         let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self.layers.iter().map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id)).collect();
 
+        // Harvest available anchor points across layers
+        let mut anchor_maps: std::collections::HashMap<String, Vec<f32>> = std::collections::HashMap::new();
+        for l in &self.layers {
+            if let Some(ref ap) = l.anchor_point {
+                let buf: Vec<f32> = match ap.channel {
+                    crate::painting::anchor::AnchorChannel::MaskOnly => {
+                        if let Some(ref m) = l.mask {
+                            m.buffer.clone()
+                        } else {
+                            vec![1.0; total]
+                        }
+                    }
+                    crate::painting::anchor::AnchorChannel::Height => l.height_buffer.clone(),
+                    crate::painting::anchor::AnchorChannel::Roughness => l.roughness_buffer.clone(),
+                    crate::painting::anchor::AnchorChannel::Metallic => l.metallic_buffer.clone(),
+                    _ => l.color_buffer.iter().map(|c| (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) * c[3]).collect(),
+                };
+                anchor_maps.insert(ap.name.clone(), buf);
+            }
+        }
+
         for layer in &mut self.layers {
             if layer.layer_type == LayerType::Folder || !layer.visible {
                 continue;
@@ -1394,7 +1415,15 @@ impl LayerStack {
             }
 
             if let Some(ref mut mask) = layer.mask {
-                mask.recompute(baked_curvature, baked_ao, baked_wsn, baked_pos, baked_thickness, baked_id);
+                mask.recompute_with_anchors(
+                    baked_curvature,
+                    baked_ao,
+                    baked_wsn,
+                    baked_pos,
+                    baked_thickness,
+                    baked_id,
+                    Some(&anchor_maps),
+                );
             }
 
             let layer_op = layer.opacity * folder_opacity;

@@ -897,8 +897,95 @@ void main() {
     }
 }
 
+pub struct GpuGrid {
+    pub grid_vao: glow::VertexArray,
+    pub grid_vbo: glow::Buffer,
+    pub grid_vert_count: i32,
+    pub axes_vao: glow::VertexArray,
+    pub axes_vbo: glow::Buffer,
+    pub axes_vert_count: i32,
+}
+
+impl GpuGrid {
+    pub fn new(gl: &glow::Context) -> Self {
+        unsafe {
+            let mut grid_verts: Vec<[f32; 3]> = Vec::new();
+            let y_plane = -1.0f32;
+            let extent = 2.0f32;
+            let step = 0.2f32;
+            let steps = (extent / step) as i32;
+
+            for i in -steps..=steps {
+                let coord = i as f32 * step;
+                // Line parallel to Z
+                grid_verts.push([coord, y_plane, -extent]);
+                grid_verts.push([coord, y_plane, extent]);
+                // Line parallel to X
+                grid_verts.push([-extent, y_plane, coord]);
+                grid_verts.push([extent, y_plane, coord]);
+            }
+
+            let grid_vao = gl.create_vertex_array().expect("Failed to create Grid VAO");
+            let grid_vbo = gl.create_buffer().expect("Failed to create Grid VBO");
+
+            gl.bind_vertex_array(Some(grid_vao));
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(grid_vbo));
+            gl.buffer_data_u8_slice(
+                glow::ARRAY_BUFFER,
+                bytemuck::cast_slice(&grid_verts),
+                glow::STATIC_DRAW,
+            );
+            gl.enable_vertex_attrib_array(0);
+            gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 12, 0);
+
+            let axes_verts: [[f32; 3]; 6] = [
+                // X (Red)
+                [0.0, y_plane, 0.0], [0.6, y_plane, 0.0],
+                // Y (Green)
+                [0.0, y_plane, 0.0], [0.0, y_plane + 0.6, 0.0],
+                // Z (Blue)
+                [0.0, y_plane, 0.0], [0.0, y_plane, 0.6],
+            ];
+
+            let axes_vao = gl.create_vertex_array().expect("Failed to create Axes VAO");
+            let axes_vbo = gl.create_buffer().expect("Failed to create Axes VBO");
+
+            gl.bind_vertex_array(Some(axes_vao));
+            gl.bind_buffer(glow::ARRAY_BUFFER, Some(axes_vbo));
+            gl.buffer_data_u8_slice(
+                glow::ARRAY_BUFFER,
+                bytemuck::cast_slice(&axes_verts),
+                glow::STATIC_DRAW,
+            );
+            gl.enable_vertex_attrib_array(0);
+            gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, 12, 0);
+
+            gl.bind_vertex_array(None);
+
+            Self {
+                grid_vao,
+                grid_vbo,
+                grid_vert_count: grid_verts.len() as i32,
+                axes_vao,
+                axes_vbo,
+                axes_vert_count: 6,
+            }
+        }
+    }
+
+    pub fn destroy(&self, gl: &glow::Context) {
+        unsafe {
+            gl.delete_vertex_array(self.grid_vao);
+            gl.delete_buffer(self.grid_vbo);
+            gl.delete_vertex_array(self.axes_vao);
+            gl.delete_buffer(self.axes_vbo);
+        }
+    }
+}
+
 pub struct ViewportGl {
     pub mesh: GpuMesh,
+    pub grid: GpuGrid,
     pub pbr_shader: PbrShader,
     pub skybox_shader: SkyboxShader,
     pub wireframe_shader: WireframeShader,
@@ -912,6 +999,7 @@ pub struct ViewportGl {
     pub skybox_intensity: f32,
     pub uv_scale: f32,
     pub show_wireframe: bool,
+    pub show_grid: bool,
     pub bloom_enabled: bool,
     pub bloom_intensity: f32,
     pub bloom_threshold: f32,
@@ -926,6 +1014,7 @@ pub struct ViewportGl {
 impl ViewportGl {
     pub fn new(gl: &glow::Context, mesh: &Mesh, stack: &LayerStack, baked: &BakedMaps) -> Result<Self, String> {
         let gpu_mesh = GpuMesh::new(gl, mesh);
+        let grid = GpuGrid::new(gl);
         let pbr_shader = PbrShader::new(gl)?;
         let skybox_shader = SkyboxShader::new(gl)?;
         let wireframe_shader = WireframeShader::new(gl)?;
@@ -937,6 +1026,7 @@ impl ViewportGl {
 
         let mut viewport = Self {
             mesh: gpu_mesh,
+            grid,
             pbr_shader,
             skybox_shader,
             wireframe_shader,
@@ -950,6 +1040,7 @@ impl ViewportGl {
             skybox_intensity: 1.0,
             uv_scale: 1.0,
             show_wireframe: false,
+            show_grid: true,
             bloom_enabled: false,
             bloom_intensity: 0.8,
             bloom_threshold: 0.85,
@@ -1159,7 +1250,30 @@ impl ViewportGl {
 
             self.mesh.draw(gl);
 
-            // 3. Render 3D Wireframe Overlay if enabled (Substance Painter F4)
+            // 3. Render Ground Plane Grid and World Axes if enabled
+            if self.show_grid {
+                gl.use_program(Some(self.wireframe_shader.program));
+                gl.uniform_matrix_4_f32_slice(self.wireframe_shader.u_mvp.as_ref(), false, &view_proj.to_cols_array());
+
+                // Subtle dark slate grid
+                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.25, 0.27, 0.30, 0.65);
+                gl.bind_vertex_array(Some(self.grid.grid_vao));
+                gl.draw_arrays(glow::LINES, 0, self.grid.grid_vert_count);
+
+                // World coordinate axes
+                gl.bind_vertex_array(Some(self.grid.axes_vao));
+                // X (Red)
+                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.95, 0.22, 0.22, 0.95);
+                gl.draw_arrays(glow::LINES, 0, 2);
+                // Y (Green)
+                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.22, 0.92, 0.22, 0.95);
+                gl.draw_arrays(glow::LINES, 2, 2);
+                // Z (Blue)
+                gl.uniform_4_f32(self.wireframe_shader.u_wire_color.as_ref(), 0.25, 0.55, 0.98, 0.95);
+                gl.draw_arrays(glow::LINES, 4, 2);
+            }
+
+            // 4. Render 3D Wireframe Overlay if enabled (Substance Painter F4)
             if self.show_wireframe {
                 gl.enable(glow::POLYGON_OFFSET_LINE);
                 gl.polygon_offset(-1.0, -1.0);
@@ -1183,6 +1297,7 @@ impl ViewportGl {
 
     pub fn destroy(&self, gl: &glow::Context) {
         self.mesh.destroy(gl);
+        self.grid.destroy(gl);
         self.pbr_shader.destroy(gl);
         self.skybox_shader.destroy(gl);
         self.wireframe_shader.destroy(gl);
@@ -1569,5 +1684,16 @@ mod tests {
         assert!(mesh.submeshes[0].visible);
         assert!(mesh.submeshes[1].visible);
         assert!(mesh.submeshes[2].visible);
+    }
+
+    #[test]
+    fn test_gpu_grid_dimensions() {
+        let extent = 2.0f32;
+        let step = 0.2f32;
+        let steps = (extent / step) as i32;
+        let line_count = (steps * 2 + 1) * 2;
+        assert_eq!(line_count, 42); // 21 lines parallel to Z + 21 lines parallel to X
+        let vert_count = line_count * 2;
+        assert_eq!(vert_count, 84);
     }
 }

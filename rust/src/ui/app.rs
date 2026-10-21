@@ -146,6 +146,7 @@ pub struct RemoainterApp {
     pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 3D | 2D
     pub show_wireframe: bool,
     pub show_uv_wireframe: bool,
+    pub show_grid: bool,
 
     // Hardware OpenGL PBR Viewport & Studio HDR Environment Pipeline
     pub gl: Option<Arc<glow::Context>>,
@@ -449,6 +450,7 @@ impl Default for RemoainterApp {
             viewport_view_mode: 2, // 3D | 2D Split View as default on startup (Substance Painter parity)
             show_wireframe: false,
             show_uv_wireframe: true,
+            show_grid: true,
 
             gl: None,
             viewport_gl: None,
@@ -2866,6 +2868,7 @@ impl RemoainterApp {
             let skybox_intensity = self.skybox_intensity;
             let uv_scale = self.uv_scale;
             let show_wireframe = self.show_wireframe;
+            let show_grid = self.show_grid;
 
             let bloom_enabled = self.bloom_enabled;
             let bloom_intensity = self.bloom_intensity;
@@ -2891,6 +2894,7 @@ impl RemoainterApp {
                     vp.skybox_intensity = skybox_intensity;
                     vp.uv_scale = uv_scale;
                     vp.show_wireframe = show_wireframe;
+                    vp.show_grid = show_grid;
                     vp.bloom_enabled = bloom_enabled;
                     vp.bloom_intensity = bloom_intensity;
                     vp.bloom_threshold = bloom_threshold;
@@ -4779,6 +4783,7 @@ impl RemoainterApp {
             ui.separator();
             ui.add(egui::Slider::new(&mut self.uv_scale, 0.1..=10.0).text("Material UV Tiling"));
             ui.checkbox(&mut self.show_wireframe, "Wireframe Overlay (F4)");
+            ui.checkbox(&mut self.show_grid, "Ground Grid & World Axes");
 
             ui.separator();
             ui.label(RichText::new("Color Management / Tone Mapping").strong());
