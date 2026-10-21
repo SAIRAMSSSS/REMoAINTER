@@ -1,0 +1,11 @@
+{
+  "name": "Leather Dark",
+  "resolution": 1024,
+  "channels": {
+    "base_color": "base_color.png",
+    "metallic": "metallic.png",
+    "roughness": "roughness.png",
+    "normal": "normal.png",
+    "ambient_occlusion": "ambient_occlusion.png"
+  }
+}

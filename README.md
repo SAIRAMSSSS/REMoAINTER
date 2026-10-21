@@ -59,10 +59,37 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 ### 5. Toroidal UV Seam Wrapping
 - Eliminates unsightly seams when painting across 0.0–1.0 UV boundary edges by dynamically wrapping brush kernels toroidally.
 
-### 6. Bundled Test Assets
+### 6. Embedded Hardware OpenGL PBR Viewport (`glow`)
+- **24-bit Hardware Depth Buffer**: Full OpenGL `GL_DEPTH_TEST` with `GL_LEQUAL` depth sorting—eliminating triangle flickering and ordering artifacts on complex overlapping geometry (lantern glass, burner, frame bars).
+- **Cook-Torrance Microfacet GGX BRDF**:
+  - Specular distribution: Trowbridge-Reitz $D_{GGX}$
+  - Shadowing-masking: Smith-Schlick $G_{Smith}$
+  - Fresnel: Schlick approximation with roughness attenuation
+  - Tangent-space TBN normal mapping using per-vertex MikkTSpace orthogonal tangents
+- **Real-Time Dynamic Lighting**: Per-fragment specular and Fresnel reflections calculated every frame that respond interactively to camera orbit and light rotation.
+- **Display Channels**: Instant GPU shader uniform solo switching between Lit Material, Base Color, Roughness, Metallic, Normal, AO, and Curvature.
+
+### 7. Real HDR Image-Based Lighting (IBL) & Studio Probes
+- **OpenEXR High Dynamic Range Probes**: Directly loads authentic 32-bit floating-point panoramic `.exr` environments (`Studio Tomoco.exr`, `Soft 1Front.exr`, etc.) from `Studio/`.
+- **Numerical Split-Sum Integration LUT**: Precomputes a 512x512 RG16F BRDF integration LUT via Hammersley importance sampling for accurate ambient specular response.
+- **Panoramic Skybox**: Interactive background rendering with blur filter and intensity multiplier.
+- **ACES Filmic Tone Mapping**: Industry-standard Academy Color Encoding System (ACES) filmic S-curve with gamma 2.2 correction into linear sRGB display space.
+
+### 8. Real Material Pipeline & Texture Set Importer
+- **SBSAR & SPSM Batch Exporter (`tools/export_sbsar.py`)**:
+  - Utilizes Adobe's `sbsrender` CLI (Substance Automation Toolkit) to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
+  - Graceful fallback with clear instructions when `sbsrender` is not installed; extracts bundled textures from `.spsm` smart materials.
+- **In-App PBR Texture Set Importer & Drag-and-Drop**:
+  - Drag and drop any texture pack folder or multiple files onto the window to automatically match channels.
+  - Suffix detection for ambientCG, Poly Haven, and Substance conventions (`_albedo`, `_nor_gl`, `_nor_dx`, `_roughness`, `_metallic`, `_ao`, `_height`).
+  - Automatic DirectX to OpenGL normal map Y-inversion.
+  - Dedicated interactive modal dialog for manual channel assignments and unmatched fallback maps.
+
+### 9. Bundled Test Assets & Starter Materials
 - **Antique Lantern** (`assets/test_models/lantern.obj`): High-detail multi-part mesh for testing metal, glass, and curvature wear.
 - **Retro Radio** (`assets/test_models/radio.obj`): Complex mesh with knobs, grilles, and antennas for ambient occlusion and crevice testing.
 - **PBR Material Sphere**: Standard sphere for look-dev.
+- **10 Core Real PBR Materials**: Aluminium Anodized Red, Brass Antique, Carbon Fiber, Concrete Wall, Copper Oxidized, Gold Pure, Iron Rough, Leather Dark, Steel Painted Scraped Green, Wood Walnut.
 
 ---
 
@@ -72,7 +99,12 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 REMoAINTER/
 ├── assets/
 │   ├── branding/           # REMoAINTER logos and icons
+│   ├── materials/          # Real PBR materials with 1024/2048 texture maps
+│   ├── shelf/              # Shelf assets (thumbnails, smart materials, alphas)
 │   └── test_models/        # Test assets (lantern.obj, radio.obj)
+├── tools/
+│   ├── export_sbsar.py     # SBSAR & SPSM batch exporter CLI
+│   └── generate_core_pbr_materials.py # Starter PBR material generator
 ├── docs/
 │   └── v2.0.0_ARCHITECTURE.md # Full architecture specification
 ├── rust/                   # Rust v2.0.0 implementation
@@ -81,16 +113,19 @@ REMoAINTER/
 │       ├── baker/          # Rayon multithreaded baking engine
 │       │   ├── engine.rs
 │       │   └── mod.rs
-│       ├── graphics/       # Wavefront OBJ and mesh processing
+│       ├── graphics/       # Hardware OpenGL viewport, mesh, tangents
 │       │   ├── mesh.rs
+│       │   ├── viewport_gl.rs
 │       │   └── mod.rs
-│       ├── painting/       # Layer stack, black masks, brush, anchors
+│       ├── painting/       # Layer stack, black masks, brush, anchors, importer
 │       │   ├── anchor.rs
 │       │   ├── brush.rs
 │       │   ├── layer.rs
 │       │   ├── mask.rs
+│       │   ├── material_gen.rs
+│       │   ├── texture_importer.rs
 │       │   └── mod.rs
-│       ├── ui/             # egui / eframe Substance Painter UI
+│       ├── ui/             # egui / glow Substance Painter UI
 │       │   ├── app.rs
 │       │   ├── theme.rs
 │       │   └── mod.rs
@@ -124,9 +159,30 @@ cargo build --release
 | `5` | Smudge Tool |
 | `6` | Clone Stamp Tool |
 | `I` | Eyedropper |
+| `F1` | Split 3D & 2D Viewport |
+| `F2` | 3D PBR Viewport |
+| `F3` | 2D UV Texture Canvas |
+| `F4` | Toggle Wireframe Overlay |
+| `M` | Solo Lit Material Channel |
+| `C` | Solo Base Color Channel |
+| `B` | Solo Ambient Occlusion Channel |
 | `Ctrl + N` | New Project |
 | `Ctrl + Shift + B` | Open Mesh Maps Baker Dialog |
-| `Alt + Left Drag` | Orbit Viewport Camera |
+| `Alt + Left Drag` | Orbit Viewport Camera (moves highlights) |
+| `Alt + Middle Drag` | Pan Camera |
+| `Alt + Right Drag / Wheel` | Zoom Camera |
+| `Shift + Right Drag` | Rotate Studio Environment Light |
+
+### Batch SBSAR & Smart Material Exporter
+To render Adobe `.sbsar` procedural graphs into 2048x2048 PNG PBR texture sets with `material.json` manifests:
+```bash
+# Using Adobe Substance Automation Toolkit (sbsrender)
+python3 tools/export_sbsar.py --resolution 2048
+
+# Or with custom directories
+python3 tools/export_sbsar.py --sbsar-dir /path/to/materials --out-dir assets/materials
+```
+If `sbsrender` is not installed on your system, the exporter will print clear setup instructions and proceed to index all `.spsm` smart materials and bundled texture sets.
 
 ---
 

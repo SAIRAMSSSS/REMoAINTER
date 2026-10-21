@@ -1,0 +1,12 @@
+{
+  "name": "Skin Feverish",
+  "resolution": 1024,
+  "is_metal": false,
+  "channels": {
+    "base_color": "base_color.png",
+    "normal": "normal.png",
+    "roughness": "roughness.png",
+    "metallic": "metallic.png",
+    "ambient_occlusion": "ambient_occlusion.png"
+  }
+}
