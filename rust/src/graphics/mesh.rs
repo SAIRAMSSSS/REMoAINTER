@@ -29,53 +29,52 @@ impl Mesh {
             });
         }
     }
-    /// Creates a smooth, pristine Material Calibration Sphere with continuous UV coordinates and normals
+    /// Creates a smooth, pristine Material Calibration Sphere with Substance Painter-parity
+    /// UV layout: a main body island (left column) plus two circular pole-cap islands in the
+    /// right margin — organized flat islands instead of a full-bleed equirectangular "globe"
+    /// map.
     pub fn create_material_sphere(rings: u32, sectors: u32) -> Self {
-        // 1. Try to load authentic MaterialX sphere asset if present
-        let sphere_paths = [
-            "/mnt/shared/REMoAINTER/assets/test_models/sphere.obj",
-            "assets/test_models/sphere.obj",
-            "../assets/test_models/sphere.obj",
-            "/usr/share/materialx/resources/Geometry/sphere.obj",
-        ];
-        for p in &sphere_paths {
-            if std::path::Path::new(p).exists() {
-                if let Ok(mut m) = Self::load_obj(p) {
-                    m.name = "Material Sphere".to_string();
-                    return m;
-                }
-            }
-        }
+        // Substance-parity UV island layout constants
+        const BODY_U0: f32 = 0.02;
+        const BODY_V0: f32 = 0.02;
+        const BODY_U1: f32 = 0.70;
+        const BODY_V1: f32 = 0.98;
+        const CAP_R: f32 = 0.095;
+        const TOP_CAP_C: [f32; 2] = [0.855, 0.245];
+        const BOTTOM_CAP_C: [f32; 2] = [0.855, 0.755];
+        // Polar trim angle: body covers phi in [delta, PI-delta]; the caps cover the rest.
+        const CAP_DELTA: f32 = 0.18849556; // ~10.8 degrees (0.06 * PI)
 
-        // 2. High-precision procedural sphere fallback with clean continuous UVs
         let mut vertices = Vec::new();
         let mut normals = Vec::new();
         let mut uvs = Vec::new();
         let mut indices = Vec::new();
 
-        let r_step = 1.0 / (rings as f32);
-        let s_step = 1.0 / (sectors as f32);
-
+        // ---- Main body island (lat/long strip between the two pole caps) ----
         for r in 0..=rings {
-            let phi = std::f32::consts::PI * (r as f32 * r_step);
+            let phi =
+                CAP_DELTA + (std::f32::consts::PI - 2.0 * CAP_DELTA) * (r as f32 / rings as f32);
             let y = phi.cos();
             let sin_phi = phi.sin();
+            let v = BODY_V1 - (r as f32 / rings as f32) * (BODY_V1 - BODY_V0);
 
             for s in 0..=sectors {
-                let theta = 2.0 * std::f32::consts::PI * (s as f32 * s_step);
+                let theta = 2.0 * std::f32::consts::PI * (s as f32 / sectors as f32);
                 let x = sin_phi * theta.cos();
                 let z = sin_phi * theta.sin();
 
                 vertices.push([x, y, z]);
                 normals.push([x, y, z]);
-                uvs.push([s as f32 * s_step, 1.0 - r as f32 * r_step]);
+                let u = BODY_U0 + (s as f32 / sectors as f32) * (BODY_U1 - BODY_U0);
+                uvs.push([u, v]);
             }
         }
 
+        let body_stride = sectors + 1;
         for r in 0..rings {
             for s in 0..sectors {
-                let cur = r * (sectors + 1) + s;
-                let next = cur + sectors + 1;
+                let cur = r * body_stride + s;
+                let next = cur + body_stride;
 
                 indices.push(cur);
                 indices.push(cur + 1);
@@ -86,6 +85,59 @@ impl Mesh {
                 indices.push(next);
             }
         }
+
+        // ---- Top pole cap island (fan around the +Y pole, circular in UV space) ----
+        let top_pole = vertices.len() as u32;
+        vertices.push([0.0, 1.0, 0.0]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([TOP_CAP_C[0], TOP_CAP_C[1]]);
+
+        let cap_sectors = sectors.max(24);
+        let cap_ring_start = vertices.len() as u32;
+        for s in 0..cap_sectors {
+            let theta = 2.0 * std::f32::consts::PI * (s as f32 / cap_sectors as f32);
+            let x = CAP_DELTA.sin() * theta.cos();
+            let z = CAP_DELTA.sin() * theta.sin();
+            vertices.push([x, CAP_DELTA.cos(), z]);
+            normals.push([x, CAP_DELTA.cos(), z]);
+            uvs.push([
+                TOP_CAP_C[0] + CAP_R * theta.cos(),
+                TOP_CAP_C[1] + CAP_R * theta.sin(),
+            ]);
+        }
+        for s in 0..cap_sectors {
+            // Winding chosen so the face normal points outward (+Y)
+            indices.push(top_pole);
+            indices.push(cap_ring_start + (s + 1) % cap_sectors);
+            indices.push(cap_ring_start + s);
+        }
+
+        // ---- Bottom pole cap island (fan around the -Y pole, circular in UV space) ----
+        let bottom_pole = vertices.len() as u32;
+        vertices.push([0.0, -1.0, 0.0]);
+        normals.push([0.0, -1.0, 0.0]);
+        uvs.push([BOTTOM_CAP_C[0], BOTTOM_CAP_C[1]]);
+
+        let cap_ring_start = vertices.len() as u32;
+        for s in 0..cap_sectors {
+            let theta = 2.0 * std::f32::consts::PI * (s as f32 / cap_sectors as f32);
+            let x = CAP_DELTA.sin() * theta.cos();
+            let z = CAP_DELTA.sin() * theta.sin();
+            vertices.push([x, -CAP_DELTA.cos(), z]);
+            normals.push([x, -CAP_DELTA.cos(), z]);
+            uvs.push([
+                BOTTOM_CAP_C[0] + CAP_R * theta.cos(),
+                BOTTOM_CAP_C[1] + CAP_R * theta.sin(),
+            ]);
+        }
+        for s in 0..cap_sectors {
+            // Winding chosen so the face normal points outward (-Y)
+            indices.push(bottom_pole);
+            indices.push(cap_ring_start + s);
+            indices.push(cap_ring_start + (s + 1) % cap_sectors);
+        }
+
+        debug_assert!(indices.iter().all(|&i| i < vertices.len() as u32));
 
         let mut mesh = Self {
             name: "Material Sphere".to_string(),
@@ -933,6 +985,43 @@ impl Mesh {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_material_sphere_uses_island_uv_layout() {
+        let s = Mesh::create_material_sphere(32, 48);
+        // All UVs within [0,1]
+        for uv in &s.uvs {
+            assert!(
+                (0.0..=1.0).contains(&uv[0]) && (0.0..=1.0).contains(&uv[1]),
+                "uv outside texture: {:?}",
+                uv
+            );
+        }
+        // Substance-parity: every UV belongs to one of the three organized
+        // shells — the body island (left column) or one of the two circular
+        // pole caps in the right margin. No full-bleed equirect corners.
+        for uv in &s.uvs {
+            let in_body = uv[0] >= 0.019 && uv[0] <= 0.701 && uv[1] >= 0.019 && uv[1] <= 0.981;
+            let in_top_cap = ((uv[0] - 0.855).hypot(uv[1] - 0.245)) <= 0.096;
+            let in_bottom_cap = ((uv[0] - 0.855).hypot(uv[1] - 0.755)) <= 0.096;
+            assert!(
+                in_body || in_top_cap || in_bottom_cap,
+                "uv {:?} outside any organized shell (full-bleed globe look)",
+                uv
+            );
+        }
+        // Shell centers exist (pole fans)
+        assert!(s
+            .uvs
+            .iter()
+            .any(|u| (u[0] - 0.855).abs() < 1e-4 && (u[1] - 0.245).abs() < 1e-4));
+        assert!(s
+            .uvs
+            .iter()
+            .any(|u| (u[0] - 0.855).abs() < 1e-4 && (u[1] - 0.755).abs() < 1e-4));
+        // Indices valid
+        assert!(s.indices.iter().all(|&i| (i as usize) < s.vertices.len()));
+    }
 
     #[test]
     fn test_unsupported_format_returns_error_not_fallback() {

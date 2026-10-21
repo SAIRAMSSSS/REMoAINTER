@@ -1227,12 +1227,14 @@ mod tests {
         assert!(hit.is_some(), "Ray directed at sphere must intersect BVH");
         let h = hit.unwrap();
         assert!(
-            (h.position[2] - 0.577).abs() < 0.1,
-            "Front surface of normalized sphere should be near z=0.577"
+            (h.position[2] - 1.0).abs() < 0.05,
+            "Front surface of unit procedural sphere should be near z=1.0 (got {})",
+            h.position[2]
         );
         assert!(
-            (h.distance - 2.422).abs() < 0.1,
-            "Hit distance should be ~2.42"
+            (h.distance - 2.0).abs() < 0.05,
+            "Hit distance should be ~2.0 (got {})",
+            h.distance
         );
         assert!(h.normal[2] > 0.9, "Hit normal should face +Z");
     }
