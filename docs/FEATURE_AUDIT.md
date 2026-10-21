@@ -146,7 +146,7 @@ Status Legend:
 | **Mask Stack** | **Implemented** | `LayerMask` supports White, Black, and Bitmap masks. |
 | **Mask Paint-in-Mask** | **Implemented** | Dual thumbnail workflow (Content & Mask), click-to-activate mask editing mode with 2D & 3D real-time grayscale brush painting. |
 | **Mask Effects Stack** | **Implemented** | Sub-stack supporting sequential evaluation of Fill, Generator, Levels, and Invert effects. |
-| **Procedural Generators** | **Partial** | `Metal Edge Wear` and `Dirt Crevices` implemented using baked AO and Curvature. Missing Position gradient, World Normal top/bottom, Thickness, and ID generators. |
+| **Procedural Generators** | **Implemented** | `Metal Edge Wear`, `Dirt Crevices`, `Dust Accumulation`, `Position Gradient`, `World Normal Orientation`, `Thickness / Subsurface`, and `Color / ID Selection` with grunge FBM noise, tolerance, and axis controls. |
 | **Filters Stack** | **Implemented** | Non-destructive `FilterEffect` stack supporting Levels, Gaussian Blur, Sharpen, HSL adjustment, Invert, and Gradient Map with dynamic inspector controls. |
 | **Anchor Points** | **Partial** | `AnchorPoint` struct and creation UI implemented; referencing anchor points from generators in other layers is partial. |
 
@@ -194,14 +194,14 @@ Status Legend:
 
 | Export Feature | Status | Implementation Details / File Location |
 | :--- | :--- | :--- |
-| **Export Dialog UI** | **Implemented** | Window with target mesh, resolution, directory picker, preset dropdown. |
-| **Unreal Engine ORM Preset**| **Partial** | Preset choice exists; automated channel packing (R=AO, G=Roughness, B=Metallic) writer needs completion. |
-| **Unity MaskMap Preset** | **Partial** | Preset choice exists; packing (R=Metallic, G=AO, B=Thickness, A=Smoothness) writer needs completion. |
-| **glTF 2.0 Preset** | **Partial** | Preset choice exists; Khronos packing (B=Metallic, G=Roughness) needs completion. |
-| **Generic PBR Preset** | **Implemented** | Exports separate BaseColor, Roughness, Metallic, Normal, AO images. |
-| **Bit Depth Selection** | **Partial** | 8-bit PNG implemented; 16-bit PNG/TIFF and 32-bit EXR writer partial. |
+| **Export Dialog UI** | **Implemented** | Window with target mesh, resolution, directory picker, preset dropdown, and export status logging. |
+| **Unreal Engine ORM Preset**| **Implemented** | `src/painting/export.rs`: automated channel packing (R=AO, G=Roughness, B=Metallic) with Normal DirectX Y-. |
+| **Unity MaskMap Preset** | **Implemented** | `src/painting/export.rs`: automated packing (R=Metallic, G=AO, B=Thickness, A=Smoothness) with Normal OpenGL Y+. |
+| **glTF 2.0 Preset** | **Implemented** | `src/painting/export.rs`: Khronos standard packing (B=Metallic, G=Roughness, R=AO). |
+| **Generic PBR Preset** | **Implemented** | Exports separate BaseColor, Roughness, Metallic, Normal, and AO images. |
+| **Bit Depth Selection** | **Implemented** | 8-bit PNG, 16-bit PNG, and 32-bit OpenEXR floating-point support. |
 | **Edge Dilation / Padding** | **Implemented** | Push-pull dilation into UV gutter regions to prevent black mipmap seams. |
-| **Per-Texture-Set Output** | **Partial** | Single mesh exported cleanly; multi-texture-set batch export needs completion. |
+| **Per-Texture-Set Output** | **Implemented** | `export_all_texture_sets` iterates and exports all active texture sets with naming template tokens. |
 
 ---
 
@@ -211,8 +211,8 @@ Status Legend:
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | **Menu Items** | 32 | 20 | 3 | 0 | 9 |
 | **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
-| **Layer Stack & System** | 11 | 9 | 2 | 0 | 0 |
+| **Layer Stack & System** | 11 | 10 | 1 | 0 | 0 |
 | **Mesh Map Baking** | 14 | 8 | 4 | 0 | 2 |
 | **Viewport & Shaders** | 10 | 6 | 0 | 0 | 4 |
-| **Texture Export** | 8 | 7 | 1 | 0 | 0 |
-| **Total** | **90** | **61 (67.8%)** | **12 (13.3%)** | **1 (1.1%)** | **16 (17.8%)** |
+| **Texture Export** | 8 | 8 | 0 | 0 | 0 |
+| **Total** | **90** | **63 (70.0%)** | **10 (11.1%)** | **1 (1.1%)** | **16 (17.8%)** |

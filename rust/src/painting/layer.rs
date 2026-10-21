@@ -531,13 +531,13 @@ impl Layer {
 
     pub fn add_black_mask(&mut self) {
         let mut mask = LayerMask::new(MaskType::Black, self.width, self.height);
-        mask.recompute(None, None);
+        mask.recompute(None, None, None, None, None, None);
         self.mask = Some(mask);
     }
 
     pub fn add_white_mask(&mut self) {
         let mut mask = LayerMask::new(MaskType::White, self.width, self.height);
-        mask.recompute(None, None);
+        mask.recompute(None, None, None, None, None, None);
         self.mask = Some(mask);
     }
 
@@ -1301,7 +1301,7 @@ impl LayerStack {
         stack.layers.push(base_metal);
         stack.layers.push(Layer::new_paint(2, "Paint Layer 1", width, height));
         stack.active_layer_index = 1;
-        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
         stack
     }
 
@@ -1328,12 +1328,12 @@ impl LayerStack {
                 mask.resize(new_w, new_h);
             }
         }
-        self.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        self.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
     }
 
     /// Recomputes the composite buffers using default environment
     pub fn recompute_composite(&mut self) {
-        self.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        self.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
     }
 
     /// Full PBR Stack Composite with Blend Modes, Channel Masking, and Rayon Multi-threaded Global Illumination
@@ -1342,6 +1342,9 @@ impl LayerStack {
         baked_curvature: Option<&[f32]>,
         baked_ao: Option<&[f32]>,
         baked_wsn: Option<&[[f32; 3]]>,
+        baked_pos: Option<&[[f32; 3]]>,
+        baked_thickness: Option<&[f32]>,
+        baked_id: Option<&[[f32; 4]]>,
         env_preset: EnvironmentPreset,
         env_rotation_rad: f32,
         light_intensity: f32,
@@ -1391,7 +1394,7 @@ impl LayerStack {
             }
 
             if let Some(ref mut mask) = layer.mask {
-                mask.recompute(baked_curvature, baked_ao);
+                mask.recompute(baked_curvature, baked_ao, baked_wsn, baked_pos, baked_thickness, baked_id);
             }
 
             let layer_op = layer.opacity * folder_opacity;
@@ -1663,7 +1666,7 @@ impl LayerStack {
             return;
         }
         if (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
-            self.composite(None, baked_ao, None, env_preset, env_rotation_rad, light_intensity);
+            self.composite(None, baked_ao, None, None, None, None, env_preset, env_rotation_rad, light_intensity);
             return;
         }
 
@@ -1688,7 +1691,7 @@ impl LayerStack {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
 
     #[test]
@@ -1728,7 +1731,7 @@ pub mod tests {
         child.channel_roughness_enabled = false; // Override: do not contribute roughness
         stack.layers.push(child);
 
-        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
         // Child color should be visible because folder is visible
         assert_eq!(stack.composite_color[0], [1.0, 0.0, 0.0, 1.0]);
         // Metallic should be contributed
@@ -1738,7 +1741,7 @@ pub mod tests {
 
         // Now hide the folder
         stack.layers[0].visible = false;
-        stack.composite(None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
+        stack.composite(None, None, None, None, None, None, EnvironmentPreset::StudioTomoco, 0.0, 1.0);
         // Since parent folder is hidden, child should not contribute
         assert_eq!(stack.composite_color[0], [0.15, 0.15, 0.16, 1.0]);
         assert_eq!(stack.composite_metallic[0], 0.0);

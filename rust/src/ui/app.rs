@@ -525,6 +525,9 @@ impl RemoainterApp {
             self.baked_maps.curvature.as_deref(),
             self.baked_maps.ambient_occlusion.as_deref(),
             self.baked_maps.world_space_normal.as_deref(),
+            self.baked_maps.position.as_deref(),
+            self.baked_maps.thickness.as_deref(),
+            self.baked_maps.id.as_deref(),
             preset,
             rot,
             intensity,
@@ -3470,12 +3473,28 @@ impl RemoainterApp {
                                 list_action = Some(LayerListAction::AddGenerator(i, "Metal Edge Wear".into()));
                                 ui.close_menu();
                             }
-                            if ui.button("Curvature Wear").clicked() {
-                                list_action = Some(LayerListAction::AddGenerator(i, "Curvature Wear".into()));
+                            if ui.button("Dirt Crevices").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "Dirt Crevices".into()));
                                 ui.close_menu();
                             }
-                            if ui.button("Cavity Dirt").clicked() {
-                                list_action = Some(LayerListAction::AddGenerator(i, "Cavity Dirt".into()));
+                            if ui.button("Dust Accumulation").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "Dust Accumulation".into()));
+                                ui.close_menu();
+                            }
+                            if ui.button("Position Gradient").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "Position Gradient".into()));
+                                ui.close_menu();
+                            }
+                            if ui.button("World Normal Orientation").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "World Normal Orientation".into()));
+                                ui.close_menu();
+                            }
+                            if ui.button("Thickness / Subsurface").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "Thickness / Subsurface".into()));
+                                ui.close_menu();
+                            }
+                            if ui.button("Color / ID Selection").clicked() {
+                                list_action = Some(LayerListAction::AddGenerator(i, "Color / ID Selection".into()));
                                 ui.close_menu();
                             }
                         });
@@ -3551,40 +3570,62 @@ impl RemoainterApp {
                             ui.indent("mask_indent", |ui| {
                                 ui.horizontal(|ui| {
                                     ui.colored_label(ACTIVE_BLUE, "↳ Mask Sub-Stack:");
-                                    if ui.small_button("+ Generator").clicked() {
-                                        mask.effects.push(MaskEffect::Generator {
-                                            name: "Metal Edge Wear".into(),
-                                            wear_level: 0.8,
-                                            contrast: 1.2,
-                                            dirt_amount: 0.5,
-                                            invert: false,
-                                            use_ao: true,
-                                            use_curvature: true,
-                                            anchor_name: None,
-                                            blend_mode: MaskBlendMode::Multiply,
-                                            opacity: 1.0,
-                                        });
-                                    }
+                                    ui.menu_button("+ Generator", |ui| {
+                                        let gens = [
+                                            "Metal Edge Wear", "Dirt Crevices", "Dust Accumulation",
+                                            "Position Gradient", "World Normal Orientation",
+                                            "Thickness / Subsurface", "Color / ID Selection"
+                                        ];
+                                        for g in gens {
+                                            if ui.button(g).clicked() {
+                                                list_action = Some(LayerListAction::AddGenerator(i, g.into()));
+                                                ui.close_menu();
+                                            }
+                                        }
+                                    });
                                     if ui.small_button("+ Fill Effect").clicked() {
-                                        mask.effects.push(MaskEffect::Fill {
-                                            value: 0.5,
-                                            noise_frequency: 1.0,
-                                            blend_mode: MaskBlendMode::Normal,
-                                            opacity: 1.0,
-                                        });
+                                        list_action = Some(LayerListAction::AddFillEffect(i));
+                                    }
+                                    if ui.small_button("+ Levels").clicked() {
+                                        list_action = Some(LayerListAction::AddLevels(i));
                                     }
                                 });
 
-                                for eff in &mask.effects {
-                                    match eff {
-                                        MaskEffect::Generator { name, wear_level, .. } => {
-                                            ui.label(format!("  • Generator: {} (Wear: {:.1})", name, wear_level));
+                                let mut eff_rem = None;
+                                for (eff_i, eff) in mask.effects.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                        match eff {
+                                            MaskEffect::Generator { name, wear_level, contrast, grunge_amount, .. } => {
+                                                ui.label(format!("  • ⚡ {}:", name));
+                                                ui.add(egui::Slider::new(wear_level, 0.0..=2.0).text("Level").show_value(false));
+                                                ui.add(egui::Slider::new(contrast, 0.1..=4.0).text("Contrast").show_value(false));
+                                                ui.add(egui::Slider::new(grunge_amount, 0.0..=1.0).text("Grunge").show_value(false));
+                                            }
+                                            MaskEffect::Fill { value, noise_frequency, .. } => {
+                                                ui.label("  • 🎨 Fill:");
+                                                ui.add(egui::Slider::new(value, 0.0..=1.0).text("Val").show_value(false));
+                                                ui.add(egui::Slider::new(noise_frequency, 0.0..=10.0).text("Noise").show_value(false));
+                                            }
+                                            MaskEffect::Levels { black_in, white_in, gamma } => {
+                                                ui.label("  • 📊 Levels:");
+                                                ui.add(egui::Slider::new(black_in, 0.0..=1.0).text("In").show_value(false));
+                                                ui.add(egui::Slider::new(white_in, 0.0..=1.0).text("Out").show_value(false));
+                                                ui.add(egui::Slider::new(gamma, 0.1..=3.0).text("γ").show_value(false));
+                                            }
+                                            MaskEffect::Invert => {
+                                                ui.label("  • 🔄 Invert");
+                                            }
+                                            MaskEffect::Paint { .. } => {
+                                                ui.label("  • 🖌 Paint");
+                                            }
                                         }
-                                        MaskEffect::Fill { value, .. } => {
-                                            ui.label(format!("  • Fill Effect (Val: {:.2})", value));
+                                        if ui.small_button("✕").clicked() {
+                                            eff_rem = Some(eff_i);
                                         }
-                                        _ => {}
-                                    }
+                                    });
+                                }
+                                if let Some(r_idx) = eff_rem {
+                                    mask.effects.remove(r_idx);
                                 }
                             });
                         }
@@ -3741,10 +3782,15 @@ impl RemoainterApp {
                             l.add_black_mask();
                         }
                         if let Some(ref mut m) = l.mask {
-                            let (use_curv, use_ao) = match gen_name.as_str() {
-                                "Cavity Dirt" => (false, true),
-                                "Curvature Wear" => (true, false),
-                                _ => (true, true),
+                            let (use_curv, use_ao, default_axis) = match gen_name.as_str() {
+                                "Dirt Crevices" => (true, true, 1),
+                                "Curvature Wear" => (true, false, 1),
+                                "Dust Accumulation" => (false, true, 1),
+                                "Position Gradient" => (false, false, 1),
+                                "World Normal Orientation" => (false, false, 1),
+                                "Thickness / Subsurface" => (false, false, 1),
+                                "Color / ID Selection" => (false, false, 1),
+                                _ => (true, true, 1),
                             };
                             m.effects.push(MaskEffect::Generator {
                                 name: gen_name.clone(),
@@ -3757,8 +3803,21 @@ impl RemoainterApp {
                                 anchor_name: None,
                                 blend_mode: MaskBlendMode::Multiply,
                                 opacity: 1.0,
+                                grunge_amount: 0.35,
+                                grunge_scale: 6.0,
+                                axis: default_axis,
+                                normal_direction: [0.0, 1.0, 0.0],
+                                target_color: [1.0, 0.0, 0.0, 1.0],
+                                tolerance: 0.2,
                             });
-                            m.recompute(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
+                            m.recompute(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                                self.baked_maps.world_space_normal.as_deref(),
+                                self.baked_maps.position.as_deref(),
+                                self.baked_maps.thickness.as_deref(),
+                                self.baked_maps.id.as_deref(),
+                            );
                             recomposite_needed = true;
                             self.status_message = format!("Added Generator ({}) to {}", gen_name, l.name);
                         }
@@ -3776,7 +3835,14 @@ impl RemoainterApp {
                                 blend_mode: MaskBlendMode::Normal,
                                 opacity: 1.0,
                             });
-                            m.recompute(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
+                            m.recompute(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                                self.baked_maps.world_space_normal.as_deref(),
+                                self.baked_maps.position.as_deref(),
+                                self.baked_maps.thickness.as_deref(),
+                                self.baked_maps.id.as_deref(),
+                            );
                             recomposite_needed = true;
                             self.status_message = format!("Added Fill Effect to {}", l.name);
                         }
@@ -3793,7 +3859,14 @@ impl RemoainterApp {
                                 white_in: 0.9,
                                 gamma: 1.2,
                             });
-                            m.recompute(self.baked_maps.curvature.as_deref(), self.baked_maps.ambient_occlusion.as_deref());
+                            m.recompute(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                                self.baked_maps.world_space_normal.as_deref(),
+                                self.baked_maps.position.as_deref(),
+                                self.baked_maps.thickness.as_deref(),
+                                self.baked_maps.id.as_deref(),
+                            );
                             recomposite_needed = true;
                             self.status_message = format!("Added Levels Effect to {}", l.name);
                         }
