@@ -13,6 +13,9 @@ use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
 use crate::painting::anchor::AnchorPoint;
 use crate::painting::filter::FilterEffect;
 
+pub mod config;
+pub use config::AppConfig;
+
 /// Magic bytes for REMoAINTER Project archives
 pub const RMP_MAGIC: &str = "REMOAINTER_PROJECT_V1";
 pub const CURRENT_FORMAT_VERSION: u32 = 1;

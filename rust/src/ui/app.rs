@@ -9,6 +9,7 @@ use crate::painting::{
     ExportPreset, TextureExportContext, OutputFormat, BitDepth,
     FilterEffect, FilterTargetChannel,
 };
+use crate::project::AppConfig;
 use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, RichText, Stroke, Ui};
@@ -196,6 +197,13 @@ pub struct RemoainterApp {
     pub mesh_source_path: Option<String>,
     pub snapshots: Vec<crate::project::SnapshotInfo>,
     pub show_snapshots_dialog: bool,
+
+    // Preferences, Hotkeys & Configuration (Persistent in ~/.remoainter/config.json)
+    pub config: AppConfig,
+    pub show_preferences_dialog: bool,
+    pub show_hotkeys_dialog: bool,
+    pub show_shortcuts_dialog: bool,
+    pub color_management_mode: usize,
 }
 
 fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
@@ -353,6 +361,11 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
 
 impl Default for RemoainterApp {
     fn default() -> Self {
+        let config = AppConfig::load();
+        let autosave_interval = config.autosave_interval_secs;
+        let default_export = PathBuf::from(&config.default_export_dir);
+        let color_mgmt = config.color_management_mode;
+
         let mut app = Self {
             active_tool: ToolMode::Paint,
             brush: Brush::default(),
@@ -459,7 +472,7 @@ impl Default for RemoainterApp {
             texture_set_manager: crate::painting::TextureSetManager::new(2048),
 
             show_export_dialog: false,
-            export_output_dir: PathBuf::from("/mnt/shared/REMoAINTER/exports"),
+            export_output_dir: default_export,
             export_preset_idx: 0,
             export_resolution: 2048,
             export_file_format: 0,
@@ -481,10 +494,16 @@ impl Default for RemoainterApp {
             current_project_path: None,
             project_is_dirty: false,
             last_autosave_time: std::time::Instant::now(),
-            autosave_interval_secs: 180,
+            autosave_interval_secs: autosave_interval,
             mesh_source_path: None,
             snapshots: Vec::new(),
             show_snapshots_dialog: false,
+
+            config,
+            show_preferences_dialog: false,
+            show_hotkeys_dialog: false,
+            show_shortcuts_dialog: false,
+            color_management_mode: color_mgmt,
         };
 
         // Material Calibration Sphere is active by default
@@ -936,6 +955,7 @@ impl RemoainterApp {
             match res {
                 Ok(_) => {
                     self.project_is_dirty = false;
+                    self.config.add_recent(path.display().to_string());
                     self.status_message = format!("Saved project to {}", path.display());
                     self.history.push(format!("{:02}  Save Project", self.history.len() + 1));
                     self.logs.push((
@@ -974,60 +994,123 @@ impl RemoainterApp {
         }
     }
 
-    /// Opens a `.rmp` project file from disk
+    /// Opens a `.rmp` project file from path
+    pub fn open_project_file(&mut self, path: &std::path::Path) {
+        match crate::project::ProjectManager::load_project(path) {
+            Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) => {
+                self.project_name = manifest.project_name;
+                self.current_project_path = Some(path.to_path_buf());
+                self.mesh = mesh;
+                self.mesh_source_path = manifest.mesh_file_path;
+                self.layer_stack = layer_stack;
+                self.baked_maps = baked_maps;
+                self.baker_options = baker_options;
+                self.camera_yaw = manifest.camera_yaw;
+                self.camera_pitch = manifest.camera_pitch;
+                self.camera_dist = manifest.camera_dist;
+                self.exposure = manifest.exposure;
+                self.light_intensity = manifest.light_intensity;
+                self.env_rotation = manifest.env_rotation;
+                self.selected_env_idx = manifest.selected_env_idx;
+                self.project_is_dirty = false;
+                self.texture_needs_update = true;
+
+                // Update GPU mesh in Viewport
+                if let Some(ref vp_mutex) = self.viewport_gl {
+                    if let Some(ref gl) = self.gl {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            vp.set_mesh(gl, &self.mesh);
+                        }
+                    }
+                }
+
+                self.recompute_composite();
+                self.config.add_recent(path.display().to_string());
+                self.status_message = format!("Opened project: {}", path.display());
+                self.history.push(format!("{:02}  Open Project ({})", self.history.len() + 1, self.project_name));
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    format!("Loaded project archive: {} ({} layers)", path.display(), self.layer_stack.layers.len()),
+                ));
+            }
+            Err(e) => {
+                self.status_message = format!("Failed to open project: {}", e);
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "ERROR".into(),
+                    format!("Project open error: {}", e),
+                ));
+            }
+        }
+    }
+
+    /// Opens a `.rmp` project file from disk via file dialog
     pub fn open_project(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .set_title("Open REMoAINTER Project")
             .add_filter("REMoAINTER Project (*.rmp)", &["rmp"])
             .pick_file()
         {
-            match crate::project::ProjectManager::load_project(&path) {
-                Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) => {
-                    self.project_name = manifest.project_name;
-                    self.current_project_path = Some(path.clone());
-                    self.mesh = mesh;
-                    self.mesh_source_path = manifest.mesh_file_path;
-                    self.layer_stack = layer_stack;
-                    self.baked_maps = baked_maps;
-                    self.baker_options = baker_options;
-                    self.camera_yaw = manifest.camera_yaw;
-                    self.camera_pitch = manifest.camera_pitch;
-                    self.camera_dist = manifest.camera_dist;
-                    self.exposure = manifest.exposure;
-                    self.light_intensity = manifest.light_intensity;
-                    self.env_rotation = manifest.env_rotation;
-                    self.selected_env_idx = manifest.selected_env_idx;
-                    self.project_is_dirty = false;
-                    self.texture_needs_update = true;
+            self.open_project_file(&path);
+        }
+    }
 
-                    // Update GPU mesh in Viewport
-                    if let Some(ref vp_mutex) = self.viewport_gl {
-                        if let Some(ref gl) = self.gl {
-                            if let Ok(mut vp) = vp_mutex.lock() {
-                                vp.set_mesh(gl, &self.mesh);
-                            }
-                        }
-                    }
+    /// Cuts active layer to layer clipboard
+    pub fn cut_active_layer(&mut self) {
+        let idx = self.layer_stack.active_layer_index;
+        if idx < self.layer_stack.layers.len() {
+            let l = self.layer_stack.layers.remove(idx);
+            self.status_message = format!("Cut Layer: {}", l.name);
+            self.layer_clipboard = Some(l);
+            if self.layer_stack.active_layer_index >= self.layer_stack.layers.len() && !self.layer_stack.layers.is_empty() {
+                self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+            }
+            self.recompute_composite();
+        }
+    }
 
-                    self.recompute_composite();
-                    self.status_message = format!("Opened project: {}", path.display());
-                    self.history.push(format!("{:02}  Open Project ({})", self.history.len() + 1, self.project_name));
-                    self.logs.push((
-                        chrono::Local::now().format("%H:%M:%S").to_string(),
-                        "INFO".into(),
-                        format!("Loaded project archive: {} ({} layers)", path.display(), self.layer_stack.layers.len()),
-                    ));
-                }
-                Err(e) => {
-                    self.status_message = format!("Failed to open project: {}", e);
-                    self.logs.push((
-                        chrono::Local::now().format("%H:%M:%S").to_string(),
-                        "ERROR".into(),
-                        format!("Project open error: {}", e),
-                    ));
-                }
+    /// Copies active layer to layer clipboard
+    pub fn copy_active_layer(&mut self) {
+        let idx = self.layer_stack.active_layer_index;
+        if let Some(l) = self.layer_stack.layers.get(idx) {
+            self.layer_clipboard = Some(l.clone());
+            self.status_message = format!("Copied Layer: {}", l.name);
+        }
+    }
+
+    /// Pastes layer from layer clipboard above active layer
+    pub fn paste_layer(&mut self) {
+        if let Some(l) = self.layer_clipboard.clone() {
+            let mut new_l = l.clone();
+            new_l.id = self.layer_stack.layers.len() + 1;
+            new_l.name = format!("{} (Paste)", l.name);
+            let insert_at = (self.layer_stack.active_layer_index + 1).min(self.layer_stack.layers.len());
+            self.layer_stack.layers.insert(insert_at, new_l);
+            self.layer_stack.active_layer_index = insert_at;
+            self.recompute_composite();
+            self.status_message = format!("Pasted Layer: {}", l.name);
+        }
+    }
+
+    /// Resets workspace dock panels, viewport view mode, and tool to factory defaults
+    pub fn reset_layout(&mut self) {
+        self.active_right_panel = 2; // Layers
+        self.viewport_view_mode = 2; // 3D | 2D Split View
+        self.camera_yaw = 35.0;
+        self.camera_pitch = 18.0;
+        self.camera_dist = 2.2;
+        self.active_tool = ToolMode::Paint;
+        self.show_wireframe = false;
+        self.show_uv_wireframe = true;
+        self.turntable_active = false;
+        self.isolated_submesh = None;
+        if let Some(ref vp_mutex) = self.viewport_gl {
+            if let Ok(mut vp) = vp_mutex.lock() {
+                vp.isolate_submesh(None);
             }
         }
+        self.status_message = "Workspace layout reset to default".into();
     }
 
     /// Automatically saves the project in the background
@@ -1383,6 +1466,12 @@ impl eframe::App for RemoainterApp {
             self.status_message = format!("Created Group Folder {}", id);
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::E)) {
             self.show_export_dialog = true;
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt && i.key_pressed(egui::Key::X)) {
+            self.cut_active_layer();
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt && i.key_pressed(egui::Key::C)) {
+            self.copy_active_layer();
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt && i.key_pressed(egui::Key::V)) {
+            self.paste_layer();
         } else if ctx.input(|i| i.key_pressed(egui::Key::Y)) && !ctx.input(|i| i.modifiers.command || i.modifiers.shift || i.modifiers.alt) {
             self.turntable_active = !self.turntable_active;
             self.status_message = format!("Turntable: {}", if self.turntable_active { "ON (Y)" } else { "OFF (Y)" });
@@ -1506,6 +1595,15 @@ impl eframe::App for RemoainterApp {
             if self.show_export_dialog {
                 self.ui_export_modal(ctx);
             }
+            if self.show_preferences_dialog {
+                self.ui_preferences_modal(ctx);
+            }
+            if self.show_hotkeys_dialog {
+                self.ui_hotkey_editor_modal(ctx);
+            }
+            if self.show_shortcuts_dialog {
+                self.ui_shortcuts_help_modal(ctx);
+            }
             return;
         }
 
@@ -1544,6 +1642,31 @@ impl eframe::App for RemoainterApp {
                             self.open_project();
                             ui.close_menu();
                         }
+                        ui.menu_button("Open Recent", |ui| {
+                            if self.config.recent_projects.is_empty() {
+                                ui.colored_label(TEXT_DIMMED, "No recent projects");
+                            } else {
+                                let mut to_open = None;
+                                for path_str in &self.config.recent_projects {
+                                    let filename = std::path::Path::new(path_str)
+                                        .file_name()
+                                        .and_then(|f| f.to_str())
+                                        .unwrap_or(path_str.as_str());
+                                    if ui.button(filename).on_hover_text(path_str).clicked() {
+                                        to_open = Some(path_str.clone());
+                                        ui.close_menu();
+                                    }
+                                }
+                                ui.separator();
+                                if ui.button("Clear Recent Projects").clicked() {
+                                    self.config.clear_recent();
+                                    ui.close_menu();
+                                }
+                                if let Some(path_str) = to_open {
+                                    self.open_project_file(std::path::Path::new(&path_str));
+                                }
+                            }
+                        });
                         if ui.button("Save Project (Ctrl+S)").clicked() {
                             self.save_project();
                             ui.close_menu();
@@ -1626,6 +1749,30 @@ impl eframe::App for RemoainterApp {
                         };
                         if ui.add_enabled(self.history_manager.can_redo(), egui::Button::new(redo_label)).clicked() {
                             self.perform_redo();
+                            ui.close_menu();
+                        }
+
+                        ui.separator();
+                        if ui.button("Cut Layer (Ctrl+X)").clicked() {
+                            self.cut_active_layer();
+                            ui.close_menu();
+                        }
+                        if ui.button("Copy Layer (Ctrl+C)").clicked() {
+                            self.copy_active_layer();
+                            ui.close_menu();
+                        }
+                        if ui.add_enabled(self.layer_clipboard.is_some(), egui::Button::new("Paste Layer (Ctrl+V)")).clicked() {
+                            self.paste_layer();
+                            ui.close_menu();
+                        }
+
+                        ui.separator();
+                        if ui.button("Preferences...").clicked() {
+                            self.show_preferences_dialog = true;
+                            ui.close_menu();
+                        }
+                        if ui.button("Hotkey Editor...").clicked() {
+                            self.show_hotkeys_dialog = true;
                             ui.close_menu();
                         }
                     });
@@ -1714,9 +1861,19 @@ impl eframe::App for RemoainterApp {
                         if ui.button("Shader Settings").clicked() { self.active_right_panel = 4; ui.close_menu(); }
                         if ui.button("History").clicked() { self.active_right_panel = 5; ui.close_menu(); }
                         if ui.button("Log Console").clicked() { self.active_right_panel = 6; ui.close_menu(); }
+                        ui.separator();
+                        if ui.button("Reset Layout").clicked() {
+                            self.reset_layout();
+                            ui.close_menu();
+                        }
                     });
 
                     ui.menu_button("Help", |ui| {
+                        if ui.button("Documentation / Shortcuts...").clicked() {
+                            self.show_shortcuts_dialog = true;
+                            ui.close_menu();
+                        }
+                        ui.separator();
                         if ui.button("About REMoAINTER...").clicked() {
                             self.status_message = "REMoAINTER v2.0.0 (Rust Core)".into();
                             ui.close_menu();
@@ -2381,6 +2538,21 @@ impl eframe::App for RemoainterApp {
         if self.show_snapshots_dialog {
             self.ui_snapshots_modal(ctx);
         }
+
+        // Application Preferences Modal (Edit > Preferences...)
+        if self.show_preferences_dialog {
+            self.ui_preferences_modal(ctx);
+        }
+
+        // Hotkey Editor Modal (Edit > Hotkey Editor...)
+        if self.show_hotkeys_dialog {
+            self.ui_hotkey_editor_modal(ctx);
+        }
+
+        // Documentation & Shortcuts Help Modal (Help > Documentation / Shortcuts...)
+        if self.show_shortcuts_dialog {
+            self.ui_shortcuts_help_modal(ctx);
+        }
     }
 }
 
@@ -2701,6 +2873,7 @@ impl RemoainterApp {
             let dof_enabled = self.dof_enabled;
             let dof_focal_distance = self.dof_focal_distance;
             let dof_aperture = self.dof_aperture;
+            let color_management_mode = self.color_management_mode;
 
             let callback = egui_glow::CallbackFn::new(move |info, painter| {
                 let rect = info.clip_rect_in_pixels();
@@ -2724,6 +2897,7 @@ impl RemoainterApp {
                     vp.dof_enabled = dof_enabled;
                     vp.dof_focal_distance = dof_focal_distance;
                     vp.dof_aperture = dof_aperture;
+                    vp.color_management_mode = color_management_mode;
                     vp.paint(
                         painter.gl(),
                         x,
@@ -4603,6 +4777,20 @@ impl RemoainterApp {
             ui.separator();
             ui.add(egui::Slider::new(&mut self.uv_scale, 0.1..=10.0).text("Material UV Tiling"));
             ui.checkbox(&mut self.show_wireframe, "Wireframe Overlay (F4)");
+
+            ui.separator();
+            ui.label(RichText::new("Color Management / Tone Mapping").strong());
+            egui::ComboBox::from_id_salt("display_color_mgmt")
+                .selected_text(match self.color_management_mode {
+                    0 => "ACES Filmic (Substance 3D Painter Look)",
+                    1 => "sRGB Display (Raw Linear Transfer)",
+                    _ => "Neutral Reinhard (Soft Highlight Shoulder)",
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.color_management_mode, 0, "ACES Filmic (Substance 3D Painter Look)");
+                    ui.selectable_value(&mut self.color_management_mode, 1, "sRGB Display (Raw Linear Transfer)");
+                    ui.selectable_value(&mut self.color_management_mode, 2, "Neutral Reinhard (Soft Highlight Shoulder)");
+                });
         });
     }
 
@@ -4616,6 +4804,7 @@ impl RemoainterApp {
         ui.label("Fresnel F: Schlick with Roughness correction");
         ui.label("IBL: Split-Sum Numerical 2D Integration LUT (512x512)");
         ui.label("Tone Mapping: ACES Filmic Curve (sRGB transfer)");
+        ui.label("Color Profiles: ACES Filmic / sRGB Display / Neutral Reinhard");
         ui.label("Depth Buffer: 24-bit Hardware GL_DEPTH_TEST (GL_LEQUAL)");
         ui.label("Hardware Core: Embedded OpenGL / glow Viewport");
         ui.label("Status: [OK] Active & Real-Time GPU Rasterized");
@@ -4666,12 +4855,22 @@ impl RemoainterApp {
                 }
             }
 
+            let mut roll_forward_to = None;
             if !self.history_manager.redo_stack.is_empty() {
                 ui.separator();
-                ui.label(RichText::new("Redo Stack (Undone actions)").italics().color(Color32::from_rgb(120, 120, 120)));
-                for cmd in self.history_manager.redo_stack.iter().rev() {
-                    let text = format!("--  {} ({} tiles)", cmd.description, cmd.tile_backups.len());
-                    ui.label(RichText::new(text).color(Color32::from_rgb(100, 100, 100)));
+                ui.label(RichText::new("Redo Stack (Undone actions - Click to Fast-Forward)").italics().color(Color32::from_rgb(120, 120, 120)));
+                for (r_idx, cmd) in self.history_manager.redo_stack.iter().enumerate().rev() {
+                    let text = format!("↷  {} ({} tiles)", cmd.description, cmd.tile_backups.len());
+                    if ui.selectable_label(false, RichText::new(text).color(Color32::from_rgb(140, 140, 140))).clicked() {
+                        roll_forward_to = Some(r_idx);
+                    }
+                }
+            }
+
+            if let Some(target_r_idx) = roll_forward_to {
+                let steps = self.history_manager.redo_stack.len() - target_r_idx;
+                for _ in 0..steps {
+                    self.perform_redo();
                 }
             }
 
@@ -5980,6 +6179,242 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
         }
         self.show_snapshots_dialog = show;
     }
+
+    fn ui_preferences_modal(&mut self, ctx: &egui::Context) {
+        let mut show = self.show_preferences_dialog;
+        let mut close_dialog = false;
+        egui::Window::new("⚙ Preferences — REMoAINTER 2026.1")
+            .open(&mut show)
+            .resizable(false)
+            .default_width(480.0)
+            .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.heading("APPLICATION PREFERENCES");
+                ui.separator();
+
+                egui::Grid::new("pref_grid").num_columns(2).spacing([16.0, 8.0]).show(ui, |ui| {
+                    ui.label("Autosave Interval:");
+                    ui.add(egui::Slider::new(&mut self.config.autosave_interval_secs, 30..=600).suffix(" s"));
+                    ui.end_row();
+
+                    ui.label("Undo History Depth:");
+                    ui.add(egui::Slider::new(&mut self.config.undo_depth, 16..=256).suffix(" steps"));
+                    ui.end_row();
+
+                    ui.label("Default Export Path:");
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut self.config.default_export_dir);
+                        if ui.button("Browse...").clicked() {
+                            if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                                self.config.default_export_dir = folder.display().to_string();
+                            }
+                        }
+                    });
+                    ui.end_row();
+
+                    ui.label("Default Bake Res:");
+                    egui::ComboBox::from_id_salt("pref_bake_res")
+                        .selected_text(format!("{}×{}", self.config.default_bake_resolution, self.config.default_bake_resolution))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.config.default_bake_resolution, 512, "512×512");
+                            ui.selectable_value(&mut self.config.default_bake_resolution, 1024, "1024×1024");
+                            ui.selectable_value(&mut self.config.default_bake_resolution, 2048, "2048×2048");
+                            ui.selectable_value(&mut self.config.default_bake_resolution, 4096, "4096×4096");
+                        });
+                    ui.end_row();
+
+                    ui.label("Color Management:");
+                    egui::ComboBox::from_id_salt("pref_color_mgmt")
+                        .selected_text(match self.config.color_management_mode {
+                            0 => "ACES Filmic (Default)",
+                            1 => "sRGB Display (Raw Linear Transfer)",
+                            _ => "Neutral Reinhard (Soft Highlight Shoulder)",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.config.color_management_mode, 0, "ACES Filmic (Substance 3D Painter Look)");
+                            ui.selectable_value(&mut self.config.color_management_mode, 1, "sRGB Display (Raw Linear Transfer)");
+                            ui.selectable_value(&mut self.config.color_management_mode, 2, "Neutral Reinhard (Soft Highlight Shoulder)");
+                        });
+                    ui.end_row();
+                });
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Save & Apply").clicked() {
+                        self.autosave_interval_secs = self.config.autosave_interval_secs;
+                        self.history_manager.max_undo_steps = self.config.undo_depth;
+                        self.export_output_dir = PathBuf::from(&self.config.default_export_dir);
+                        self.color_management_mode = self.config.color_management_mode;
+                        let _ = self.config.save();
+                        self.status_message = "Preferences saved to ~/.remoainter/config.json".into();
+                        close_dialog = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        close_dialog = true;
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Reset to Defaults").clicked() {
+                            self.config = AppConfig::default();
+                        }
+                    });
+                });
+            });
+        if close_dialog {
+            show = false;
+        }
+        self.show_preferences_dialog = show;
+    }
+
+    fn ui_hotkey_editor_modal(&mut self, ctx: &egui::Context) {
+        let mut show = self.show_hotkeys_dialog;
+        let mut close_dialog = false;
+        egui::Window::new("⌨ Hotkey Editor — REMoAINTER")
+            .open(&mut show)
+            .default_width(520.0)
+            .default_height(400.0)
+            .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.heading("KEYBOARD SHORTCUTS TABLE");
+                ui.label(RichText::new("Substance 3D Painter 1:1 Parity Keybindings").color(TEXT_DIMMED));
+                ui.separator();
+
+                egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                    egui::Grid::new("hotkey_grid").num_columns(3).striped(true).spacing([24.0, 6.0]).show(ui, |ui| {
+                        ui.label(RichText::new("Command").strong());
+                        ui.label(RichText::new("Keybinding").strong());
+                        ui.label(RichText::new("Scope").strong());
+                        ui.end_row();
+
+                        let mut sorted_keys: Vec<_> = self.config.custom_hotkeys.keys().cloned().collect();
+                        sorted_keys.sort();
+
+                        for cmd in sorted_keys {
+                            let key = self.config.custom_hotkeys.get(&cmd).cloned().unwrap_or_default();
+                            ui.label(&cmd);
+                            ui.colored_label(ACTIVE_BLUE, &key);
+                            ui.label("Global");
+                            ui.end_row();
+                        }
+                    });
+                });
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Restore Defaults").clicked() {
+                        self.config.custom_hotkeys = AppConfig::default().custom_hotkeys;
+                        let _ = self.config.save();
+                        self.status_message = "Restored default hotkeys".into();
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Close").clicked() {
+                            close_dialog = true;
+                        }
+                    });
+                });
+            });
+        if close_dialog {
+            show = false;
+        }
+        self.show_hotkeys_dialog = show;
+    }
+
+    fn ui_shortcuts_help_modal(&mut self, ctx: &egui::Context) {
+        let mut show = self.show_shortcuts_dialog;
+        let mut close_dialog = false;
+        egui::Window::new("📖 Documentation & Shortcuts Reference")
+            .open(&mut show)
+            .default_width(540.0)
+            .default_height(480.0)
+            .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.heading("REMoAINTER 2026.1 SHORTCUT CHEATSHEET");
+                ui.separator();
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.collapsing("3D Viewport Navigation", |ui| {
+                        egui::Grid::new("nav_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                            ui.colored_label(ACTIVE_BLUE, "Alt + LMB");
+                            ui.label("Orbit camera around 3D mesh target");
+                            ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Alt + MMB");
+                            ui.label("Pan camera horizontally and vertically");
+                            ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Alt + RMB / Wheel");
+                            ui.label("Smooth zoom camera distance");
+                            ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Shift + RMB");
+                            ui.label("Rotate HDR Studio Environment lighting");
+                            ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "F");
+                            ui.label("Frame 3D Mesh to viewport center");
+                            ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Y");
+                            ui.label("Toggle Turntable continuous showcase orbit");
+                            ui.end_row();
+                        });
+                    });
+
+                    ui.collapsing("Tool Selection", |ui| {
+                        egui::Grid::new("tool_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                            ui.colored_label(ACTIVE_BLUE, "1"); ui.label("Paint Brush Tool"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "2"); ui.label("Physical Eraser Tool"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "3"); ui.label("Projection Painting Tool"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "4"); ui.label("Polygon Fill (Triangle / UV Island / Mesh)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "5"); ui.label("Smudge Tool"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "6"); ui.label("Clone Stamp (Alt+LMB to set source)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "I"); ui.label("Color Eyedropper / Surface Material Sampler"); ui.end_row();
+                        });
+                    });
+
+                    ui.collapsing("Display Channels & View Modes", |ui| {
+                        egui::Grid::new("ch_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                            ui.colored_label(ACTIVE_BLUE, "M"); ui.label("Material Mode (Full Lit PBR GGX)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "C"); ui.label("Cycle Solo PBR Channels (Color, Rough, Metal, Normal)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "B"); ui.label("Cycle Mesh Maps (AO, Curvature, Position, Thickness)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "F1"); ui.label("Split 3D | 2D View"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "F2"); ui.label("3D Viewport Only"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "F3"); ui.label("2D UV Texture Map View Only"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "F4"); ui.label("Toggle Wireframe Overlay"); ui.end_row();
+                        });
+                    });
+
+                    ui.collapsing("Project, Baking & Export", |ui| {
+                        egui::Grid::new("proj_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + N"); ui.label("New Project Dialog"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + O"); ui.label("Open .rmp Project Archive"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + S"); ui.label("Save Active Project"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + Shift + S"); ui.label("Save Project As"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + R"); ui.label("Reload 3D Mesh Geometry from Source"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + Shift + B"); ui.label("Bake Mesh Maps Studio"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + Shift + E"); ui.label("Export Textures (Unreal/Unity/glTF)"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + 1..9"); ui.label("Save Camera Bookmark slot 1..9"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Alt + 1..9"); ui.label("Recall Camera Bookmark slot 1..9"); ui.end_row();
+                        });
+                    });
+
+                    ui.collapsing("Layers & History", |ui| {
+                        egui::Grid::new("layer_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + Z"); ui.label("Undo last paint stroke or property change"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + Y"); ui.label("Redo undone action"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + G"); ui.label("Group selected layer into Folder"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + C"); ui.label("Copy active layer to clipboard"); ui.end_row();
+                            ui.colored_label(ACTIVE_BLUE, "Ctrl + V"); ui.label("Paste layer from clipboard"); ui.end_row();
+                        });
+                    });
+                });
+
+                ui.separator();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Close").clicked() {
+                        close_dialog = true;
+                    }
+                });
+            });
+        if close_dialog {
+            show = false;
+        }
+        self.show_shortcuts_dialog = show;
+    }
 }
 
 #[cfg(test)]
@@ -6027,5 +6462,47 @@ mod tests {
 
         yaw = (yaw + speed * dt).rem_euclid(360.0);
         assert!((yaw - 12.5).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_layer_copy_paste_clipboard() {
+        let mut app = RemoainterApp::default();
+        let initial_count = app.layer_stack.layers.len();
+        assert!(initial_count >= 1);
+
+        app.copy_active_layer();
+        assert!(app.layer_clipboard.is_some());
+
+        app.paste_layer();
+        assert_eq!(app.layer_stack.layers.len(), initial_count + 1);
+    }
+
+    #[test]
+    fn test_layer_cut_clipboard() {
+        let mut app = RemoainterApp::default();
+        let initial_count = app.layer_stack.layers.len();
+        assert!(initial_count >= 2);
+
+        app.cut_active_layer();
+        assert!(app.layer_clipboard.is_some());
+        assert_eq!(app.layer_stack.layers.len(), initial_count - 1);
+
+        app.paste_layer();
+        assert_eq!(app.layer_stack.layers.len(), initial_count);
+    }
+
+    #[test]
+    fn test_reset_layout_state() {
+        let mut app = RemoainterApp::default();
+        app.active_right_panel = 6;
+        app.viewport_view_mode = 0;
+        app.camera_yaw = 180.0;
+        app.active_tool = ToolMode::Eraser;
+
+        app.reset_layout();
+        assert_eq!(app.active_right_panel, 2);
+        assert_eq!(app.viewport_view_mode, 2);
+        assert_eq!(app.camera_yaw, 35.0);
+        assert_eq!(app.active_tool, ToolMode::Paint);
     }
 }

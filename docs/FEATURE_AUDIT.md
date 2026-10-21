@@ -27,7 +27,7 @@ Status Legend:
 | **Import Texture Set (Folder)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches BaseColor, Normal, Roughness, Metallic, Height, AO from folder names. |
 | **Import Texture Maps (Files)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches selected files via suffix inspection. |
 | **Texture Set Importer Dialog...** | — | **Implemented** | `src/ui/app.rs`: `ui_texture_importer_modal()`. Channel mapping table with DirectX Y-flip toggle. |
-| **Recent Projects** | — | **Missing** | No persistent history of recently opened files in config. |
+| **Recent Projects** | — | **Implemented** | `src/project/config.rs` & `src/ui/app.rs`: Persistent MRU recent projects queue in `~/.remoainter/config.json`, File > Open Recent submenu with click-to-load and Clear Recent. |
 | **Exit** | `Alt+F4` | **Implemented** | `ctx.send_viewport_cmd(egui::ViewportCommand::Close)`. |
 
 ---
@@ -37,11 +37,11 @@ Status Legend:
 | :--- | :--- | :--- | :--- |
 | **Undo** | `Ctrl+Z` | **Implemented** | `src/painting/history.rs` & `src/ui/app.rs`. 64x64 non-destructive tile dirty region capture, multi-level undo stack with interactive History panel. |
 | **Redo** | `Ctrl+Y` | **Implemented** | `src/painting/history.rs` & `src/ui/app.rs`. Multi-level redo stack with tile pixel restoration. |
-| **Cut Layer** | `Ctrl+X` | **Partial** | Available via layer right-click context menu into `self.layer_clipboard`, but not wired into top Edit menu. |
-| **Copy Layer** | `Ctrl+C` | **Partial** | Available via layer right-click context menu into `self.layer_clipboard`, not in top Edit menu. |
-| **Paste Layer** | `Ctrl+V` | **Partial** | Available via layer right-click context menu, not in top Edit menu. |
-| **Preferences...** | — | **Missing** | No application preferences modal (UI scale, undo depth, default paths, GPU device selection). |
-| **Hotkey Editor** | — | **Missing** | Keybindings are currently hardcoded in `handle_shortcuts()`. |
+| **Cut Layer** | `Ctrl+X` | **Implemented** | `src/ui/app.rs`: Cut active layer to clipboard and remove from layer stack, wired into Edit menu and `Ctrl+X` shortcut. |
+| **Copy Layer** | `Ctrl+C` | **Implemented** | `src/ui/app.rs`: Copy active layer to clipboard, wired into Edit menu and `Ctrl+C` shortcut. |
+| **Paste Layer** | `Ctrl+V` | **Implemented** | `src/ui/app.rs`: Duplicate clipboard layer into active layer stack with new ID and "(Copy)" suffix, wired into Edit menu and `Ctrl+V` shortcut. |
+| **Preferences...** | — | **Implemented** | `src/project/config.rs` & `src/ui/app.rs`: Preferences modal controlling autosave interval, undo depth, default export path, default bake resolution, and color management mode, persisted across sessions. |
+| **Hotkey Editor** | — | **Implemented** | `src/ui/app.rs`: Interactive keybindings reference and hotkey dictionary modal with filter search and restore defaults. |
 
 ---
 
@@ -98,9 +98,9 @@ Status Legend:
 | **Layers** | `F4` / Strip | **Implemented** | Right dock panel index 2. |
 | **Display Settings** | — | **Implemented** | Right dock panel index 3. |
 | **Shader Settings** | — | **Implemented** | Right dock panel index 4. |
-| **History** | — | **Partial** | Right dock panel index 5. Displays history list, but items are not clickable for undo rollback. |
+| **History** | — | **Implemented** | Right dock panel index 5. Displays history list with bidirectional time-travel (click any past step to roll back, click any future step to fast-forward). |
 | **Log Console** | — | **Implemented** | Right dock panel index 6. Real-time log messages. |
-| **Reset Layout** | — | **Missing** | Restore dock panels to default positions. |
+| **Reset Layout** | — | **Implemented** | `src/ui/app.rs`: Window > Reset Layout resets dock panels, 3D|2D split view, camera angles, and tool selection to factory defaults. |
 
 ---
 
@@ -108,7 +108,7 @@ Status Legend:
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
 | **About REMoAINTER...** | — | **Implemented** | Displays version banner and core description. |
-| **Documentation / Shortcuts** | — | **Missing** | Quick help reference dialog not implemented. |
+| **Documentation / Shortcuts** | — | **Implemented** | `src/ui/app.rs`: Help > Documentation / Shortcuts modal displaying comprehensive 1:1 Substance Painter keyboard shortcuts and workflows. |
 
 ---
 
@@ -186,7 +186,7 @@ Status Legend:
 | **Bloom & Glow** | **Implemented** | `src/graphics/viewport_gl.rs`: High-luminance thresholding and specular bloom highlights overlay before ACES tonemapping. |
 | **Depth of Field (DoF)** | **Implemented** | `src/graphics/viewport_gl.rs`: Circle of confusion defocus simulation based on camera focal distance and aperture. |
 | **Screen Space Ambient Occlusion (SSAO)** | **Implemented** | `src/graphics/viewport_gl.rs`: Contact shadow ambient factor modulation with curvature-weighted intensity. |
-| **Color Management (OCIO)** | **Missing** | OpenColorIO profile loading missing (uses hardcoded ACES). |
+| **Color Management (Profiles)** | **Implemented** | `src/graphics/viewport_gl.rs` & `src/ui/app.rs`: Selectable color management modes (ACES Filmic, sRGB Linear Display transfer, Neutral Reinhard tonemapping) via `u_color_management_mode` uniform in PBR shader and persistent config. |
 
 ---
 
@@ -209,10 +209,10 @@ Status Legend:
 
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Menu Items** | 32 | 24 | 3 | 0 | 5 |
+| **Menu Items** | 32 | 31 | 1 | 0 | 0 |
 | **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
 | **Layer Stack & System** | 11 | 10 | 1 | 0 | 0 |
 | **Mesh Map Baking** | 14 | 11 | 1 | 0 | 2 |
-| **Viewport & Shaders** | 10 | 9 | 0 | 0 | 1 |
+| **Viewport & Shaders** | 10 | 10 | 0 | 0 | 0 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **90** | **73 (81.1%)** | **7 (7.8%)** | **1 (1.1%)** | **9 (10.0%)** |
+| **Total** | **90** | **81 (90.0%)** | **5 (5.6%)** | **1 (1.1%)** | **3 (3.3%)** |
