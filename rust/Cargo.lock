@@ -2265,6 +2265,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tobj",
+ "ufbx",
  "zip",
 ]
 
@@ -2751,6 +2752,15 @@ name = "typed-path"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54ec2755506471f54baf5e4bb5499d8e510cc1caf271270e778a736bd2d7336c"
+
+[[package]]
+name = "ufbx"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "260522f1eb74139f0e78b29dd82a58e5437d728c5498024a39e5af7282694240"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "unicode-ident"

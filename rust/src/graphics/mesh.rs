@@ -168,6 +168,172 @@ impl Mesh {
         mesh
     }
 
+    pub fn load_file(path: impl AsRef<Path>) -> Result<Self, String> {
+        let p = path.as_ref();
+        let ext = p.extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_ascii_lowercase())
+            .unwrap_or_default();
+
+        match ext.as_str() {
+            "obj" => Self::load_obj(p),
+            "gltf" | "glb" => Self::load_gltf(p),
+            "fbx" => Self::load_fbx(p),
+            _ => Err(format!(
+                "Unsupported 3D file format: .{} (Supported: .obj, .fbx, .gltf, .glb)",
+                ext
+            )),
+        }
+    }
+
+    /// Loads glTF 2.0 (.gltf / .glb) 3D models with geometry, UVs, and normals
+    pub fn load_gltf(path: impl AsRef<Path>) -> Result<Self, String> {
+        let path_ref = path.as_ref();
+        let name = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Model").to_string();
+
+        let (doc, buffers, _images) = gltf::import(path_ref)
+            .map_err(|e| format!("glTF import error for {:?}: {}", path_ref, e))?;
+
+        let mut vertices = Vec::new();
+        let mut normals = Vec::new();
+        let mut uvs = Vec::new();
+        let mut indices = Vec::new();
+
+        for mesh in doc.meshes() {
+            for primitive in mesh.primitives() {
+                let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+                let vertex_offset = vertices.len() as u32;
+
+                if let Some(pos_iter) = reader.read_positions() {
+                    for pos in pos_iter {
+                        vertices.push(pos);
+                    }
+                }
+
+                if let Some(norm_iter) = reader.read_normals() {
+                    for norm in norm_iter {
+                        normals.push(norm);
+                    }
+                }
+
+                if let Some(tc_iter) = reader.read_tex_coords(0) {
+                    for uv in tc_iter.into_f32() {
+                        uvs.push(uv);
+                    }
+                }
+
+                if let Some(idx_iter) = reader.read_indices() {
+                    for idx in idx_iter.into_u32() {
+                        indices.push(idx + vertex_offset);
+                    }
+                }
+            }
+        }
+
+        if vertices.is_empty() {
+            return Err("glTF file contains no vertex positions".to_string());
+        }
+
+        if normals.len() < vertices.len() {
+            normals.resize(vertices.len(), [0.0, 1.0, 0.0]);
+        }
+        if uvs.len() < vertices.len() {
+            uvs.resize(vertices.len(), [0.0, 0.0]);
+        }
+        if indices.is_empty() {
+            indices = (0..vertices.len() as u32).collect();
+        }
+
+        let mut mesh = Self {
+            name,
+            vertices,
+            normals,
+            tangents: Vec::new(),
+            uvs,
+            indices,
+        };
+        mesh.normalize_to_unit();
+        mesh.compute_tangents();
+        Ok(mesh)
+    }
+
+    /// Loads Autodesk FBX (.fbx) binary and ASCII models using ufbx
+    pub fn load_fbx(path: impl AsRef<Path>) -> Result<Self, String> {
+        let path_ref = path.as_ref();
+        let path_str = path_ref.to_str().ok_or_else(|| "Invalid UTF-8 in FBX file path".to_string())?;
+        let name = path_ref.file_stem().and_then(|s| s.to_str()).unwrap_or("Model").to_string();
+
+        let mut opts = ufbx::LoadOpts::default();
+        opts.target_unit_meters = 1.0;
+
+        let scene = ufbx::load_file(path_str, opts)
+            .map_err(|e| format!("FBX import error for {:?}: {:?}", path_ref, e))?;
+
+        if scene.meshes.is_empty() {
+            return Err("FBX file contains no mesh geometry".to_string());
+        }
+
+        let mut vertices = Vec::new();
+        let mut normals = Vec::new();
+        let mut uvs = Vec::new();
+        let mut indices = Vec::new();
+
+        for fbx_mesh in &scene.meshes {
+            // Iterate over all polygonal faces and triangulate
+            for face in &fbx_mesh.faces {
+                if face.num_indices < 3 {
+                    continue;
+                }
+
+                let num_tris = (face.num_indices - 2) as usize;
+                for t in 0..num_tris {
+                    let corner_indices = [
+                        face.index_begin as usize,
+                        (face.index_begin as usize) + t + 1,
+                        (face.index_begin as usize) + t + 2,
+                    ];
+
+                    for &ci in &corner_indices {
+                        let pos = fbx_mesh.vertex_position[ci];
+                        vertices.push([pos.x as f32, pos.y as f32, pos.z as f32]);
+
+                        if fbx_mesh.vertex_normal.exists {
+                            let n = fbx_mesh.vertex_normal[ci];
+                            normals.push([n.x as f32, n.y as f32, n.z as f32]);
+                        } else {
+                            normals.push([0.0, 1.0, 0.0]);
+                        }
+
+                        if fbx_mesh.vertex_uv.exists {
+                            let uv = fbx_mesh.vertex_uv[ci];
+                            uvs.push([uv.x as f32, uv.y as f32]);
+                        } else {
+                            uvs.push([0.0, 0.0]);
+                        }
+
+                        indices.push(vertices.len() as u32 - 1);
+                    }
+                }
+            }
+        }
+
+        if vertices.is_empty() {
+            return Err("FBX file has 0 valid polygonal vertices".to_string());
+        }
+
+        let mut mesh = Self {
+            name,
+            vertices,
+            normals,
+            tangents: Vec::new(),
+            uvs,
+            indices,
+        };
+        mesh.normalize_to_unit();
+        mesh.compute_tangents();
+        Ok(mesh)
+    }
+
     /// Loads Wavefront OBJ 3D meshes (such as lantern.obj or radio.obj)
     pub fn load_obj(path: impl AsRef<Path>) -> Result<Self, String> {
         let path_ref = path.as_ref();
@@ -610,6 +776,44 @@ impl Mesh {
         }
 
         island
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unsupported_format_returns_error_not_fallback() {
+        let dummy_path = Path::new("non_existent_file.xyz_unknown");
+        let result = Mesh::load_file(dummy_path);
+        assert!(result.is_err(), "Unsupported format must return Err");
+        let err = result.unwrap_err();
+        assert!(err.contains("Unsupported 3D file format"), "Error must clearly identify unsupported format: {}", err);
+    }
+
+    #[test]
+    fn test_obj_export_import_roundtrip() {
+        let cube = Mesh::create_cube();
+        assert_eq!(cube.vertices.len(), 24);
+        assert_eq!(cube.indices.len(), 36);
+
+        let obj_str = cube.export_obj_string();
+        assert!(obj_str.contains("v -1.000000"));
+        assert!(obj_str.contains("f "));
+
+        let reloaded = Mesh::from_obj_string(&obj_str, "ReloadedCube").expect("OBJ roundtrip should parse");
+        assert_eq!(reloaded.indices.len(), 36);
+        assert_eq!(reloaded.name, "ReloadedCube");
+    }
+
+    #[test]
+    fn test_mesh_primitives_normals_tangents() {
+        let sphere = Mesh::create_material_sphere(16, 16);
+        assert!(!sphere.vertices.is_empty());
+        assert_eq!(sphere.vertices.len(), sphere.normals.len());
+        assert_eq!(sphere.vertices.len(), sphere.tangents.len());
+        assert_eq!(sphere.vertices.len(), sphere.uvs.len());
     }
 }
 

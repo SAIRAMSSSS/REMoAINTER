@@ -697,13 +697,20 @@ impl RemoainterApp {
     }
 
     pub fn import_mesh_file(&mut self, path: &std::path::Path) {
-        match Mesh::load_obj(path.to_str().unwrap_or("")) {
+        match Mesh::load_file(path) {
             Ok(loaded_mesh) => {
                 self.mesh = loaded_mesh;
                 self.mesh_source_path = Some(path.display().to_string());
                 self.selected_model_idx = 99; // custom imported mesh
+                let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
                 self.status_message = format!("Imported 3D Model: {}", path.display());
                 self.history.push(format!("{:02}  Import Mesh ({})", self.history.len() + 1, self.mesh.name));
+                self.logs.push((
+                    time_str.clone(),
+                    "INFO".into(),
+                    format!("Successfully loaded mesh {} ({} vertices, {} triangles)",
+                        self.mesh.name, self.mesh.vertices.len(), self.mesh.indices.len() / 3),
+                ));
 
                 // Re-bake all mesh maps for the newly loaded mesh
                 self.baked_maps = BakerEngine::bake_all(
@@ -740,7 +747,13 @@ impl RemoainterApp {
                     self.mesh.name, self.mesh.vertices.len(), self.mesh.indices.len() / 3);
             }
             Err(e) => {
-                self.status_message = format!("Failed to import mesh {}: {}", path.display(), e);
+                let err_msg = format!("Failed to import 3D model {}: {}", path.display(), e);
+                self.status_message = err_msg.clone();
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "ERROR".into(),
+                    err_msg,
+                ));
             }
         }
     }
@@ -1282,10 +1295,10 @@ impl eframe::App for RemoainterApp {
                             ui.close_menu();
                         }
                         ui.separator();
-                        if ui.button("📦 Import 3D Mesh (OBJ)...").clicked() {
+                        if ui.button("📦 Import 3D Mesh (OBJ/FBX/glTF)...").clicked() {
                             if let Some(path) = rfd::FileDialog::new()
                                 .set_title("Import 3D Mesh — REMoAINTER")
-                                .add_filter("3D Mesh (*.obj)", &["obj", "OBJ"])
+                                .add_filter("3D Models (*.obj, *.fbx, *.gltf, *.glb)", &["obj", "OBJ", "fbx", "FBX", "gltf", "GLTF", "glb", "GLB"])
                                 .add_filter("All Files", &["*"])
                                 .pick_file()
                             {
@@ -3998,10 +4011,10 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                         if ui.add(add_hp_btn).on_hover_text("Load high-poly geometry to project normals, curvature, and detail onto low-poly UVs").clicked() {
                             if let Some(p) = rfd::FileDialog::new()
                                 .set_title("Select High Poly Mesh for Baking")
-                                .add_filter("3D Mesh (*.obj, *.fbx)", &["obj", "OBJ", "fbx", "FBX"])
+                                .add_filter("3D Models (*.obj, *.fbx, *.gltf, *.glb)", &["obj", "OBJ", "fbx", "FBX", "gltf", "GLTF", "glb", "GLB"])
                                 .pick_file()
                             {
-                                match Mesh::load_obj(p.to_str().unwrap_or("")) {
+                                match Mesh::load_file(&p) {
                                     Ok(mut hp) => {
                                         hp.normalize_to_unit();
                                         self.baker_high_poly_path = p.display().to_string();
