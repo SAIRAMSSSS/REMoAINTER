@@ -17,11 +17,20 @@ pub struct GlVertex {
     pub tangent: [f32; 4],
 }
 
+#[derive(Debug, Clone)]
+pub struct GpuSubMesh {
+    pub name: String,
+    pub index_start: usize,
+    pub index_count: usize,
+    pub visible: bool,
+}
+
 pub struct GpuMesh {
     pub vao: glow::VertexArray,
     pub vbo: glow::Buffer,
     pub ebo: glow::Buffer,
     pub index_count: i32,
+    pub submeshes: Vec<GpuSubMesh>,
 }
 
 impl GpuMesh {
@@ -36,6 +45,7 @@ impl GpuMesh {
                 vbo,
                 ebo,
                 index_count: 0,
+                submeshes: Vec::new(),
             };
             gpu_mesh.update(gl, mesh);
             gpu_mesh
@@ -107,6 +117,12 @@ impl GpuMesh {
             gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, None);
 
             self.index_count = mesh.indices.len() as i32;
+            self.submeshes = mesh.submeshes.iter().map(|sm| GpuSubMesh {
+                name: sm.name.clone(),
+                index_start: sm.index_start,
+                index_count: sm.index_count,
+                visible: true,
+            }).collect();
         }
     }
 
@@ -116,8 +132,38 @@ impl GpuMesh {
         }
         unsafe {
             gl.bind_vertex_array(Some(self.vao));
-            gl.draw_elements(glow::TRIANGLES, self.index_count, glow::UNSIGNED_INT, 0);
+            if self.submeshes.is_empty() {
+                gl.draw_elements(glow::TRIANGLES, self.index_count, glow::UNSIGNED_INT, 0);
+            } else {
+                for sm in &self.submeshes {
+                    if sm.visible && sm.index_count > 0 {
+                        let byte_offset = (sm.index_start * std::mem::size_of::<u32>()) as i32;
+                        gl.draw_elements(glow::TRIANGLES, sm.index_count as i32, glow::UNSIGNED_INT, byte_offset);
+                    }
+                }
+            }
             gl.bind_vertex_array(None);
+        }
+    }
+
+    pub fn set_submesh_visibility(&mut self, idx: usize, visible: bool) {
+        if let Some(sm) = self.submeshes.get_mut(idx) {
+            sm.visible = visible;
+        }
+    }
+
+    pub fn isolate_submesh(&mut self, isolated_idx: Option<usize>) {
+        match isolated_idx {
+            Some(target) => {
+                for (i, sm) in self.submeshes.iter_mut().enumerate() {
+                    sm.visible = i == target;
+                }
+            }
+            None => {
+                for sm in &mut self.submeshes {
+                    sm.visible = true;
+                }
+            }
         }
     }
 
@@ -144,6 +190,14 @@ pub struct PbrShader {
     pub u_has_env_map: Option<glow::UniformLocation>,
     pub u_has_brdf_lut: Option<glow::UniformLocation>,
     pub u_uv_scale: Option<glow::UniformLocation>,
+    pub u_bloom_enabled: Option<glow::UniformLocation>,
+    pub u_bloom_intensity: Option<glow::UniformLocation>,
+    pub u_bloom_threshold: Option<glow::UniformLocation>,
+    pub u_ssao_enabled: Option<glow::UniformLocation>,
+    pub u_ssao_intensity: Option<glow::UniformLocation>,
+    pub u_dof_enabled: Option<glow::UniformLocation>,
+    pub u_dof_focal_distance: Option<glow::UniformLocation>,
+    pub u_dof_aperture: Option<glow::UniformLocation>,
 }
 
 impl PbrShader {
@@ -204,6 +258,14 @@ uniform int u_display_channel;
 uniform int u_has_env_map;
 uniform int u_has_brdf_lut;
 uniform float u_uv_scale;
+uniform int u_bloom_enabled;
+uniform float u_bloom_intensity;
+uniform float u_bloom_threshold;
+uniform int u_ssao_enabled;
+uniform float u_ssao_intensity;
+uniform int u_dof_enabled;
+uniform float u_dof_focal_distance;
+uniform float u_dof_aperture;
 
 const float PI = 3.14159265359;
 
@@ -373,8 +435,31 @@ void main() {
         ambient = kD_fallback * irradiance * albedo * ao;
     }
 
+    // SSAO enhancement
+    if (u_ssao_enabled == 1) {
+        float ssao_factor = mix(1.0, ao * (1.0 - max(0.0, 0.5 - curvature) * 0.7), u_ssao_intensity);
+        ambient *= ssao_factor;
+    }
+
     vec3 color = Lo + ambient;
     color *= pow(2.0, u_exposure);
+
+    // Depth of Field (DoF) defocus
+    if (u_dof_enabled == 1) {
+        float dist_to_cam = length(u_cam_pos - v_world_pos);
+        float coc = abs(dist_to_cam - u_dof_focal_distance) * u_dof_aperture;
+        float dof_factor = clamp(coc * 2.0, 0.0, 0.7);
+        vec3 blurred_env = sample_equirectangular(u_env_map, N_rot, 0.95);
+        color = mix(color, mix(color, blurred_env * 0.8, 0.5), dof_factor);
+    }
+
+    // Bloom highlights extraction
+    if (u_bloom_enabled == 1) {
+        float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+        float bloom_factor = clamp((lum - u_bloom_threshold) / max(1.0 - u_bloom_threshold, 0.001), 0.0, 1.0);
+        vec3 bloom_color = color * bloom_factor * u_bloom_intensity;
+        color += bloom_color;
+    }
 
     // ACES Filmic Tone Mapping + sRGB Gamma
     color = aces_film(color);
@@ -409,6 +494,14 @@ void main() {
             let u_has_env_map = gl.get_uniform_location(program, "u_has_env_map");
             let u_has_brdf_lut = gl.get_uniform_location(program, "u_has_brdf_lut");
             let u_uv_scale = gl.get_uniform_location(program, "u_uv_scale");
+            let u_bloom_enabled = gl.get_uniform_location(program, "u_bloom_enabled");
+            let u_bloom_intensity = gl.get_uniform_location(program, "u_bloom_intensity");
+            let u_bloom_threshold = gl.get_uniform_location(program, "u_bloom_threshold");
+            let u_ssao_enabled = gl.get_uniform_location(program, "u_ssao_enabled");
+            let u_ssao_intensity = gl.get_uniform_location(program, "u_ssao_intensity");
+            let u_dof_enabled = gl.get_uniform_location(program, "u_dof_enabled");
+            let u_dof_focal_distance = gl.get_uniform_location(program, "u_dof_focal_distance");
+            let u_dof_aperture = gl.get_uniform_location(program, "u_dof_aperture");
 
             gl.use_program(None);
 
@@ -426,6 +519,14 @@ void main() {
                 u_has_env_map,
                 u_has_brdf_lut,
                 u_uv_scale,
+                u_bloom_enabled,
+                u_bloom_intensity,
+                u_bloom_threshold,
+                u_ssao_enabled,
+                u_ssao_intensity,
+                u_dof_enabled,
+                u_dof_focal_distance,
+                u_dof_aperture,
             })
         }
     }
@@ -797,6 +898,14 @@ pub struct ViewportGl {
     pub skybox_intensity: f32,
     pub uv_scale: f32,
     pub show_wireframe: bool,
+    pub bloom_enabled: bool,
+    pub bloom_intensity: f32,
+    pub bloom_threshold: f32,
+    pub ssao_enabled: bool,
+    pub ssao_intensity: f32,
+    pub dof_enabled: bool,
+    pub dof_focal_distance: f32,
+    pub dof_aperture: f32,
 }
 
 impl ViewportGl {
@@ -826,6 +935,14 @@ impl ViewportGl {
             skybox_intensity: 1.0,
             uv_scale: 1.0,
             show_wireframe: false,
+            bloom_enabled: false,
+            bloom_intensity: 0.8,
+            bloom_threshold: 0.85,
+            ssao_enabled: true,
+            ssao_intensity: 1.0,
+            dof_enabled: false,
+            dof_focal_distance: 2.5,
+            dof_aperture: 0.08,
         };
 
         // Attempt to load Studio Tomoco by default
@@ -846,6 +963,18 @@ impl ViewportGl {
 
     pub fn set_mesh(&mut self, gl: &glow::Context, mesh: &Mesh) {
         self.mesh.update(gl, mesh);
+    }
+
+    pub fn set_submesh_visibility(&mut self, idx: usize, visible: bool) {
+        self.mesh.set_submesh_visibility(idx, visible);
+    }
+
+    pub fn isolate_submesh(&mut self, isolated_idx: Option<usize>) {
+        self.mesh.isolate_submesh(isolated_idx);
+    }
+
+    pub fn submeshes(&self) -> &[GpuSubMesh] {
+        &self.mesh.submeshes
     }
 
     pub fn load_environment(&mut self, gl: &glow::Context, path: impl AsRef<Path>) -> Result<(), String> {
@@ -983,6 +1112,17 @@ impl ViewportGl {
             gl.uniform_1_i32(self.pbr_shader.u_has_env_map.as_ref(), if self.env_texture.is_some() { 1 } else { 0 });
             gl.uniform_1_i32(self.pbr_shader.u_has_brdf_lut.as_ref(), 1);
             gl.uniform_1_f32(self.pbr_shader.u_uv_scale.as_ref(), self.uv_scale);
+
+            gl.uniform_1_i32(self.pbr_shader.u_bloom_enabled.as_ref(), if self.bloom_enabled { 1 } else { 0 });
+            gl.uniform_1_f32(self.pbr_shader.u_bloom_intensity.as_ref(), self.bloom_intensity);
+            gl.uniform_1_f32(self.pbr_shader.u_bloom_threshold.as_ref(), self.bloom_threshold);
+
+            gl.uniform_1_i32(self.pbr_shader.u_ssao_enabled.as_ref(), if self.ssao_enabled { 1 } else { 0 });
+            gl.uniform_1_f32(self.pbr_shader.u_ssao_intensity.as_ref(), self.ssao_intensity);
+
+            gl.uniform_1_i32(self.pbr_shader.u_dof_enabled.as_ref(), if self.dof_enabled { 1 } else { 0 });
+            gl.uniform_1_f32(self.pbr_shader.u_dof_focal_distance.as_ref(), self.dof_focal_distance);
+            gl.uniform_1_f32(self.pbr_shader.u_dof_aperture.as_ref(), self.dof_aperture);
 
             // Bind PBR textures (Units 0..5)
             self.textures.bind(gl);
@@ -1378,5 +1518,39 @@ mod tests {
         let (a, b) = lut[32 * 64 + 32];
         assert!(a >= 0.0 && a <= 1.0);
         assert!(b >= 0.0 && b <= 1.0);
+    }
+
+    #[test]
+    fn test_gpu_mesh_submesh_isolation() {
+        let dummy_id = std::num::NonZeroU32::new(1).unwrap();
+        let mut mesh = GpuMesh {
+            vao: glow::NativeVertexArray(dummy_id),
+            vbo: glow::NativeBuffer(dummy_id),
+            ebo: glow::NativeBuffer(dummy_id),
+            index_count: 60,
+            submeshes: vec![
+                GpuSubMesh { name: "Head".into(), index_start: 0, index_count: 20, visible: true },
+                GpuSubMesh { name: "Body".into(), index_start: 20, index_count: 20, visible: true },
+                GpuSubMesh { name: "Limbs".into(), index_start: 40, index_count: 20, visible: true },
+            ],
+        };
+
+        // Hide Body
+        mesh.set_submesh_visibility(1, false);
+        assert!(mesh.submeshes[0].visible);
+        assert!(!mesh.submeshes[1].visible);
+        assert!(mesh.submeshes[2].visible);
+
+        // Isolate Limbs (idx 2)
+        mesh.isolate_submesh(Some(2));
+        assert!(!mesh.submeshes[0].visible);
+        assert!(!mesh.submeshes[1].visible);
+        assert!(mesh.submeshes[2].visible);
+
+        // Clear isolation (show all)
+        mesh.isolate_submesh(None);
+        assert!(mesh.submeshes[0].visible);
+        assert!(mesh.submeshes[1].visible);
+        assert!(mesh.submeshes[2].visible);
     }
 }

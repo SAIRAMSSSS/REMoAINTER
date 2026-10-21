@@ -49,6 +49,15 @@ pub struct TextureChannel {
     pub enabled: bool,
 }
 
+/// A saved 3D camera bookmark (Substance Painter standard slots 1..9)
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct CameraBookmark {
+    pub name: String,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub dist: f32,
+}
+
 pub struct RemoainterApp {
     pub active_tool: ToolMode,
     pub brush: Brush,
@@ -88,6 +97,20 @@ pub struct RemoainterApp {
     pub symmetry_x: bool,
     pub symmetry_y: bool,
     pub symmetry_z: bool,
+
+    // Viewport Upgrades: Camera Bookmarks, Turntable, Submesh Isolation & Post-Processing
+    pub camera_bookmarks: [Option<CameraBookmark>; 10],
+    pub turntable_active: bool,
+    pub turntable_speed: f32,
+    pub isolated_submesh: Option<usize>,
+    pub bloom_enabled: bool,
+    pub bloom_intensity: f32,
+    pub bloom_threshold: f32,
+    pub ssao_enabled: bool,
+    pub ssao_intensity: f32,
+    pub dof_enabled: bool,
+    pub dof_focal_distance: f32,
+    pub dof_aperture: f32,
 
     // Brush Engine & Undo/Redo History
     pub history_manager: crate::painting::HistoryManager,
@@ -366,6 +389,19 @@ impl Default for RemoainterApp {
             symmetry_x: false,
             symmetry_y: false,
             symmetry_z: false,
+
+            camera_bookmarks: Default::default(),
+            turntable_active: false,
+            turntable_speed: 45.0,
+            isolated_submesh: None,
+            bloom_enabled: false,
+            bloom_intensity: 0.8,
+            bloom_threshold: 0.85,
+            ssao_enabled: true,
+            ssao_intensity: 1.0,
+            dof_enabled: false,
+            dof_focal_distance: 2.2,
+            dof_aperture: 0.08,
             history_manager: crate::painting::HistoryManager::new(64),
             lazy_mouse_tracker: crate::painting::brush::LazyMouseTracker::default(),
             is_in_stroke: false,
@@ -1264,8 +1300,61 @@ impl eframe::App for RemoainterApp {
             self.trigger_autosave();
         }
 
+        // Turntable continuous camera orbit animation
+        if self.turntable_active {
+            let dt = ctx.input(|i| i.stable_dt).min(0.1);
+            self.camera_yaw = (self.camera_yaw + self.turntable_speed * dt).rem_euclid(360.0);
+            ctx.request_repaint();
+        }
+
         // Global hotkey processing (Substance Painter standard)
-        if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::Z)) {
+        let num_keys = [
+            (egui::Key::Num1, 1),
+            (egui::Key::Num2, 2),
+            (egui::Key::Num3, 3),
+            (egui::Key::Num4, 4),
+            (egui::Key::Num5, 5),
+            (egui::Key::Num6, 6),
+            (egui::Key::Num7, 7),
+            (egui::Key::Num8, 8),
+            (egui::Key::Num9, 9),
+        ];
+
+        let mut bookmark_action = false;
+        if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt) {
+            for &(key, slot) in &num_keys {
+                if ctx.input(|i| i.key_pressed(key)) {
+                    self.camera_bookmarks[slot] = Some(CameraBookmark {
+                        name: format!("Bookmark {}", slot),
+                        yaw: self.camera_yaw,
+                        pitch: self.camera_pitch,
+                        dist: self.camera_dist,
+                    });
+                    self.status_message = format!("Saved Camera Bookmark {} (Ctrl+{})", slot, slot);
+                    bookmark_action = true;
+                    break;
+                }
+            }
+        } else if ctx.input(|i| i.modifiers.alt && !i.modifiers.command && !i.modifiers.shift) {
+            for &(key, slot) in &num_keys {
+                if ctx.input(|i| i.key_pressed(key)) {
+                    if let Some(ref bm) = self.camera_bookmarks[slot] {
+                        self.camera_yaw = bm.yaw;
+                        self.camera_pitch = bm.pitch;
+                        self.camera_dist = bm.dist;
+                        self.status_message = format!("Restored Camera Bookmark {} (Alt+{})", slot, slot);
+                    } else {
+                        self.status_message = format!("Camera Bookmark {} is empty", slot);
+                    }
+                    bookmark_action = true;
+                    break;
+                }
+            }
+        }
+
+        if bookmark_action {
+            // Handled bookmark action
+        } else if ctx.input(|i| i.modifiers.command && !i.modifiers.shift && i.key_pressed(egui::Key::Z)) {
             self.perform_undo();
         } else if ctx.input(|i| (i.modifiers.command && i.key_pressed(egui::Key::Y)) || (i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::Z))) {
             self.perform_redo();
@@ -1294,6 +1383,9 @@ impl eframe::App for RemoainterApp {
             self.status_message = format!("Created Group Folder {}", id);
         } else if ctx.input(|i| i.modifiers.command && i.modifiers.shift && i.key_pressed(egui::Key::E)) {
             self.show_export_dialog = true;
+        } else if ctx.input(|i| i.key_pressed(egui::Key::Y)) && !ctx.input(|i| i.modifiers.command || i.modifiers.shift || i.modifiers.alt) {
+            self.turntable_active = !self.turntable_active;
+            self.status_message = format!("Turntable: {}", if self.turntable_active { "ON (Y)" } else { "OFF (Y)" });
         } else if ctx.input(|i| i.key_pressed(egui::Key::F1)) {
             self.viewport_view_mode = 2; // 3D|2D Split
             self.status_message = "Viewport: 3D | 2D Split View (F1)".into();
@@ -2601,6 +2693,15 @@ impl RemoainterApp {
             let uv_scale = self.uv_scale;
             let show_wireframe = self.show_wireframe;
 
+            let bloom_enabled = self.bloom_enabled;
+            let bloom_intensity = self.bloom_intensity;
+            let bloom_threshold = self.bloom_threshold;
+            let ssao_enabled = self.ssao_enabled;
+            let ssao_intensity = self.ssao_intensity;
+            let dof_enabled = self.dof_enabled;
+            let dof_focal_distance = self.dof_focal_distance;
+            let dof_aperture = self.dof_aperture;
+
             let callback = egui_glow::CallbackFn::new(move |info, painter| {
                 let rect = info.clip_rect_in_pixels();
                 let x = rect.left_px;
@@ -2615,6 +2716,14 @@ impl RemoainterApp {
                     vp.skybox_intensity = skybox_intensity;
                     vp.uv_scale = uv_scale;
                     vp.show_wireframe = show_wireframe;
+                    vp.bloom_enabled = bloom_enabled;
+                    vp.bloom_intensity = bloom_intensity;
+                    vp.bloom_threshold = bloom_threshold;
+                    vp.ssao_enabled = ssao_enabled;
+                    vp.ssao_intensity = ssao_intensity;
+                    vp.dof_enabled = dof_enabled;
+                    vp.dof_focal_distance = dof_focal_distance;
+                    vp.dof_aperture = dof_aperture;
                     vp.paint(
                         painter.gl(),
                         x,
@@ -4316,10 +4425,140 @@ impl RemoainterApp {
         ui.heading("DISPLAY SETTINGS");
         ui.separator();
 
-        ui.collapsing("CAMERA", |ui| {
+        ui.collapsing("CAMERA & TURNTABLE", |ui| {
             ui.add(egui::Slider::new(&mut self.camera_yaw, 0.0..=360.0).text("Yaw"));
             ui.add(egui::Slider::new(&mut self.camera_pitch, -85.0..=85.0).text("Pitch"));
-            ui.add(egui::Slider::new(&mut self.camera_dist, 1.0..=10.0).text("Distance"));
+            ui.add(egui::Slider::new(&mut self.camera_dist, 0.5..=10.0).text("Distance"));
+
+            ui.separator();
+            ui.horizontal(|ui| {
+                let btn_text = if self.turntable_active { "⏹ Stop Turntable (Y)" } else { "▶ Start Turntable (Y)" };
+                if ui.button(btn_text).clicked() {
+                    self.turntable_active = !self.turntable_active;
+                }
+                ui.add(egui::Slider::new(&mut self.turntable_speed, -180.0..=180.0).text("Speed (°/s)"));
+            });
+
+            ui.separator();
+            ui.label(RichText::new("Camera Bookmarks (Ctrl+1..9 to Save, Alt+1..9 to Recall)").strong().color(Color32::from_rgb(180, 180, 180)));
+            for slot in 1..=9 {
+                ui.horizontal(|ui| {
+                    if let Some(ref bm) = self.camera_bookmarks[slot] {
+                        ui.label(format!("#{}: Yaw {:.0}°, Pitch {:.0}°, Dist {:.2}", slot, bm.yaw, bm.pitch, bm.dist));
+                        if ui.button("Recall").clicked() {
+                            self.camera_yaw = bm.yaw;
+                            self.camera_pitch = bm.pitch;
+                            self.camera_dist = bm.dist;
+                            self.status_message = format!("Restored Camera Bookmark {}", slot);
+                        }
+                        if ui.button("Overwrite").clicked() {
+                            self.camera_bookmarks[slot] = Some(CameraBookmark {
+                                name: format!("Bookmark {}", slot),
+                                yaw: self.camera_yaw,
+                                pitch: self.camera_pitch,
+                                dist: self.camera_dist,
+                            });
+                            self.status_message = format!("Saved Camera Bookmark {}", slot);
+                        }
+                        if ui.button("✖").clicked() {
+                            self.camera_bookmarks[slot] = None;
+                        }
+                    } else {
+                        ui.label(format!("#{}: [Empty]", slot));
+                        if ui.button("Save Here").clicked() {
+                            self.camera_bookmarks[slot] = Some(CameraBookmark {
+                                name: format!("Bookmark {}", slot),
+                                yaw: self.camera_yaw,
+                                pitch: self.camera_pitch,
+                                dist: self.camera_dist,
+                            });
+                            self.status_message = format!("Saved Camera Bookmark {}", slot);
+                        }
+                    }
+                });
+            }
+        });
+
+        ui.collapsing("POST-PROCESSING (BLOOM, SSAO, DOF)", |ui| {
+            ui.checkbox(&mut self.bloom_enabled, "Bloom Highlights");
+            if self.bloom_enabled {
+                ui.add(egui::Slider::new(&mut self.bloom_intensity, 0.0..=3.0).text("Bloom Intensity"));
+                ui.add(egui::Slider::new(&mut self.bloom_threshold, 0.0..=1.0).text("Bloom Threshold"));
+            }
+
+            ui.separator();
+            ui.checkbox(&mut self.ssao_enabled, "SSAO Contact Shadows");
+            if self.ssao_enabled {
+                ui.add(egui::Slider::new(&mut self.ssao_intensity, 0.0..=2.0).text("SSAO Intensity"));
+            }
+
+            ui.separator();
+            ui.checkbox(&mut self.dof_enabled, "Depth of Field (DoF)");
+            if self.dof_enabled {
+                ui.add(egui::Slider::new(&mut self.dof_focal_distance, 0.5..=6.0).text("Focal Distance"));
+                ui.add(egui::Slider::new(&mut self.dof_aperture, 0.01..=0.3).text("Aperture"));
+            }
+        });
+
+        ui.collapsing("SUBMESH VISIBILITY & ISOLATION", |ui| {
+            if self.mesh.submeshes.is_empty() {
+                ui.label("No submeshes found (Single mesh object)");
+            } else {
+                ui.horizontal(|ui| {
+                    if ui.button("Show All Submeshes").clicked() {
+                        self.isolated_submesh = None;
+                        if let Some(ref vp_mutex) = self.viewport_gl {
+                            if let Ok(mut vp) = vp_mutex.lock() {
+                                vp.isolate_submesh(None);
+                            }
+                        }
+                        self.status_message = "All submeshes visible".to_string();
+                    }
+                });
+                ui.separator();
+
+                let mut to_toggle = None;
+                let mut to_isolate = None;
+
+                if let Some(ref vp_mutex) = self.viewport_gl {
+                    if let Ok(vp) = vp_mutex.lock() {
+                        for (i, sm) in vp.submeshes().iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                let eye_text = if sm.visible { "👁" } else { "🚫" };
+                                if ui.button(eye_text).clicked() {
+                                    to_toggle = Some((i, !sm.visible));
+                                }
+                                ui.label(&sm.name);
+                                let is_isolated = self.isolated_submesh == Some(i);
+                                let iso_btn_text = if is_isolated { "Isolated" } else { "Isolate" };
+                                if ui.button(iso_btn_text).clicked() {
+                                    if is_isolated {
+                                        to_isolate = Some(None);
+                                    } else {
+                                        to_isolate = Some(Some(i));
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+
+                if let Some((idx, vis)) = to_toggle {
+                    if let Some(ref vp_mutex) = self.viewport_gl {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            vp.set_submesh_visibility(idx, vis);
+                        }
+                    }
+                }
+                if let Some(target) = to_isolate {
+                    self.isolated_submesh = target;
+                    if let Some(ref vp_mutex) = self.viewport_gl {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            vp.isolate_submesh(target);
+                        }
+                    }
+                }
+            }
         });
 
         ui.collapsing("ENVIRONMENT LIGHTING (HDR IBL & STUDIO PROBES)", |ui| {
@@ -5740,5 +5979,53 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
             self.take_snapshot(&name);
         }
         self.show_snapshots_dialog = show;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_camera_bookmarks_save_restore() {
+        let mut bookmarks: [Option<CameraBookmark>; 10] = Default::default();
+
+        bookmarks[1] = Some(CameraBookmark {
+            name: "Front Angle".into(),
+            yaw: 45.0,
+            pitch: 15.0,
+            dist: 2.5,
+        });
+
+        bookmarks[2] = Some(CameraBookmark {
+            name: "Top Down".into(),
+            yaw: 0.0,
+            pitch: 85.0,
+            dist: 1.8,
+        });
+
+        assert!(bookmarks[1].is_some());
+        assert!(bookmarks[2].is_some());
+        assert!(bookmarks[3].is_none());
+
+        let bm1 = bookmarks[1].as_ref().unwrap();
+        assert_eq!(bm1.yaw, 45.0);
+        assert_eq!(bm1.pitch, 15.0);
+        assert_eq!(bm1.dist, 2.5);
+
+        let bm2 = bookmarks[2].as_ref().unwrap();
+        assert_eq!(bm2.yaw, 0.0);
+        assert_eq!(bm2.pitch, 85.0);
+        assert_eq!(bm2.dist, 1.8);
+    }
+
+    #[test]
+    fn test_turntable_rotation_step() {
+        let mut yaw: f32 = 350.0;
+        let speed: f32 = 45.0;
+        let dt: f32 = 0.5;
+
+        yaw = (yaw + speed * dt).rem_euclid(360.0);
+        assert!((yaw - 12.5).abs() < 1e-4);
     }
 }
