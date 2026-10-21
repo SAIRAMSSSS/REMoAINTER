@@ -198,6 +198,7 @@ pub struct PbrShader {
     pub u_dof_enabled: Option<glow::UniformLocation>,
     pub u_dof_focal_distance: Option<glow::UniformLocation>,
     pub u_dof_aperture: Option<glow::UniformLocation>,
+    pub u_color_management_mode: Option<glow::UniformLocation>,
 }
 
 impl PbrShader {
@@ -266,6 +267,7 @@ uniform float u_ssao_intensity;
 uniform int u_dof_enabled;
 uniform float u_dof_focal_distance;
 uniform float u_dof_aperture;
+uniform int u_color_management_mode;
 
 const float PI = 3.14159265359;
 
@@ -461,9 +463,19 @@ void main() {
         color += bloom_color;
     }
 
-    // ACES Filmic Tone Mapping + sRGB Gamma
-    color = aces_film(color);
-    color = pow(color, vec3(1.0 / 2.2));
+    // Color Management & Tone Mapping
+    if (u_color_management_mode == 0) {
+        // ACES Filmic Tone Mapping + sRGB Gamma (Default)
+        color = aces_film(color);
+        color = pow(color, vec3(1.0 / 2.2));
+    } else if (u_color_management_mode == 1) {
+        // Raw Linear to sRGB display transfer
+        color = pow(clamp(color, 0.0, 1.0), vec3(1.0 / 2.2));
+    } else {
+        // Neutral / Reinhard Tone Mapping
+        color = color / (color + vec3(1.0));
+        color = pow(color, vec3(1.0 / 2.2));
+    }
 
     FragColor = vec4(color, 1.0);
 }
@@ -502,6 +514,7 @@ void main() {
             let u_dof_enabled = gl.get_uniform_location(program, "u_dof_enabled");
             let u_dof_focal_distance = gl.get_uniform_location(program, "u_dof_focal_distance");
             let u_dof_aperture = gl.get_uniform_location(program, "u_dof_aperture");
+            let u_color_management_mode = gl.get_uniform_location(program, "u_color_management_mode");
 
             gl.use_program(None);
 
@@ -527,6 +540,7 @@ void main() {
                 u_dof_enabled,
                 u_dof_focal_distance,
                 u_dof_aperture,
+                u_color_management_mode,
             })
         }
     }
@@ -906,6 +920,7 @@ pub struct ViewportGl {
     pub dof_enabled: bool,
     pub dof_focal_distance: f32,
     pub dof_aperture: f32,
+    pub color_management_mode: usize,
 }
 
 impl ViewportGl {
@@ -943,6 +958,7 @@ impl ViewportGl {
             dof_enabled: false,
             dof_focal_distance: 2.5,
             dof_aperture: 0.08,
+            color_management_mode: 0,
         };
 
         // Attempt to load Studio Tomoco by default
@@ -1123,6 +1139,7 @@ impl ViewportGl {
             gl.uniform_1_i32(self.pbr_shader.u_dof_enabled.as_ref(), if self.dof_enabled { 1 } else { 0 });
             gl.uniform_1_f32(self.pbr_shader.u_dof_focal_distance.as_ref(), self.dof_focal_distance);
             gl.uniform_1_f32(self.pbr_shader.u_dof_aperture.as_ref(), self.dof_aperture);
+            gl.uniform_1_i32(self.pbr_shader.u_color_management_mode.as_ref(), self.color_management_mode as i32);
 
             // Bind PBR textures (Units 0..5)
             self.textures.bind(gl);
