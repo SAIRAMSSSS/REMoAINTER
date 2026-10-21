@@ -16,14 +16,14 @@ Status Legend:
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
 | **New Project...** | `Ctrl+N` | **Implemented** | `src/ui/app.rs`: `ui_new_project_modal()`. Mesh picker, template selection, resolution, normal format (DirectX/OpenGL), UDIM toggle. Resets layers and re-bakes maps. |
-| **Open Project...** | `Ctrl+O` | **Missing** | Currently `Ctrl+O` is mapped to "Import 3D Mesh". No native project container deserializer (`.rmp`). |
-| **Save Project** | `Ctrl+S` | **Missing** | No project file writer yet. |
-| **Save Project As...** | `Ctrl+Shift+S` | **Missing** | File picker for project save not implemented. |
-| **Autosave & Snapshots** | — | **Missing** | No rolling background autosave or versioned snapshot system. |
-| **Import 3D Mesh (OBJ)...**| `Ctrl+O` | **Implemented** | `src/ui/app.rs`: `import_mesh_file()`. Loads OBJ via `tobj`, recalculates bounds, updates GPU mesh, bakes maps. |
-| **Reload Mesh** | — | **Missing** | Reloading geometry while preserving painted UV layer channels is missing. |
+| **Open Project...** | `Ctrl+O` | **Implemented** | `src/project/mod.rs` & `src/ui/app.rs`: Versioned project container (`.rmp`) deserializer with manifest, mesh, layer buffers, and baked maps. |
+| **Save Project** | `Ctrl+S` | **Implemented** | `src/project/mod.rs`: Full versioned container format (`.rmp`) saving JSON manifest, mesh OBJ, layer buffers, and baked maps. |
+| **Save Project As...** | `Ctrl+Shift+S` | **Implemented** | File picker for project save with versioned `.rmp` container. |
+| **Autosave & Snapshots** | — | **Implemented** | `src/project/mod.rs` & `app.rs`: 180s background autosave (`autosave.rmp`) and manual/auto snapshot history modal. |
+| **Import 3D Mesh (OBJ)...**| `Ctrl+Shift+O` | **Implemented** | `src/ui/app.rs`: `import_mesh_file()`. Loads OBJ via `tobj`, recalculates bounds, updates GPU mesh, bakes maps. |
+| **Reload Mesh** | `Ctrl+R` | **Implemented** | `src/ui/app.rs`: `reload_mesh()`. Hot-reloads source mesh from disk or primitive while preserving all painted layer channels and history intact. |
 | **Bake Mesh Maps...** | `Ctrl+Shift+B`| **Implemented** | `src/ui/app.rs`: `ui_baker_modal()` & `ui_baker_studio_mode()`. |
-| **Export Textures...** | `Ctrl+Shift+E`| **Partial** | `src/ui/app.rs`: `ui_export_modal()`. Dialog exists with preset choices, resolution, padding, and directory picker, but full channel packing engine (e.g., ORM, MaskMap) needs full export writer. |
+| **Export Textures...** | `Ctrl+Shift+E`| **Implemented** | `src/painting/export.rs`: Full Substance Painter-parity export engine with presets (Unreal ORM, Unity URP/HDRP MaskMap, glTF 2.0, Generic PBR, OpenEXR 32-bit Float), 8/16/32-bit depth, UV edge dilation/seam padding, resolution override, and logging. |
 | **Import Texture Set (Folder)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches BaseColor, Normal, Roughness, Metallic, Height, AO from folder names. |
 | **Import Texture Maps (Files)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches selected files via suffix inspection. |
 | **Texture Set Importer Dialog...** | — | **Implemented** | `src/ui/app.rs`: `ui_texture_importer_modal()`. Channel mapping table with DirectX Y-flip toggle. |

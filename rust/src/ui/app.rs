@@ -6,6 +6,7 @@ use crate::painting::texture_importer::PbrTextureSet;
 use crate::painting::{
     apply_smart_material_hierarchy, load_real_pbr_material,
     AnchorPoint, BlendMode, Brush, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect,
+    ExportPreset, TextureExportContext, OutputFormat, BitDepth,
 };
 use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
@@ -991,234 +992,69 @@ impl RemoainterApp {
         }
     }
 
-    /// Full Substance Painter-grade texture export (Unreal ORM, Unity URP, Blender Principled, glTF)
+    /// Full Substance Painter-grade texture export (Unreal ORM, Unity URP/HDRP, glTF, Generic PBR, OpenEXR)
     pub fn export_textures(&mut self) {
-        let out_dir = self.export_output_dir.clone();
-        if let Err(e) = std::fs::create_dir_all(&out_dir) {
-            self.export_status = format!("Failed to create export folder: {}", e);
-            return;
-        }
+        let preset = match self.export_preset_idx {
+            0 => ExportPreset::unreal_engine(),
+            1 => ExportPreset::unity_urp(),
+            2 => ExportPreset::unity_hdrp(),
+            3 => ExportPreset::gltf2(),
+            4 => ExportPreset::generic_pbr(),
+            _ => ExportPreset::studio_exr(),
+        };
 
-        let w = self.layer_stack.width;
-        let h = self.layer_stack.height;
-        let mesh_name = self.mesh.name.replace(' ', "_");
-        let mut saved_files = Vec::new();
+        let (format_override, depth_override) = match self.export_file_format {
+            1 => (Some(OutputFormat::Png), Some(BitDepth::U8)),
+            2 => (Some(OutputFormat::Png), Some(BitDepth::U16)),
+            3 => (Some(OutputFormat::Tga), Some(BitDepth::U8)),
+            4 => (Some(OutputFormat::Exr), Some(BitDepth::F32)),
+            5 => (Some(OutputFormat::Jpg), Some(BitDepth::U8)),
+            _ => (None, None), // Use preset defaults
+        };
 
-        match self.export_preset_idx {
-            0 => {
-                // ── Unreal Engine 4/5 (Packed ORM) ───────────────────
-                // 1. BaseColor (sRGB)
-                let mut bc_img = image::RgbImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let c = self.layer_stack.composite_color.get(idx).copied().unwrap_or([0.8, 0.8, 0.8, 1.0]);
-                        bc_img.put_pixel(x, y, image::Rgb([
-                            (c[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[1].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[2].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
+        let res_override = if self.export_resolution > 0 && self.export_resolution != self.layer_stack.width {
+            Some((self.export_resolution, self.export_resolution))
+        } else {
+            None
+        };
+
+        let ctx = TextureExportContext {
+            layer_stack: &self.layer_stack,
+            baked_maps: &self.baked_maps,
+            mesh: &self.mesh,
+            output_dir: &self.export_output_dir,
+            preset: &preset,
+            resolution_override: res_override,
+            padding_radius: self.export_padding as usize,
+            file_format_override: format_override,
+            bit_depth_override: depth_override,
+        };
+
+        match crate::painting::export::execute_export(ctx) {
+            Ok(result) => {
+                let count = result.exported_files.len();
+                self.export_status = format!("Exported {} maps to {}", count, self.export_output_dir.display());
+                self.status_message = format!("Exported {} textures successfully!", count);
+                let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
+                for log in result.logs {
+                    self.logs.push((time_str.clone(), "INFO".into(), log));
                 }
-                let bc_path = out_dir.join(format!("{}_BaseColor.png", mesh_name));
-                let _ = bc_img.save(&bc_path);
-                saved_files.push(bc_path);
-
-                // 2. ORM (R = AO, G = Roughness, B = Metallic)
-                let mut orm_img = image::RgbImage::new(w, h);
-                let ao_buf = self.baked_maps.ambient_occlusion.as_ref();
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let ao = ao_buf.and_then(|b| b.get(idx)).copied().unwrap_or(1.0);
-                        let rough = self.layer_stack.composite_roughness.get(idx).copied().unwrap_or(0.5);
-                        let met = self.layer_stack.composite_metallic.get(idx).copied().unwrap_or(0.0);
-                        orm_img.put_pixel(x, y, image::Rgb([
-                            (ao.clamp(0.0, 1.0) * 255.0) as u8,
-                            (rough.clamp(0.0, 1.0) * 255.0) as u8,
-                            (met.clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let orm_path = out_dir.join(format!("{}_OcclusionRoughnessMetallic.png", mesh_name));
-                let _ = orm_img.save(&orm_path);
-                saved_files.push(orm_path);
-
-                // 3. Normal (DirectX format: Y inverted)
-                let mut nrm_img = image::RgbImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let n = self.layer_stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
-                        nrm_img.put_pixel(x, y, image::Rgb([
-                            (n[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            ((1.0 - n[1]).clamp(0.0, 1.0) * 255.0) as u8,
-                            (n[2].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let nrm_path = out_dir.join(format!("{}_Normal.png", mesh_name));
-                let _ = nrm_img.save(&nrm_path);
-                saved_files.push(nrm_path);
+                self.logs.push((
+                    time_str,
+                    "SUCCESS".into(),
+                    format!("Export complete: {} textures with {}px seam dilation", count, self.export_padding),
+                ));
             }
-            1 => {
-                // ── Unity URP (Metallic / Smoothness) ────────────────
-                // 1. AlbedoTransparency (RGBA)
-                let mut alb_img = image::RgbaImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let c = self.layer_stack.composite_color.get(idx).copied().unwrap_or([0.8, 0.8, 0.8, 1.0]);
-                        alb_img.put_pixel(x, y, image::Rgba([
-                            (c[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[1].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[2].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[3].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let alb_path = out_dir.join(format!("{}_AlbedoTransparency.png", mesh_name));
-                let _ = alb_img.save(&alb_path);
-                saved_files.push(alb_path);
-
-                // 2. MetallicSmoothness (R = Metallic, A = Smoothness)
-                let mut ms_img = image::RgbaImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let met = self.layer_stack.composite_metallic.get(idx).copied().unwrap_or(0.0);
-                        let rough = self.layer_stack.composite_roughness.get(idx).copied().unwrap_or(0.5);
-                        let smooth = (1.0 - rough).clamp(0.0, 1.0);
-                        ms_img.put_pixel(x, y, image::Rgba([
-                            (met.clamp(0.0, 1.0) * 255.0) as u8,
-                            0,
-                            0,
-                            (smooth * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let ms_path = out_dir.join(format!("{}_MetallicSmoothness.png", mesh_name));
-                let _ = ms_img.save(&ms_path);
-                saved_files.push(ms_path);
-
-                // 3. Normal (OpenGL)
-                let mut nrm_img = image::RgbImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let n = self.layer_stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
-                        nrm_img.put_pixel(x, y, image::Rgb([
-                            (n[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            (n[1].clamp(0.0, 1.0) * 255.0) as u8,
-                            (n[2].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let nrm_path = out_dir.join(format!("{}_Normal.png", mesh_name));
-                let _ = nrm_img.save(&nrm_path);
-                saved_files.push(nrm_path);
-            }
-            _ => {
-                // ── Blender / Individual Standard PBR Maps ───────────
-                // 1. BaseColor
-                let mut bc_img = image::RgbImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let c = self.layer_stack.composite_color.get(idx).copied().unwrap_or([0.8, 0.8, 0.8, 1.0]);
-                        bc_img.put_pixel(x, y, image::Rgb([
-                            (c[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[1].clamp(0.0, 1.0) * 255.0) as u8,
-                            (c[2].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let bc_path = out_dir.join(format!("{}_BaseColor.png", mesh_name));
-                let _ = bc_img.save(&bc_path);
-                saved_files.push(bc_path);
-
-                // 2. Metallic
-                let mut met_img = image::GrayImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let m = self.layer_stack.composite_metallic.get(idx).copied().unwrap_or(0.0);
-                        met_img.put_pixel(x, y, image::Luma([(m.clamp(0.0, 1.0) * 255.0) as u8]));
-                    }
-                }
-                let met_path = out_dir.join(format!("{}_Metallic.png", mesh_name));
-                let _ = met_img.save(&met_path);
-                saved_files.push(met_path);
-
-                // 3. Roughness
-                let mut rough_img = image::GrayImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let r = self.layer_stack.composite_roughness.get(idx).copied().unwrap_or(0.5);
-                        rough_img.put_pixel(x, y, image::Luma([(r.clamp(0.0, 1.0) * 255.0) as u8]));
-                    }
-                }
-                let rough_path = out_dir.join(format!("{}_Roughness.png", mesh_name));
-                let _ = rough_img.save(&rough_path);
-                saved_files.push(rough_path);
-
-                // 4. Normal
-                let mut nrm_img = image::RgbImage::new(w, h);
-                for y in 0..h {
-                    for x in 0..w {
-                        let idx = (y * w + x) as usize;
-                        let n = self.layer_stack.composite_normal.get(idx).copied().unwrap_or([0.5, 0.5, 1.0]);
-                        nrm_img.put_pixel(x, y, image::Rgb([
-                            (n[0].clamp(0.0, 1.0) * 255.0) as u8,
-                            (n[1].clamp(0.0, 1.0) * 255.0) as u8,
-                            (n[2].clamp(0.0, 1.0) * 255.0) as u8,
-                        ]));
-                    }
-                }
-                let nrm_path = out_dir.join(format!("{}_Normal.png", mesh_name));
-                let _ = nrm_img.save(&nrm_path);
-                saved_files.push(nrm_path);
-
-                // 5. Ambient Occlusion (if baked)
-                if let Some(ref ao_buf) = self.baked_maps.ambient_occlusion {
-                    let mut ao_img = image::GrayImage::new(w, h);
-                    for y in 0..h {
-                        for x in 0..w {
-                            let idx = (y * w + x) as usize;
-                            let ao = ao_buf.get(idx).copied().unwrap_or(1.0);
-                            ao_img.put_pixel(x, y, image::Luma([(ao.clamp(0.0, 1.0) * 255.0) as u8]));
-                        }
-                    }
-                    let ao_path = out_dir.join(format!("{}_AmbientOcclusion.png", mesh_name));
-                    let _ = ao_img.save(&ao_path);
-                    saved_files.push(ao_path);
-                }
-
-                // 6. Curvature (if baked)
-                if let Some(ref curv_buf) = self.baked_maps.curvature {
-                    let mut curv_img = image::GrayImage::new(w, h);
-                    for y in 0..h {
-                        for x in 0..w {
-                            let idx = (y * w + x) as usize;
-                            let c = curv_buf.get(idx).copied().unwrap_or(0.5);
-                            curv_img.put_pixel(x, y, image::Luma([(c.clamp(0.0, 1.0) * 255.0) as u8]));
-                        }
-                    }
-                    let curv_path = out_dir.join(format!("{}_Curvature.png", mesh_name));
-                    let _ = curv_img.save(&curv_path);
-                    saved_files.push(curv_path);
-                }
+            Err(e) => {
+                self.export_status = format!("Export failed: {}", e);
+                self.status_message = format!("Export error: {}", e);
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "ERROR".into(),
+                    format!("Texture export failed: {}", e),
+                ));
             }
         }
-
-        self.export_status = format!("Exported {} maps to {}", saved_files.len(), out_dir.display());
-        self.status_message = format!("Exported {} textures successfully!", saved_files.len());
-        self.logs.push((
-            chrono::Local::now().format("%H:%M:%S").to_string(),
-            "INFO".into(),
-            format!("Exported {} textures to {}", saved_files.len(), out_dir.display()),
-        ));
     }
 }
 
@@ -4292,11 +4128,12 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                         // Export Preset
                         ui.label(egui::RichText::new("Output Template / Preset:").strong());
                         let preset_names = [
-                            "Unreal Engine 4/5 (Packed: BaseColor, ORM, Normal DirectX)",
+                            "Unreal Engine 4/5 (Packed ORM: BaseColor, ORM, Normal DirectX)",
                             "Unity Universal Render Pipeline (Metallic / Smoothness)",
-                            "Blender (Principled BSDF Standard)",
-                            "glTF PBR (Metallic Roughness)",
-                            "Individual PBR Maps (All Channels)",
+                            "Unity High Definition Render Pipeline (MaskMap)",
+                            "glTF 2.0 (Metallic-Roughness Standard)",
+                            "Generic PBR (Individual Split Maps)",
+                            "VFX / Film Studio (32-bit OpenEXR)",
                         ];
                         egui::ComboBox::from_id_salt("export_preset_combo")
                             .selected_text(preset_names.get(self.export_preset_idx).copied().unwrap_or("Custom"))
@@ -4322,7 +4159,14 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
 
                         // File Format
                         ui.label(egui::RichText::new("File Format:").strong());
-                        let formats = ["PNG (8-bit sRGB)", "PNG (16-bit)", "JPEG (95% Quality)", "TGA (Uncompressed)"];
+                        let formats = [
+                            "Auto (Preset Default)",
+                            "PNG (8-bit)",
+                            "PNG (16-bit High-Precision)",
+                            "TGA (8-bit Uncompressed)",
+                            "OpenEXR (32-bit Float)",
+                            "JPEG (8-bit Compressed)",
+                        ];
                         egui::ComboBox::from_id_salt("export_fmt_combo")
                             .selected_text(formats.get(self.export_file_format).copied().unwrap_or("PNG"))
                             .show_ui(ui, |ui| {
@@ -4354,20 +4198,35 @@ Res: {}×{}", self.mesh.name, self.baker_options.resolution, self.baker_options.
                             0 => {
                                 ui.label(egui::RichText::new("• BaseColor: RGB (sRGB Color)").color(Color32::from_rgb(228, 110, 60)));
                                 ui.label(egui::RichText::new("• ORM Packed: R = Ambient Occlusion, G = Roughness, B = Metallic").color(Color32::from_rgb(100, 240, 150)));
-                                ui.label(egui::RichText::new("• Normal: Tangent Space (DirectX Inverted Y)").color(Color32::from_rgb(140, 120, 255)));
+                                ui.label(egui::RichText::new("• Normal: Tangent Space (DirectX Inverted -Y)").color(Color32::from_rgb(140, 120, 255)));
                             }
                             1 => {
                                 ui.label(egui::RichText::new("• AlbedoTransparency: RGB (Albedo) + A (Opacity)").color(Color32::from_rgb(228, 110, 60)));
                                 ui.label(egui::RichText::new("• MetallicSmoothness: R (Metallic) + A (Smoothness = 1 - Roughness)").color(Color32::from_rgb(150, 200, 255)));
-                                ui.label(egui::RichText::new("• Normal: Tangent Space (OpenGL)").color(Color32::from_rgb(140, 120, 255)));
+                                ui.label(egui::RichText::new("• Normal: Tangent Space (OpenGL +Y)").color(Color32::from_rgb(140, 120, 255)));
+                            }
+                            2 => {
+                                ui.label(egui::RichText::new("• BaseColor: RGB (sRGB)").color(Color32::from_rgb(228, 110, 60)));
+                                ui.label(egui::RichText::new("• MaskMap: R = Metallic, G = AO, B = Thickness/Detail, A = Smoothness").color(Color32::from_rgb(100, 240, 150)));
+                                ui.label(egui::RichText::new("• Normal: Tangent Space (OpenGL +Y)").color(Color32::from_rgb(140, 120, 255)));
+                            }
+                            3 => {
+                                ui.label(egui::RichText::new("• baseColorTexture: RGB (sRGB) + A (Opacity)").color(Color32::from_rgb(228, 110, 60)));
+                                ui.label(egui::RichText::new("• metallicRoughnessTexture: G = Roughness, B = Metallic (R = AO)").color(Color32::from_rgb(100, 240, 150)));
+                                ui.label(egui::RichText::new("• normalTexture: Tangent Space (OpenGL +Y)").color(Color32::from_rgb(140, 120, 255)));
+                            }
+                            5 => {
+                                ui.label(egui::RichText::new("• BaseColor: 32-bit Float Linear OpenEXR (RGBA)").color(Color32::from_rgb(228, 110, 60)));
+                                ui.label(egui::RichText::new("• Normal: 32-bit Float Linear OpenEXR (RGB)").color(Color32::from_rgb(140, 120, 255)));
+                                ui.label(egui::RichText::new("• ORM: 32-bit Float Linear OpenEXR (R=AO, G=Roughness, B=Metallic)").color(Color32::from_rgb(100, 240, 150)));
                             }
                             _ => {
                                 ui.label("• BaseColor: RGB 8-bit");
                                 ui.label("• Metallic: Grayscale L8");
                                 ui.label("• Roughness: Grayscale L8");
-                                ui.label("• Normal: RGB Tangent Space (OpenGL)");
+                                ui.label("• Normal: RGB Tangent Space (OpenGL 16-bit)");
+                                ui.label("• Height: Grayscale L16");
                                 ui.label("• Ambient Occlusion: Grayscale L8");
-                                ui.label("• Curvature: Grayscale L8");
                             }
                         }
                     });

@@ -942,6 +942,7 @@ pub struct LayerStack {
     pub composite_metallic: Vec<f32>,
     pub composite_roughness: Vec<f32>,
     pub composite_normal: Vec<[f32; 3]>,
+    pub composite_height: Vec<f32>,
     pub composite_lit: Vec<[f32; 4]>,
 }
 
@@ -957,6 +958,7 @@ impl LayerStack {
             composite_metallic: vec![0.75; total],
             composite_roughness: vec![0.32; total],
             composite_normal: vec![[0.5, 0.5, 1.0]; total],
+            composite_height: vec![0.0; total],
             composite_lit: vec![[0.4, 0.4, 0.45, 1.0]; total],
         };
 
@@ -1022,6 +1024,10 @@ impl LayerStack {
         self.composite_metallic.fill(0.0);
         self.composite_roughness.fill(0.5);
         self.composite_normal.fill([0.5, 0.5, 1.0]);
+        if self.composite_height.len() != total {
+            self.composite_height.resize(total, 0.0);
+        }
+        self.composite_height.fill(0.0);
 
         for layer in &mut self.layers {
             if !layer.visible {
@@ -1072,6 +1078,7 @@ impl LayerStack {
 
                     self.composite_metallic[i] = self.composite_metallic[i] * (1.0 - effective_alpha) + layer.metallic_buffer[i] * effective_alpha;
                     self.composite_roughness[i] = self.composite_roughness[i] * (1.0 - effective_alpha) + layer.roughness_buffer[i] * effective_alpha;
+                    self.composite_height[i] = self.composite_height[i] * (1.0 - effective_alpha) + layer.height_buffer[i] * effective_alpha;
 
                     if layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
                         let base_n = self.composite_normal[i];
@@ -1152,6 +1159,7 @@ impl LayerStack {
         let mut base_met = 0.0f32;
         let mut base_rough = 0.5f32;
         let mut base_norm = [0.5f32, 0.5, 1.0];
+        let mut base_height = 0.0f32;
 
         for layer in &self.layers {
             if !layer.visible {
@@ -1190,6 +1198,7 @@ impl LayerStack {
                 ];
                 base_met = base_met * (1.0 - effective_alpha) + layer.metallic_buffer[i] * effective_alpha;
                 base_rough = base_rough * (1.0 - effective_alpha) + layer.roughness_buffer[i] * effective_alpha;
+                base_height = base_height * (1.0 - effective_alpha) + layer.height_buffer[i] * effective_alpha;
 
                 if layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
                     let top_n = layer.normal_buffer[i];
@@ -1206,6 +1215,9 @@ impl LayerStack {
         self.composite_metallic[i] = base_met;
         self.composite_roughness[i] = base_rough;
         self.composite_normal[i] = base_norm;
+        if self.composite_height.len() > i {
+            self.composite_height[i] = base_height;
+        }
 
         let nx = base_norm[0] * 2.0 - 1.0;
         let ny = base_norm[1] * 2.0 - 1.0;
