@@ -36,6 +36,7 @@ pub struct Layer {
     // Masking & Anchor Points
     pub mask: Option<LayerMask>,
     pub anchor_point: Option<AnchorPoint>,
+    pub color_tag: Option<u8>,
 
     // Fill settings (for Fill layers)
     pub fill_color: [f32; 4],
@@ -72,6 +73,7 @@ impl Layer {
             folder_expanded: true,
             mask: None,
             anchor_point: None,
+            color_tag: None,
             fill_color: [0.8, 0.8, 0.8, 1.0],
             fill_metallic: 0.0,
             fill_roughness: 0.5,
@@ -98,6 +100,7 @@ impl Layer {
             folder_expanded: true,
             mask: None,
             anchor_point: None,
+            color_tag: None,
             fill_color: color,
             fill_metallic: metallic,
             fill_roughness: roughness,
@@ -109,6 +112,18 @@ impl Layer {
             height_buffer: vec![0.0; total],
             width,
             height,
+        }
+    }
+
+    pub fn update_fill(&mut self) {
+        if self.layer_type == LayerType::Fill {
+            let total = (self.width * self.height) as usize;
+            for i in 0..total {
+                self.color_buffer[i] = self.fill_color;
+                self.metallic_buffer[i] = self.fill_metallic;
+                self.roughness_buffer[i] = self.fill_roughness;
+                self.height_buffer[i] = self.fill_height;
+            }
         }
     }
 
@@ -128,11 +143,12 @@ impl Layer {
         if let Ok(img) = image::open(path) {
             let rgba_img = img.to_rgba8();
             let (img_w, img_h) = rgba_img.dimensions();
+            let tiling = 2.0f64;
 
             for y in 0..height {
-                let sy = ((y as f64 / height as f64) * (img_h as f64)) as u32 % img_h;
+                let sy = (((y as f64 / height as f64) * tiling * (img_h as f64)) as u32) % img_h;
                 for x in 0..width {
-                    let sx = ((x as f64 / width as f64) * (img_w as f64)) as u32 % img_w;
+                    let sx = (((x as f64 / width as f64) * tiling * (img_w as f64)) as u32) % img_w;
                     let p = rgba_img.get_pixel(sx, sy);
                     let idx = (y * width + x) as usize;
 
@@ -232,6 +248,26 @@ impl Layer {
         self.mask = Some(mask);
     }
 
+    pub fn add_bitmap_mask(&mut self, path: &std::path::Path) {
+        if let Ok(img) = image::open(path) {
+            let gray = img.to_luma8();
+            let (w, h) = (self.width as usize, self.height as usize);
+            let mut mask = LayerMask::new(MaskType::White, self.width, self.height);
+            let mut buf = vec![1.0f32; w * h];
+            let (iw, ih) = gray.dimensions();
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    let sx = (x * iw / self.width).min(iw - 1);
+                    let sy = (y * ih / self.height).min(ih - 1);
+                    let lum = gray.get_pixel(sx, sy)[0] as f32 / 255.0;
+                    buf[(y * self.width + x) as usize] = lum;
+                }
+            }
+            mask.buffer = buf;
+            self.mask = Some(mask);
+        }
+    }
+
     pub fn clear(&mut self) {
         if self.layer_type == LayerType::Paint {
             self.color_buffer.fill([0.0, 0.0, 0.0, 0.0]);
@@ -249,27 +285,30 @@ impl Layer {
     }
 
     pub fn paint_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
-        let px_center = (uv[0] * self.width as f32) as i32;
-        let py_center = (uv[1] * self.height as f32) as i32;
-        let radius = (brush.size * 0.5) as i32;
-
         let w = self.width as i32;
         let h = self.height as i32;
+        let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
+        let py_center = (uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
+        let radius = (brush.size * 0.5).round() as i32;
 
-        let min_x = px_center - radius;
-        let max_x = px_center + radius;
-        let min_y = py_center - radius;
-        let max_y = py_center + radius;
+        let min_x = (px_center - radius).clamp(0, w - 1);
+        let max_x = (px_center + radius).clamp(0, w - 1);
+        let min_y = (py_center - radius).clamp(0, h - 1);
+        let max_y = (py_center + radius).clamp(0, h - 1);
+
+        if min_x > max_x || min_y > max_y {
+            return [0, 0, 0, 0];
+        }
 
         let hardness = brush.hardness.clamp(0.0, 0.999);
-        let rad_f = radius as f32;
+        let rad_f = radius.max(1) as f32;
 
         for y in min_y..=max_y {
-            let py = y.rem_euclid(h);
+            let py = y;
             let dy = (y - py_center) as f32;
 
             for x in min_x..=max_x {
-                let px = x.rem_euclid(w);
+                let px = x;
                 let dx = (x - px_center) as f32;
 
                 let dist = (dx * dx + dy * dy).sqrt();
@@ -350,14 +389,13 @@ impl Layer {
     }
 
     pub fn paint_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
-        let mut dx = to_uv[0] - from_uv[0];
-        let mut dy = to_uv[1] - from_uv[1];
+        let dx = to_uv[0] - from_uv[0];
+        let dy = to_uv[1] - from_uv[1];
 
-        if dx > 0.5 { dx -= 1.0; }
-        else if dx < -0.5 { dx += 1.0; }
-
-        if dy > 0.5 { dy -= 1.0; }
-        else if dy < -0.5 { dy += 1.0; }
+        // If distance across UV space is large (e.g. crossing seams or separate UV shells), avoid drawing an interpolated smear
+        if dx.abs() > 0.25 || dy.abs() > 0.25 {
+            return self.paint_stamp(to_uv, brush, on_mask);
+        }
 
         let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
         let step_size = (brush.size * brush.spacing).max(1.0);
@@ -366,11 +404,8 @@ impl Layer {
         let mut bbox = [self.width as i32, self.height as i32, 0, 0];
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
-            let mut u = from_uv[0] + dx * t;
-            let mut v = from_uv[1] + dy * t;
-
-            u = u.rem_euclid(1.0);
-            v = v.rem_euclid(1.0);
+            let u = (from_uv[0] + dx * t).clamp(0.0, 1.0);
+            let v = (from_uv[1] + dy * t).clamp(0.0, 1.0);
 
             let s_box = self.paint_stamp([u, v], brush, on_mask);
             if s_box[2] >= s_box[0] && s_box[3] >= s_box[1] {
@@ -381,6 +416,519 @@ impl Layer {
             }
         }
         bbox
+    }
+
+    pub fn erase_stamp(&mut self, uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
+        let py_center = (uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
+        let radius = (brush.size * 0.5).round() as i32;
+
+        let min_x = (px_center - radius).clamp(0, w - 1);
+        let max_x = (px_center + radius).clamp(0, w - 1);
+        let min_y = (py_center - radius).clamp(0, h - 1);
+        let max_y = (py_center + radius).clamp(0, h - 1);
+
+        if min_x > max_x || min_y > max_y {
+            return [0, 0, 0, 0];
+        }
+
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+        let rad_f = radius.max(1) as f32;
+
+        for y in min_y..=max_y {
+            let py = y;
+            let dy = (y - py_center) as f32;
+
+            for x in min_x..=max_x {
+                let px = x;
+                let dx = (x - px_center) as f32;
+
+                let dist = (dx * dx + dy * dy).sqrt();
+                if dist <= rad_f {
+                    let norm_dist = dist / rad_f;
+                    let brush_alpha = if norm_dist <= hardness {
+                        1.0
+                    } else {
+                        1.0 - (norm_dist - hardness) / (1.0 - hardness)
+                    };
+                    let alpha = (brush_alpha * brush.opacity * brush.flow).clamp(0.0, 1.0);
+                    if alpha > 0.001 {
+                        let idx = (py * w + px) as usize;
+                        if on_mask {
+                            if let Some(ref mut mask) = self.mask {
+                                if idx < mask.buffer.len() {
+                                    mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
+                                }
+                            }
+                        } else if idx < self.color_buffer.len() {
+                            self.color_buffer[idx][3] = (self.color_buffer[idx][3] - alpha).max(0.0);
+                        }
+                    }
+                }
+            }
+        }
+        [min_x, min_y, max_x, max_y]
+    }
+
+    pub fn erase_line(&mut self, from_uv: [f32; 2], to_uv: [f32; 2], brush: &Brush, on_mask: bool) -> [i32; 4] {
+        let dx = to_uv[0] - from_uv[0];
+        let dy = to_uv[1] - from_uv[1];
+
+        if dx.abs() > 0.25 || dy.abs() > 0.25 {
+            return self.erase_stamp(to_uv, brush, on_mask);
+        }
+
+        let pixel_dist = (dx * dx * (self.width as f32).powi(2) + dy * dy * (self.height as f32).powi(2)).sqrt();
+        let step_size = (brush.size * brush.spacing).max(1.0);
+        let steps = (pixel_dist / step_size).ceil().max(1.0) as usize;
+
+        let mut bbox = [self.width as i32, self.height as i32, 0, 0];
+        for i in 0..=steps {
+            let t = i as f32 / steps as f32;
+            let u = (from_uv[0] + dx * t).clamp(0.0, 1.0);
+            let v = (from_uv[1] + dy * t).clamp(0.0, 1.0);
+
+            let s_box = self.erase_stamp([u, v], brush, on_mask);
+            if s_box[2] >= s_box[0] && s_box[3] >= s_box[1] {
+                bbox[0] = bbox[0].min(s_box[0]);
+                bbox[1] = bbox[1].min(s_box[1]);
+                bbox[2] = bbox[2].max(s_box[2]);
+                bbox[3] = bbox[3].max(s_box[3]);
+            }
+        }
+        bbox
+    }
+
+    pub fn flood_fill(&mut self, brush: &Brush) {
+        self.color_buffer.fill(brush.color);
+        self.metallic_buffer.fill(brush.metallic);
+        self.roughness_buffer.fill(brush.roughness);
+        self.normal_buffer.fill(brush.normal);
+        self.height_buffer.fill(brush.height);
+    }
+
+    /// Fills a specific triangle in UV space with current brush material
+    pub fn fill_triangle(&mut self, uv0: [f32; 2], uv1: [f32; 2], uv2: [f32; 2], brush: &Brush) -> [i32; 4] {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+
+        let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
+        let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
+        let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
+        let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
+
+        let px_min = ((min_u * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+        let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+        let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+        let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+
+        let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+
+        for py in py_min..=py_max {
+            let v_px = py as f32 / (h_f - 1.0);
+            let row_offset = py as usize * self.width as usize;
+            for px in px_min..=px_max {
+                let u_px = px as f32 / (w_f - 1.0);
+                let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
+                let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                let b2 = 1.0 - b0 - b1;
+
+                if b0 >= -0.01 && b1 >= -0.01 && b2 >= -0.01 {
+                    let idx = row_offset + px as usize;
+                    if brush.paint_color && idx < self.color_buffer.len() {
+                        self.color_buffer[idx] = brush.color;
+                    }
+                    if brush.paint_metallic && idx < self.metallic_buffer.len() {
+                        self.metallic_buffer[idx] = brush.metallic;
+                    }
+                    if brush.paint_roughness && idx < self.roughness_buffer.len() {
+                        self.roughness_buffer[idx] = brush.roughness;
+                    }
+                    if brush.paint_normal && idx < self.normal_buffer.len() {
+                        self.normal_buffer[idx] = brush.normal;
+                    }
+                    if brush.paint_height && idx < self.height_buffer.len() {
+                        self.height_buffer[idx] = brush.height;
+                    }
+                }
+            }
+        }
+        [px_min, py_min, px_max, py_max]
+    }
+
+    /// 3D Surface Projection Painting: Evaluates Euclidean distance on the 3D mesh surface.
+    /// Paints seamlessly across UV seams, singularities/poles, and disconnected shells with zero distortion.
+    pub fn paint_3d_surface(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        radius_3d: f32,
+        brush: &Brush,
+        is_eraser: bool,
+        on_mask: bool,
+    ) -> [i32; 4] {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+        let num_tris = mesh.indices.len() / 3;
+        let r2 = radius_3d * radius_3d;
+        let hardness = brush.hardness.clamp(0.0, 0.999);
+
+        let mut bbox = [w, h, 0, 0];
+        let mut any_painted = false;
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+
+            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() {
+                continue;
+            }
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() {
+                continue;
+            }
+
+            let v0 = mesh.vertices[i0];
+            let v1 = mesh.vertices[i1];
+            let v2 = mesh.vertices[i2];
+
+            // 3D Triangle AABB check against the brush sphere
+            let tri_min_x = v0[0].min(v1[0]).min(v2[0]);
+            let tri_max_x = v0[0].max(v1[0]).max(v2[0]);
+            let tri_min_y = v0[1].min(v1[1]).min(v2[1]);
+            let tri_max_y = v0[1].max(v1[1]).max(v2[1]);
+            let tri_min_z = v0[2].min(v1[2]).min(v2[2]);
+            let tri_max_z = v0[2].max(v1[2]).max(v2[2]);
+
+            if hit_pos[0] + radius_3d < tri_min_x || hit_pos[0] - radius_3d > tri_max_x ||
+               hit_pos[1] + radius_3d < tri_min_y || hit_pos[1] - radius_3d > tri_max_y ||
+               hit_pos[2] + radius_3d < tri_min_z || hit_pos[2] - radius_3d > tri_max_z {
+                continue;
+            }
+
+            // Normal check: back-face culling to prevent bleeding through to the backside
+            let n0 = mesh.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n1 = mesh.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n2 = mesh.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let avg_n = [
+                (n0[0] + n1[0] + n2[0]) * 0.3333,
+                (n0[1] + n1[1] + n2[1]) * 0.3333,
+                (n0[2] + n1[2] + n2[2]) * 0.3333,
+            ];
+            let dot = avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2];
+            if dot < 0.05 {
+                continue;
+            }
+
+            let uv0 = mesh.uvs[i0];
+            let uv1 = mesh.uvs[i1];
+            let uv2 = mesh.uvs[i2];
+
+            let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
+            let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
+            let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
+            let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
+
+            let px_min = ((min_u * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+
+            for py in py_min..=py_max {
+                let v_px = py as f32 / (h_f - 1.0);
+                let row_offset = py as usize * self.width as usize;
+
+                for px in px_min..=px_max {
+                    let u_px = px as f32 / (w_f - 1.0);
+
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                    let b2 = 1.0 - b0 - b1;
+
+                    if b0 >= -0.05 && b1 >= -0.05 && b2 >= -0.05 {
+                        let p3d_x = b0 * v0[0] + b1 * v1[0] + b2 * v2[0];
+                        let p3d_y = b0 * v0[1] + b1 * v1[1] + b2 * v2[1];
+                        let p3d_z = b0 * v0[2] + b1 * v1[2] + b2 * v2[2];
+
+                        let dx = p3d_x - hit_pos[0];
+                        let dy = p3d_y - hit_pos[1];
+                        let dz = p3d_z - hit_pos[2];
+                        let dist2 = dx * dx + dy * dy + dz * dz;
+
+                        if dist2 <= r2 {
+                            let dist = dist2.sqrt();
+                            let norm_dist = dist / radius_3d;
+                            let brush_alpha = if norm_dist <= hardness {
+                                1.0
+                            } else {
+                                1.0 - (norm_dist - hardness) / (1.0 - hardness)
+                            };
+                            let alpha = (brush_alpha * brush.opacity * brush.flow).clamp(0.0, 1.0);
+
+                            if alpha > 0.001 {
+                                let idx = row_offset + px as usize;
+                                if on_mask {
+                                    if let Some(ref mut mask) = self.mask {
+                                        if idx < mask.buffer.len() {
+                                            if is_eraser {
+                                                mask.buffer[idx] = (mask.buffer[idx] - alpha).max(0.0);
+                                            } else {
+                                                mask.buffer[idx] = (mask.buffer[idx] * (1.0 - alpha) + alpha).clamp(0.0, 1.0);
+                                            }
+                                        }
+                                    }
+                                } else if is_eraser {
+                                    if idx < self.color_buffer.len() {
+                                        self.color_buffer[idx][3] = (self.color_buffer[idx][3] - alpha).max(0.0);
+                                    }
+                                } else {
+                                    if brush.paint_color && idx < self.color_buffer.len() {
+                                        let cur = self.color_buffer[idx];
+                                        let target = brush.color;
+                                        self.color_buffer[idx] = [
+                                            cur[0] * (1.0 - alpha) + target[0] * alpha,
+                                            cur[1] * (1.0 - alpha) + target[1] * alpha,
+                                            cur[2] * (1.0 - alpha) + target[2] * alpha,
+                                            (cur[3] + alpha).min(1.0),
+                                        ];
+                                    }
+                                    if brush.paint_metallic && idx < self.metallic_buffer.len() {
+                                        self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + brush.metallic * alpha;
+                                    }
+                                    if brush.paint_roughness && idx < self.roughness_buffer.len() {
+                                        self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + brush.roughness * alpha;
+                                    }
+                                    if brush.paint_normal && idx < self.normal_buffer.len() {
+                                        let cur = self.normal_buffer[idx];
+                                        self.normal_buffer[idx] = [
+                                            cur[0] * (1.0 - alpha) + brush.normal[0] * alpha,
+                                            cur[1] * (1.0 - alpha) + brush.normal[1] * alpha,
+                                            cur[2] * (1.0 - alpha) + brush.normal[2] * alpha,
+                                        ];
+                                    }
+                                    if brush.paint_height && idx < self.height_buffer.len() {
+                                        self.height_buffer[idx] = self.height_buffer[idx] * (1.0 - alpha) + brush.height * alpha;
+                                    }
+                                }
+
+                                bbox[0] = bbox[0].min(px);
+                                bbox[1] = bbox[1].min(py);
+                                bbox[2] = bbox[2].max(px);
+                                bbox[3] = bbox[3].max(py);
+                                any_painted = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if any_painted && bbox[2] >= bbox[0] && bbox[3] >= bbox[1] {
+            bbox
+        } else {
+            [0, 0, 0, 0]
+        }
+    }
+
+    /// 3D Surface Smudge: blends surrounding pixels on the 3D surface
+    pub fn smudge_3d_surface(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        radius_3d: f32,
+        brush: &Brush,
+    ) -> [i32; 4] {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let w_f = self.width as f32;
+        let h_f = self.height as f32;
+        let num_tris = mesh.indices.len() / 3;
+        let r2 = radius_3d * radius_3d;
+        let mut bbox = [w, h, 0, 0];
+        let mut any_painted = false;
+
+        // Sample center color to blend towards
+        let mut center_color = [0.5f32, 0.5, 0.5, 1.0];
+        let mut center_met = 0.0f32;
+        let mut center_rough = 0.5f32;
+        let mut found_center = false;
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() { continue; }
+            let uv0 = mesh.uvs[i0];
+            let px = ((uv0[0] * (w_f - 1.0)).round() as usize).min(self.width as usize - 1);
+            let py = ((uv0[1] * (h_f - 1.0)).round() as usize).min(self.height as usize - 1);
+            let idx = py * self.width as usize + px;
+            if idx < self.color_buffer.len() {
+                center_color = self.color_buffer[idx];
+                center_met = self.metallic_buffer[idx];
+                center_rough = self.roughness_buffer[idx];
+                found_center = true;
+                break;
+            }
+        }
+        if !found_center { return [0, 0, 0, 0]; }
+
+        for t in 0..num_tris {
+            let i0 = mesh.indices[t * 3] as usize;
+            let i1 = mesh.indices[t * 3 + 1] as usize;
+            let i2 = mesh.indices[t * 3 + 2] as usize;
+
+            if i0 >= mesh.vertices.len() || i1 >= mesh.vertices.len() || i2 >= mesh.vertices.len() { continue; }
+            if i0 >= mesh.uvs.len() || i1 >= mesh.uvs.len() || i2 >= mesh.uvs.len() { continue; }
+
+            let v0 = mesh.vertices[i0];
+            let v1 = mesh.vertices[i1];
+            let v2 = mesh.vertices[i2];
+
+            let tri_min_x = v0[0].min(v1[0]).min(v2[0]);
+            let tri_max_x = v0[0].max(v1[0]).max(v2[0]);
+            let tri_min_y = v0[1].min(v1[1]).min(v2[1]);
+            let tri_max_y = v0[1].max(v1[1]).max(v2[1]);
+            let tri_min_z = v0[2].min(v1[2]).min(v2[2]);
+            let tri_max_z = v0[2].max(v1[2]).max(v2[2]);
+
+            if hit_pos[0] + radius_3d < tri_min_x || hit_pos[0] - radius_3d > tri_max_x ||
+               hit_pos[1] + radius_3d < tri_min_y || hit_pos[1] - radius_3d > tri_max_y ||
+               hit_pos[2] + radius_3d < tri_min_z || hit_pos[2] - radius_3d > tri_max_z {
+                continue;
+            }
+
+            let n0 = mesh.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n1 = mesh.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n2 = mesh.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let avg_n = [(n0[0] + n1[0] + n2[0]) * 0.3333, (n0[1] + n1[1] + n2[1]) * 0.3333, (n0[2] + n1[2] + n2[2]) * 0.3333];
+            if avg_n[0] * hit_normal[0] + avg_n[1] * hit_normal[1] + avg_n[2] * hit_normal[2] < 0.05 {
+                continue;
+            }
+
+            let uv0 = mesh.uvs[i0];
+            let uv1 = mesh.uvs[i1];
+            let uv2 = mesh.uvs[i2];
+
+            let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
+            let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
+            let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
+            let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
+
+            let px_min = ((min_u * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+
+            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1])).max(1e-7);
+
+            for py in py_min..=py_max {
+                let v_px = py as f32 / (h_f - 1.0);
+                let row_offset = py as usize * self.width as usize;
+
+                for px in px_min..=px_max {
+                    let u_px = px as f32 / (w_f - 1.0);
+                    let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0]) + (uv2[0] - uv1[0]) * (v_px - uv2[1])) / denom;
+                    let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0]) + (uv0[0] - uv2[0]) * (v_px - uv2[1])) / denom;
+                    let b2 = 1.0 - b0 - b1;
+
+                    if b0 >= -0.05 && b1 >= -0.05 && b2 >= -0.05 {
+                        let p3d_x = b0 * v0[0] + b1 * v1[0] + b2 * v2[0];
+                        let p3d_y = b0 * v0[1] + b1 * v1[1] + b2 * v2[1];
+                        let p3d_z = b0 * v0[2] + b1 * v1[2] + b2 * v2[2];
+
+                        let dx = p3d_x - hit_pos[0];
+                        let dy = p3d_y - hit_pos[1];
+                        let dz = p3d_z - hit_pos[2];
+                        let dist2 = dx * dx + dy * dy + dz * dz;
+
+                        if dist2 <= r2 {
+                            let dist = dist2.sqrt();
+                            let norm_dist = dist / radius_3d;
+                            let alpha = ((1.0 - norm_dist) * brush.flow * 0.35).clamp(0.0, 1.0);
+                            let idx = row_offset + px as usize;
+
+                            if idx < self.color_buffer.len() {
+                                let cur = self.color_buffer[idx];
+                                self.color_buffer[idx] = [
+                                    cur[0] * (1.0 - alpha) + center_color[0] * alpha,
+                                    cur[1] * (1.0 - alpha) + center_color[1] * alpha,
+                                    cur[2] * (1.0 - alpha) + center_color[2] * alpha,
+                                    cur[3],
+                                ];
+                                self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + center_met * alpha;
+                                self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + center_rough * alpha;
+                            }
+
+                            bbox[0] = bbox[0].min(px);
+                            bbox[1] = bbox[1].min(py);
+                            bbox[2] = bbox[2].max(px);
+                            bbox[3] = bbox[3].max(py);
+                            any_painted = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if any_painted && bbox[2] >= bbox[0] && bbox[3] >= bbox[1] { bbox } else { [0, 0, 0, 0] }
+    }
+
+    /// 2D UV Smudge stamp
+    pub fn smudge_stamp(&mut self, uv: [f32; 2], brush: &Brush) -> [i32; 4] {
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
+        let py_center = (uv[1].clamp(0.0, 1.0) * (h - 1) as f32).round() as i32;
+        let radius = (brush.size * 0.5).round() as i32;
+
+        let min_x = (px_center - radius).clamp(0, w - 1);
+        let max_x = (px_center + radius).clamp(0, w - 1);
+        let min_y = (py_center - radius).clamp(0, h - 1);
+        let max_y = (py_center + radius).clamp(0, h - 1);
+
+        if min_x > max_x || min_y > max_y { return [0, 0, 0, 0]; }
+
+        let center_idx = (py_center as usize * self.width as usize + px_center as usize).min(self.color_buffer.len().saturating_sub(1));
+        let c_color = self.color_buffer[center_idx];
+        let c_met = self.metallic_buffer[center_idx];
+        let c_rough = self.roughness_buffer[center_idx];
+        let rad_f = radius.max(1) as f32;
+
+        for y in min_y..=max_y {
+            let row_offset = y as usize * self.width as usize;
+            let dy = (y - py_center) as f32;
+            for x in min_x..=max_x {
+                let dx = (x - px_center) as f32;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d <= rad_f {
+                    let norm_d = d / rad_f;
+                    let alpha = ((1.0 - norm_d) * brush.flow * 0.35).clamp(0.0, 1.0);
+                    let idx = row_offset + x as usize;
+                    if idx < self.color_buffer.len() {
+                        let cur = self.color_buffer[idx];
+                        self.color_buffer[idx] = [
+                            cur[0] * (1.0 - alpha) + c_color[0] * alpha,
+                            cur[1] * (1.0 - alpha) + c_color[1] * alpha,
+                            cur[2] * (1.0 - alpha) + c_color[2] * alpha,
+                            cur[3],
+                        ];
+                        self.metallic_buffer[idx] = self.metallic_buffer[idx] * (1.0 - alpha) + c_met * alpha;
+                        self.roughness_buffer[idx] = self.roughness_buffer[idx] * (1.0 - alpha) + c_rough * alpha;
+                    }
+                }
+            }
+        }
+        [min_x, min_y, max_x, max_y]
     }
 }
 

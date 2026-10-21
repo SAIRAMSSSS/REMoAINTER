@@ -30,6 +30,7 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions {
         viewport,
+        depth_buffer: 24,
         ..Default::default()
     };
 
@@ -39,7 +40,7 @@ fn main() -> eframe::Result<()> {
         Box::new(|cc| {
             ui::configure_substance_fonts(&cc.egui_ctx);
             ui::apply_substance_theme(&cc.egui_ctx);
-            Ok(Box::new(RemoainterApp::default()))
+            Ok(Box::new(RemoainterApp::new(cc)))
         }),
     )
 }

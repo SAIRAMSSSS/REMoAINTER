@@ -85,6 +85,20 @@ impl LayerMask {
         self.recompute(None, None);
     }
 
+    pub fn invert(&mut self) {
+        for v in &mut self.buffer {
+            *v = (1.0 - *v).clamp(0.0, 1.0);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        let initial_val = match self.mask_type {
+            MaskType::White => 1.0f32,
+            MaskType::Black => 0.0f32,
+        };
+        self.buffer.fill(initial_val);
+    }
+
     /// Evaluates the mask effects stack (Fill, Paint, Generator, Levels, Invert)
     pub fn recompute(&mut self, baked_curvature: Option<&[f32]>, baked_ao: Option<&[f32]>) {
         let _total = (self.width * self.height) as usize;
