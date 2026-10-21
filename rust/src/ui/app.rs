@@ -207,6 +207,10 @@ pub struct RemoainterApp {
     pub decal_scale: f32,
     pub decal_angle: f32,
     pub decal_font_size: f32,
+    /// Discovered system TTF/OTF fonts (lazily populated once from text::system_fonts).
+    pub decal_fonts: Vec<String>,
+    /// Selected font family path; empty = automatic default (DejaVu/Liberation/Noto preferred).
+    pub decal_font_path: String,
 
     // Project Management (File > Save/Load, Autosave, Snapshots)
     pub project_name: String,
@@ -224,6 +228,52 @@ pub struct RemoainterApp {
     pub show_hotkeys_dialog: bool,
     pub show_shortcuts_dialog: bool,
     pub color_management_mode: usize,
+
+    // Offline Path-Traced Visualisation (Render Mode; CPU Rayon progressive)
+    pub show_render_mode: bool,
+    pub render_options: crate::render::RenderOptions,
+    pub render_preset: crate::render::QualityPreset,
+    /// spp used when the preset is `Custom`.
+    pub render_custom_spp: u32,
+    /// Owned worker job (film + progress atomics + thread handle).
+    pub render_state: Option<crate::render::RenderJob>,
+    /// Preview texture of the progressive film (separate from the PBR
+    /// composite texture so painting stays untouched).
+    pub render_film_handle: Option<egui::TextureHandle>,
+    /// Pass count shown in the last preview texture (avoid texture churn).
+    pub render_last_preview_passes: usize,
+    /// Time of last preview upload (~250 ms throttle guard).
+    pub render_last_preview: std::time::Instant,
+    /// Whether completion was already logged for the current session.
+    pub render_logged: bool,
+}
+
+fn decal_rasterize(app: &mut RemoainterApp) {
+    // Rasterize the decal text with the chosen system font (TTF/OTF via ab_glyph). If the
+    // font fails to load/parse, fall back to the builtin bitmap engine — never panic.
+    let font_px = app.decal_font_size.clamp(32.0, 2048.0);
+    match crate::painting::text::rasterize_text_font(
+        &app.decal_text,
+        font_px as u32,
+        Some(&app.decal_font_path),
+    ) {
+        Ok(mask) => {
+            app.decal_alpha = Some(Arc::new(mask));
+            app.status_message = format!("Text decal updated: \"{}\"", app.decal_text);
+        }
+        Err(err) => {
+            app.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "WARN".to_string(),
+                format!("Font failed, builtin bitmap fallback used: {err}"),
+            ));
+            app.decal_alpha = Some(Arc::new(crate::painting::text::rasterize_text(
+                &app.decal_text,
+                font_px as u32,
+            )));
+            app.status_message = "Font failed — builtin bitmap font used".to_string();
+        }
+    }
 }
 
 fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
@@ -608,6 +658,8 @@ impl Default for RemoainterApp {
             decal_scale: 1.0,
             decal_angle: 0.0,
             decal_font_size: 64.0,
+            decal_fonts: Vec::new(),
+            decal_font_path: String::new(),
 
             project_name: "Untitled Project".to_string(),
             current_project_path: None,
@@ -623,6 +675,18 @@ impl Default for RemoainterApp {
             show_hotkeys_dialog: false,
             show_shortcuts_dialog: false,
             color_management_mode: color_mgmt,
+
+            show_render_mode: false,
+            render_options: crate::render::RenderOptions::default(),
+            render_preset: crate::render::QualityPreset::Medium,
+            render_custom_spp: 512,
+            render_state: None,
+            render_film_handle: None,
+            render_last_preview_passes: 0,
+            render_last_preview: std::time::Instant::now()
+                .checked_sub(std::time::Duration::from_secs(1))
+                .unwrap_or_else(std::time::Instant::now),
+            render_logged: false,
         };
 
         // Material Calibration Sphere is active by default
@@ -1909,6 +1973,19 @@ impl eframe::App for RemoainterApp {
             }
         }
 
+        // If Offline Render mode is active, tear down cleanly when leaving
+        // (painting keeps running; the worker is cancelled via RenderJob::Drop).
+        if !self.show_render_mode && self.render_state.is_some() {
+            self.stop_render_session();
+        }
+
+        // Offline Path-Traced Render Studio (full-screen mode, mirrors the
+        // Baking Studio pattern)
+        if self.show_render_mode {
+            self.ui_render_studio_mode(ctx);
+            return;
+        }
+
         // If Baker mode is active, render full docked Baking Studio Mode (Substance Painter 1:1)
         if self.show_baker_dialog {
             self.ui_baker_studio_mode(ctx);
@@ -2144,7 +2221,12 @@ impl eframe::App for RemoainterApp {
                             ui.close_menu();
                         }
                         if ui.button("📷 Visualisation (Render)").clicked() {
-                            self.status_message = "Visualisation Mode (Interactive PBR GGX)".into();
+                            self.show_render_mode = true;
+                            self.show_baker_dialog = false;
+                            self.render_film_handle = None;
+                            self.render_last_preview_passes = 0;
+                            self.status_message =
+                                "Visualisation Mode (Offline Path-Traced Render)".into();
                             ui.close_menu();
                         }
                     });
@@ -2495,14 +2577,69 @@ impl eframe::App for RemoainterApp {
                             .desired_width(150.0),
                     )
                     .changed();
-                    if ui.button("Rasterize Text → Alpha").clicked() {
-                        let font_px = self.decal_font_size.clamp(32.0, 2048.0);
-                        self.decal_alpha = Some(std::sync::Arc::new(
-                            crate::painting::text::rasterize_text(&self.decal_text, font_px as u32),
-                        ));
-                        self.status_message =
-                            format!("Text decal updated: \"{}\"", self.decal_text);
+                    // Font family dropdown — discovered system TTF/OTF fonts; empty path
+                    // selects the automatic default (DejaVu/Liberation/Noto preferred).
+                    if self.decal_fonts.is_empty() {
+                        self.decal_fonts = crate::painting::text::system_fonts().to_vec();
+                        self.decal_font_path =
+                            crate::painting::text::default_font_path().unwrap_or_default();
+                    }
+                    let font_name = |path: &str| -> String {
+                        std::path::Path::new(path)
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or(path)
+                            .to_owned()
+                    };
+                    let mut font_changed = false;
+                    ui.horizontal(|ui| {
+                        ui.label("Font Family");
+                        let entries: Vec<(String, String)> = std::iter::once((
+                            String::new(),
+                            font_name(
+                                &crate::painting::text::default_font_path().unwrap_or_default(),
+                            ),
+                        ))
+                        .chain(
+                            self.decal_fonts
+                                .iter()
+                                .map(|p| (p.clone(), font_name(p)))
+                                .collect::<Vec<_>>(),
+                        )
+                        .collect();
+                        let shown = font_name(&self.decal_font_path);
+                        let mut selected = self.decal_font_path.clone();
+                        egui::ComboBox::from_id_salt("decal_font_family")
+                            .selected_text(shown)
+                            .width(160.0)
+                            .show_ui(ui, |ui| {
+                                for (path, label) in &entries {
+                                    let label = if path.is_empty() {
+                                        format!("(Auto: {label})")
+                                    } else {
+                                        label.clone()
+                                    };
+                                    if ui
+                                        .selectable_value(&mut selected, path.clone(), label)
+                                        .changed()
+                                    {
+                                        font_changed = true;
+                                    }
+                                }
+                            });
+                        if font_changed {
+                            self.decal_font_path = selected;
+                        }
+                    });
+                    if font_changed {
+                        // keep the decal preview coherent with the newly chosen family
                         text_changed = true;
+                    }
+                    if ui.button("Rasterize Text → Alpha").clicked() {
+                        text_changed = true;
+                    }
+                    if text_changed {
+                        decal_rasterize(self);
                     }
                     let _ = text_changed;
                     if ui.button("Load Image Alpha…").clicked() {
@@ -7012,6 +7149,464 @@ impl RemoainterApp {
                 });
             }
         });
+    }
+
+    // ------------------------------------------------------------------
+    // Offline Path-Traced Visualisation (Render Mode)
+    // ------------------------------------------------------------------
+
+    /// Capture settings + build the traced scene from the paint session and
+    /// spawn the background worker (same pattern as `bake_mesh_maps`).
+    pub fn start_render_session(&mut self) {
+        // A previous, still-running session is cancelled on Drop.
+        self.render_state = None;
+
+        let mut opts = self.render_options.clone();
+        opts.spp = self.render_preset.spp(self.render_custom_spp);
+        // Capture the current viewport orbit exactly as the artist sees it.
+        opts.camera = crate::render::OrbitCamera {
+            yaw_deg: self.camera_yaw,
+            pitch_deg: self.camera_pitch,
+            dist: self.camera_dist,
+            fov_deg: 45.0,
+        };
+        self.render_options.spp = opts.spp;
+        self.render_options.camera = opts.camera;
+
+        let scene = crate::render::RenderScene::from_pbr(
+            &self.mesh,
+            &self.layer_stack.composite_color,
+            &self.layer_stack.composite_roughness,
+            &self.layer_stack.composite_metallic,
+            &self.layer_stack.composite_normal,
+            self.layer_stack.width,
+            self.layer_stack.height,
+        );
+
+        self.render_film_handle = None;
+        self.render_last_preview_passes = 0;
+        self.render_logged = false;
+        self.render_state = Some(crate::render::spawn_render(scene, opts));
+        self.status_message = format!(
+            "Started offline render: {}×{} @ {} spp (CPU path traced)",
+            self.render_options.width, self.render_options.height, self.render_options.spp
+        );
+        self.logs.push((
+            chrono::Local::now().format("%H:%M:%S").to_string(),
+            "INFO".into(),
+            format!(
+                "Offline path-traced render started ({}x{}, {} spp, mesh {})",
+                self.render_options.width,
+                self.render_options.height,
+                self.render_options.spp,
+                self.mesh.name
+            ),
+        ));
+    }
+
+    /// Cancel + detach the worker. `RenderJob::drop` flips the cancel flag, so
+    /// leaving Render mode never blocks the UI thread.
+    pub fn stop_render_session(&mut self) {
+        if let Some(job) = self.render_state.take() {
+            if job.film.passes() > 0 && !job.progress.finished.load(Ordering::Relaxed) {
+                self.status_message = format!("Render stopped at {} passes", job.film.passes());
+            }
+        }
+    }
+
+    pub fn ui_render_studio_mode(&mut self, ctx: &egui::Context) {
+        // 1. Top Menu Bar (same studio style as the Baking Studio)
+        egui::TopBottomPanel::top("render_top_menu").show(ctx, |ui| {
+            if self.logo_texture.is_none() {
+                let logo_bytes = include_bytes!("../../../assets/logo_icon.png");
+                if let Ok(img) = image::load_from_memory(logo_bytes) {
+                    let rgba = img.to_rgba8();
+                    let (w, h) = rgba.dimensions();
+                    let color_img = egui::ColorImage::from_rgba_unmultiplied(
+                        [w as usize, h as usize],
+                        &rgba.into_raw(),
+                    );
+                    self.logo_texture = Some(ctx.load_texture(
+                        "remoainter_logo",
+                        color_img,
+                        egui::TextureOptions::LINEAR,
+                    ));
+                }
+            }
+
+            ui.horizontal(|ui| {
+                if let Some(ref logo) = self.logo_texture {
+                    ui.image(egui::load::SizedTexture::new(logo.id(), vec2(20.0, 20.0)));
+                } else {
+                    ui.colored_label(SMART_MAT_ORANGE, "RM");
+                }
+                ui.label(
+                    egui::RichText::new("REMoAINTER")
+                        .strong()
+                        .color(Color32::WHITE),
+                );
+                ui.separator();
+
+                egui::menu::bar(ui, |ui| {
+                    ui.menu_button("File", |ui| {
+                        if ui.button("Return to Painting Mode").clicked() {
+                            self.show_render_mode = false;
+                            ui.close_menu();
+                        }
+                        if ui.button("Exit (Alt+F4)").clicked() {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    });
+                    ui.menu_button("Mode", |ui| {
+                        if ui.button("🎨 Painting (Edition)").clicked() {
+                            self.show_render_mode = false;
+                            ui.close_menu();
+                        }
+                        if ui.button("⚡ Bake Mesh Maps (Studio)").clicked() {
+                            self.show_render_mode = false;
+                            self.show_baker_dialog = true;
+                            ui.close_menu();
+                        }
+                        if ui.button("📷 Visualisation (Render)").clicked() {
+                            ui.close_menu();
+                        }
+                    });
+                });
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.colored_label(SMART_MAT_ORANGE, "📷 OFFLINE RENDER STUDIO");
+                });
+            });
+        });
+
+        // 2. Right Control Panel: settings + session controls + progress
+        egui::SidePanel::right("render_controls_panel")
+            .exact_width(340.0)
+            .resizable(false)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.heading("📷 Visualisation (Render)");
+                    ui.label("Offline path-traced, CPU progressive");
+                    ui.separator();
+
+                    ui.label("Quality Preset:");
+                    egui::ComboBox::from_id_salt("render_preset_combo")
+                        .selected_text(self.render_preset.name())
+                        .show_ui(ui, |ui| {
+                            for preset in crate::render::QualityPreset::ALL {
+                                let _ = ui.selectable_value(
+                                    &mut self.render_preset,
+                                    preset,
+                                    preset.name(),
+                                );
+                            }
+                        });
+                    if self.render_preset != crate::render::QualityPreset::Custom {
+                        self.render_options.spp =
+                            self.render_preset.spp(self.render_custom_spp);
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.label("Custom spp:");
+                            ui.add(
+                                egui::DragValue::new(&mut self.render_custom_spp)
+                                    .range(1..=20000),
+                            );
+                        });
+                        self.render_options.spp =
+                            self.render_preset.spp(self.render_custom_spp);
+                    }
+
+                    ui.label("Film Size:");
+                    egui::ComboBox::from_id_salt("render_film_size_combo")
+                        .selected_text(format!(
+                            "{}×{}",
+                            self.render_options.width, self.render_options.height
+                        ))
+                        .show_ui(ui, |ui| {
+                            for (w, h) in [(512u32, 512u32), (1024, 1024), (2048, 2048), (4096, 4096)] {
+                                let _ = ui.selectable_value(
+                                    &mut self.render_options.width,
+                                    w,
+                                    format!("{w}×{h}"),
+                                );
+                                let _ = ui.selectable_value(
+                                    &mut self.render_options.height,
+                                    h,
+                                    format!("{w}×{h}"),
+                                );
+                            }
+                        });
+
+                    ui.separator();
+                    ui.add(
+                        egui::Slider::new(
+                            &mut self.render_options.exposure_stops,
+                            -6.0..=6.0,
+                        )
+                        .text("Exposure (stops)"),
+                    );
+                    ui.add(
+                        egui::Slider::new(
+                            &mut self.render_options.env.intensity,
+                            0.0..=4.0,
+                        )
+                        .text("Env Intensity"),
+                    );
+                    ui.add(
+                        egui::Slider::new(
+                            &mut self.render_options.env.rotation_deg,
+                            0.0..=360.0,
+                        )
+                        .text("Env Rotation (°)"),
+                    );
+                    if let crate::render::EnvKind::Studio {
+                        sun_intensity,
+                        sun_angle_deg,
+                    } = &mut self.render_options.env.kind
+                    {
+                        ui.add(
+                            egui::Slider::new(sun_intensity, 0.0..=64.0)
+                                .text("Sun Intensity"),
+                        );
+                        ui.add(
+                            egui::Slider::new(sun_angle_deg, 0.0..=360.0)
+                                .text("Sun Angle (°)"),
+                        );
+                    }
+
+                    ui.separator();
+                    ui.label("Output PNG (auto-save on completion):");
+                    ui.horizontal(|ui| {
+                        let shown = self
+                            .render_options
+                            .output_path
+                            .as_ref()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_else(|| "<not set>".into());
+                        ui.label(
+                            egui::RichText::new(shown)
+                                .monospace()
+                                .color(TEXT_PRIMARY),
+                        );
+                        if ui.button("Browse...").clicked() {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .set_title("Save Rendered Film As...")
+                                .add_filter("PNG Image (*.png)", &["png"])
+                                .set_file_name("render.png")
+                                .save_file()
+                            {
+                                self.render_options.output_path = Some(path);
+                            }
+                        }
+                        if ui.add_enabled(
+                            self.render_options.output_path.is_some(),
+                            egui::Button::new("Clear"),
+                        ).clicked() {
+                            self.render_options.output_path = None;
+                        }
+                    });
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if ui.button("▶ Start Render").clicked() {
+                            self.start_render_session();
+                            ui.close_menu();
+                        }
+                        ui.separator();
+                        if let Some(ref job) = self.render_state {
+                            let finished =
+                                job.progress.finished.load(Ordering::Relaxed);
+                            if !finished {
+                                let paused = job.progress.pause.load(Ordering::Relaxed);
+                                if ui.button(if paused { "▶ Resume" } else { "⏸ Pause" }).clicked() {
+                                    job.progress.pause.store(!paused, Ordering::Relaxed);
+                                }
+                                if ui.button("⏹ Stop").clicked() {
+                                    job.progress.cancel.store(true, Ordering::Relaxed);
+                                }
+                            }
+                        }
+                    });
+                    if let Some(ref job) = self.render_state {
+                        if ui
+                            .add_enabled(
+                                job.film.passes() > 0,
+                                egui::Button::new("💾 Save Film PNG..."),
+                            )
+                            .clicked()
+                        {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .set_title("Save Current Film As...")
+                                .add_filter("PNG Image (*.png)", &["png"])
+                                .set_file_name("render.png")
+                                .save_file()
+                            {
+                                match crate::render::save_png(
+                                    &job.film,
+                                    self.render_options.exposure_stops,
+                                    &path,
+                                ) {
+                                    Ok(()) => {
+                                        self.status_message =
+                                            format!("Saved render film: {}", path.display());
+                                    }
+                                    Err(err) => {
+                                        self.status_message = format!("Film save failed: {err}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ui.separator();
+                    if let Some(ref job) = self.render_state {
+                        let passes = job.progress.passes.load(Ordering::Relaxed);
+                        let target = self.render_options.spp.max(1);
+                        let frac = (passes as f32 / target as f32).clamp(0.0, 1.0);
+                        let paused = job.progress.pause.load(Ordering::Relaxed);
+                        let finished = job.progress.finished.load(Ordering::Relaxed);
+                        let saved = job.progress.saved.load(Ordering::Relaxed);
+                        let state_txt = if finished {
+                            if saved {
+                                "Completed & saved"
+                            } else if job.progress.cancel.load(Ordering::Relaxed) {
+                                "Stopped"
+                            } else {
+                                "Completed"
+                            }
+                        } else if paused {
+                            "Paused"
+                        } else {
+                            "Rendering"
+                        };
+                        ui.label(egui::RichText::new(state_txt).strong().color(ACTIVE_BLUE));
+                        ui.add(
+                            egui::ProgressBar::new(frac)
+                                .text(format!("{} / {} passes", passes, target)),
+                        );
+                        ui.label(format!(
+                            "Elapsed: {:.1} s | Film: {}×{}",
+                            job.elapsed_ms() as f32 / 1000.0,
+                            self.render_options.width,
+                            self.render_options.height
+                        ));
+                    } else {
+                        ui.colored_label(
+                            TEXT_PRIMARY,
+                            "Press ▶ Start Render to trace the current paint session\n(camera orbit captured at start).",
+                        );
+                    }
+                });
+            });
+
+        // 3. Central Film Preview (progressive, throttled to ~250 ms)
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.painter().rect_filled(
+                ui.max_rect(),
+                0.0_f32,
+                Color32::from_rgb(26, 26, 28),
+            );
+
+            if let Some(ref job) = self.render_state {
+                let passes = job.progress.passes.load(Ordering::Relaxed);
+                let due = passes > 0 && self.render_last_preview_passes != passes;
+                let throttle_ok = self
+                    .render_last_preview
+                    .elapsed()
+                    .as_millis()
+                    >= 250;
+                if due && throttle_ok {
+                    let snap = job.film.snapshot_rgba(self.render_options.exposure_stops);
+                    let size = [snap.width, snap.height];
+                    let color_img = egui::ColorImage {
+                        size,
+                        pixels: snap
+                            .rgb
+                            .as_chunks::<3>()
+                            .0
+                            .iter()
+                            .map(|c| Color32::from_rgb(c[0], c[1], c[2]))
+                            .collect(),
+                    };
+                    if let Some(ref mut handle) = self.render_film_handle {
+                        handle.set(color_img, egui::TextureOptions::LINEAR);
+                    } else {
+                        self.render_film_handle = Some(ctx.load_texture(
+                            "render_preview",
+                            color_img,
+                            egui::TextureOptions::LINEAR,
+                        ));
+                    }
+                    self.render_last_preview_passes = snap.passes;
+                    self.render_last_preview = std::time::Instant::now();
+                }
+
+                if let Some(ref tex) = self.render_film_handle {
+                    let avail = ui.available_size();
+                    let tw = tex.size()[0] as f32;
+                    let th = tex.size()[1] as f32;
+                    let scale = (avail.x / tw).min(avail.y / th).min(1e6);
+                    let sz = vec2(tw * scale, th * scale);
+                    let (rect, _) = ui.allocate_exact_size(sz, egui::Sense::hover());
+                    ui.painter().image(
+                        tex.id(),
+                        rect,
+                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                        Color32::WHITE,
+                    );
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "Progressive film — {} passes converged",
+                            self.render_last_preview_passes
+                        ))
+                        .weak(),
+                    );
+                }
+            } else {
+                ui.centered_and_justified(|ui| {
+                    ui.colored_label(
+                        TEXT_PRIMARY,
+                        "📷 Offline Render Studio — set options on the right, then Start Render.\nRGB path tracer, analytic studio env (HDRI/skybox files and denoiser are out of scope this pass).",
+                    );
+                });
+            }
+        });
+
+        // 4. Completion logging & premultiplied repaint while the worker runs
+        if let Some(ref job) = self.render_state {
+            if !job.progress.finished.load(Ordering::Relaxed) {
+                ctx.request_repaint();
+            } else if !self.render_logged {
+                self.render_logged = true;
+                let passes = job.progress.passes.load(Ordering::Relaxed);
+                let saved = job.progress.saved.load(Ordering::Relaxed);
+                let stopped = job.progress.cancel.load(Ordering::Relaxed);
+                self.status_message = if saved {
+                    format!(
+                        "Render finished: {} spp in {:.1} s — PNG saved",
+                        passes,
+                        job.elapsed_ms() as f32 / 1000.0
+                    )
+                } else if stopped {
+                    format!("Render stopped at {passes} passes")
+                } else {
+                    format!(
+                        "Render finished: {} spp in {:.1} s — no output path set (use Save Film PNG)",
+                        passes,
+                        job.elapsed_ms() as f32 / 1000.0
+                    )
+                };
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    if stopped {
+                        "WARN".into()
+                    } else {
+                        "INFO".into()
+                    },
+                    format!("Offline render session ended ({passes} passes)"),
+                ));
+            }
+        }
     }
 
     pub fn ui_baker_studio_mode(&mut self, ctx: &egui::Context) {

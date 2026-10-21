@@ -31,4 +31,5 @@ glow = "0.14"
 bytemuck = { version = "1.25", features = ["derive"] }
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 gltf = "1.4.1"
+ab_glyph = "0.2"
 ufbx = "0.11"

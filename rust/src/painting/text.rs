@@ -1,10 +1,16 @@
-//! Text / decal rasterization for the Decal tool (v1: embedded bitmap vector-derived font).
-//! In Substance Painter this is the Text/Alpha tool; here it renders crisp ASCII decal alpha
-//! masks without any external font dependency, honoring arbitrary pixel resolution.
+//! Text / decal rasterization for the Decal tool. Substance Painter parity: real system
+//! TTF/OTF fonts via `ab_glyph` (kerning, arbitrary Unicode, selectable font), with the
+//! original embedded bitmap vector font kept as the internal fallback when a chosen font
+//! fails to load or none is installed.
 
 #![allow(dead_code)]
 
 use super::brush::AlphaMaskData;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+use ab_glyph::{Font, FontArc, GlyphId, PxScale, ScaleFont};
 
 /// 5-dot-wide x 7-dot-tall bitmap font for the printable ASCII subset used in decals/greeble
 /// text. Each glyph is 7 u8 rows, bit 4 = leftmost column.
@@ -157,6 +163,325 @@ pub fn rasterize_text_wrapped(
     rasterize_text(&lines.join("\n"), pixel_height)
 }
 
+// ---------------------------------------------------------------------------
+// System font discovery (standard Linux font directories)
+// ---------------------------------------------------------------------------
+
+/// Directory roots scanned for system fonts, in XDG-appropriate order.
+const FONT_ROOTS: &[&str] = &["/usr/share/fonts", "/usr/local/share/fonts"];
+/// Cap on discovered fonts so the dropdown stays usable.
+const MAX_SYSTEM_FONTS: usize = 500;
+/// Regular sans fonts preferred as the default decal font (exact basenames, lowercase).
+const PREFERRED_FONT_BASENAMES: &[&str] = &[
+    "dejavusans.ttf",
+    "liberationsans-regular.ttf",
+    "notosans-regular.ttf",
+];
+/// Substrings matched against the full path for the second preference tier.
+const PREFERRED_FONT_SUBSTRINGS: &[&str] = &["dejavusans", "liberationsans", "notosans"];
+
+fn is_font_path(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase())
+            .as_deref(),
+        Some("ttf") | Some("otf") | Some("ttc") | Some("otc")
+    )
+}
+
+fn collect_font_files(
+    dir: &Path,
+    out: &mut Vec<String>,
+    depth: u8,
+    visited: &mut HashSet<PathBuf>,
+) {
+    if depth > 8 {
+        return;
+    }
+    let Ok(real) = dir.canonicalize() else {
+        return;
+    };
+    if !visited.insert(real) {
+        // symlink loop / already scoured
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_font_files(&path, out, depth + 1, visited);
+        } else if is_font_path(&path) {
+            if let Some(s) = path.to_str() {
+                out.push(s.to_owned());
+            }
+        }
+    }
+}
+
+fn font_roots() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
+        if !xdg.is_empty() {
+            roots.push(PathBuf::from(xdg).join("fonts"));
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        if !home.is_empty() {
+            roots.push(PathBuf::from(home).join(".local/share/fonts"));
+        }
+    }
+    roots.extend(FONT_ROOTS.iter().map(PathBuf::from));
+    roots.sort();
+    roots.dedup();
+    roots
+}
+
+/// All discoverable system fonts (`*.ttf|otf|ttc|otc`, case-insensitive) across standard
+/// Linux font directories, sorted alphabetically and capped. Cached for process lifetime.
+pub fn system_fonts() -> &'static [String] {
+    static FONTS: OnceLock<Vec<String>> = OnceLock::new();
+    FONTS.get_or_init(|| {
+        let mut fonts: Vec<String> = Vec::new();
+        let mut visited = HashSet::new();
+        for root in font_roots() {
+            if root.is_dir() {
+                collect_font_files(&root, &mut fonts, 0, &mut visited);
+            }
+        }
+        fonts.sort();
+        fonts.truncate(MAX_SYSTEM_FONTS);
+        fonts
+    })
+}
+
+/// A sensible default font: DejaVu Sans / Liberation Sans / Noto Sans when present,
+/// else the first discovered font. Deterministic for a given installed font set.
+pub fn default_font_path() -> Option<String> {
+    let fonts = system_fonts();
+    // Tier 1: exact preferred basenames (case-insensitive).
+    for pref in PREFERRED_FONT_BASENAMES {
+        let hit = fonts.iter().find(|f| {
+            Path::new(f)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|b| b.to_ascii_lowercase())
+                .as_deref()
+                == Some(*pref)
+        });
+        if let Some(p) = hit {
+            return Some(p.clone());
+        }
+    }
+    // Tier 2: any font matching a preferred family substring, regular weight favored.
+    for pref in PREFERRED_FONT_SUBSTRINGS {
+        let hit = fonts
+            .iter()
+            .find(|f| {
+                let l = f.to_ascii_lowercase();
+                l.contains(pref) && !l.contains("bold") && !l.contains("italic")
+            })
+            .or_else(|| fonts.iter().find(|f| f.to_ascii_lowercase().contains(pref)));
+        if let Some(p) = hit {
+            return Some(p.clone());
+        }
+    }
+    fonts.first().cloned()
+}
+
+// ---------------------------------------------------------------------------
+// `ab_glyph` rasterization engine (TTF/OTF, kerning, Unicode)
+// ---------------------------------------------------------------------------
+
+/// Parse + own a font by path, caching `FontArc`s so a chosen font is parsed once.
+pub fn load_font_arc(path: &str) -> Result<FontArc, String> {
+    static CACHE: OnceLock<Mutex<HashMap<String, FontArc>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(cached) = cache.lock() {
+        if let Some(font) = cached.get(path) {
+            return Ok(font.clone());
+        }
+    }
+    let bytes = std::fs::read(path).map_err(|e| format!("Font read failed ({path}): {e}"))?;
+    let font =
+        FontArc::try_from_vec(bytes).map_err(|e| format!("Font parse failed ({path}): {e}"))?;
+    if let Ok(mut cached) = cache.lock() {
+        cached
+            .entry(path.to_owned())
+            .or_insert_with(|| font.clone());
+    }
+    Ok(font)
+}
+
+/// Horizontal advance width in px of one laid-out line (kerning included).
+fn layout_line_width(font: &FontArc, em_px: f32, line: &str) -> f32 {
+    let sf = font.as_scaled(PxScale::from(em_px));
+    let mut pen = 0.0f32;
+    let mut prev: Option<GlyphId> = None;
+    for ch in line.chars() {
+        let id = sf.glyph_id(ch);
+        if let Some(p) = prev {
+            pen += sf.kern(p, id);
+        }
+        pen += sf.h_advance(id);
+        prev = Some(id);
+    }
+    pen
+}
+
+/// Rasterize text (with `\n` line breaks) using the provided system font. `None` picks
+/// [`default_font_path`]; if even that is unavailable, the builtin bitmap engine is used.
+/// Same output contract as [`rasterize_text`]: 2:1-padded alpha coverage mask of the
+/// requested height.
+pub fn rasterize_text_with_font(
+    text: &str,
+    pixel_height: u32,
+    font: Option<&FontArc>,
+) -> AlphaMaskData {
+    let pixel_height = pixel_height.clamp(16, 2048);
+    let font = font
+        .cloned()
+        .or_else(|| default_font_path().and_then(|p| load_font_arc(&p).ok()));
+    let Some(font) = font else {
+        return rasterize_text(text, pixel_height);
+    };
+
+    // Line budget: fill the full stamp height across all wrapped lines, em size shrinks
+    // with the number of lines (mirrors the bitmap engine's dots-per-dot budget).
+    let lines: Vec<&str> = text.split('\n').collect();
+    let num_lines = lines.len().max(1) as f32;
+    let line_budget = pixel_height as f32 / num_lines;
+    let em_px = (line_budget / 1.25).max(4.0);
+    let scale = PxScale::from(em_px);
+    let sf = font.as_scaled(scale);
+    let line_height = sf.height().max(em_px);
+
+    // Pass 1: layout all lines (pen positions, kerning, px bounds) to find global bounds.
+    struct Laid {
+        outlined: Option<ab_glyph::OutlinedGlyph>,
+        baseline: f32,
+        x: f32,
+    }
+    let mut laid: Vec<Laid> = Vec::new();
+    let mut min = (f32::MAX, f32::MAX);
+    let mut max = (f32::MIN, f32::MIN);
+    for (li, line) in lines.iter().enumerate() {
+        let baseline = sf.ascent() + line_height * li as f32;
+        let mut pen = 0.0f32;
+        let mut prev: Option<GlyphId> = None;
+        for ch in line.chars() {
+            let id = sf.glyph_id(ch);
+            if let Some(p) = prev {
+                pen += sf.kern(p, id);
+            }
+            let glyph = id.with_scale_and_position(scale, ab_glyph::point(pen, baseline));
+            if let Some(outlined) = font.outline_glyph(glyph) {
+                let b = outlined.px_bounds();
+                min.0 = min.0.min(b.min.x);
+                min.1 = min.1.min(b.min.y);
+                max.0 = max.0.max(b.max.x);
+                max.1 = max.1.max(b.max.y);
+                laid.push(Laid {
+                    outlined: Some(outlined),
+                    baseline,
+                    x: pen,
+                });
+            }
+            pen += sf.h_advance(id);
+            prev = Some(id);
+        }
+    }
+
+    let text_w = if laid.is_empty() { 1.0 } else { max.0 - min.0 };
+    let text_h = if laid.is_empty() { 1.0 } else { max.1 - min.1 };
+
+    // Pass 2: punch coverage into the 2:1-padded, centered alpha mask.
+    const MAX_WIDTH: u32 = 8192;
+    let margin = em_px.max(8.0) as u32;
+    let mut width = ((text_w as u32) + margin * 2).max(pixel_height * 2).max(32);
+    width = width.min(MAX_WIDTH);
+    let x_offset = ((width as f32 - text_w) / 2.0).max(margin as f32) - min.0;
+    let y_offset = ((pixel_height as f32 - text_h) / 2.0).max(4.0) - min.1;
+
+    let mut data = vec![0u8; (width * pixel_height) as usize];
+    for g in &laid {
+        let Some(outlined) = &g.outlined else {
+            continue;
+        };
+        let b = outlined.px_bounds();
+        let bx = b.min.x.floor() as i64 + x_offset as i64;
+        let by = b.min.y.floor() as i64 + y_offset as i64;
+        outlined.draw(|dx, dy, coverage| {
+            let x = bx + dx as i64;
+            let y = by + dy as i64;
+            if x < 0 || y < 0 || x >= width as i64 || y >= pixel_height as i64 {
+                return;
+            }
+            let idx = (y as u32 * width + x as u32) as usize;
+            let v = (coverage * 255.0).round().clamp(0.0, 255.0) as u8;
+            if v > data[idx] {
+                data[idx] = v; // max-coverage merge across overlapping glyphs
+            }
+        });
+    }
+
+    AlphaMaskData {
+        width,
+        height: pixel_height,
+        data,
+    }
+}
+
+/// Rasterize text with a system font selected by path. `None` or an empty path picks the
+/// auto default. Returns `Err(message)` when the font cannot be loaded so the caller can
+/// fall back to the builtin bitmap engine without panicking.
+pub fn rasterize_text_font(
+    text: &str,
+    pixel_height: u32,
+    font_path: Option<&str>,
+) -> Result<AlphaMaskData, String> {
+    let pixel_height = pixel_height.clamp(16, 2048);
+    let path = match font_path {
+        Some(p) if p.trim().is_empty() => default_font_path(),
+        Some(p) => Some(p.to_owned()),
+        None => default_font_path(),
+    };
+    match path {
+        Some(ref p) => {
+            let font = load_font_arc(p)?;
+            Ok(rasterize_text_with_font(text, pixel_height, Some(&font)))
+        }
+        None => Ok(rasterize_text(text, pixel_height)),
+    }
+}
+
+/// Wrap text into multiple lines so long strings fit the decal frame, rasterizing with a
+/// discovered system font (`ab_glyph` engine: kerning + arbitrary Unicode). Returns
+/// `Err(message)` when the font could not be loaded so the caller can fall back to the
+/// builtin bitmap engine.
+pub fn rasterize_text_wrapped_font(
+    text: &str,
+    pixel_height: u32,
+    max_chars_per_line: usize,
+    font_path: Option<&str>,
+) -> Result<AlphaMaskData, String> {
+    let max_chars_per_line = max_chars_per_line.max(2);
+    let pixel_height = pixel_height.clamp(32, 2048);
+    let lines: Vec<String> = text
+        .split('\n')
+        .flat_map(|l| {
+            l.chars()
+                .collect::<Vec<_>>()
+                .chunks(max_chars_per_line)
+                .map(|c| c.iter().collect::<String>())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    rasterize_text_font(&lines.join("\n"), pixel_height, font_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,5 +522,95 @@ mod tests {
     fn wrapped_never_panic_on_long_text() {
         let a = rasterize_text_wrapped("SOMETHING VERY LONG & % PANIC CHECK", 96, 6);
         assert!(!a.data.is_empty());
+    }
+
+    // ---- TTF/OTF system-font engine --------------------------------------------------
+
+    #[test]
+    fn discovery_finds_fonts_and_default_is_stable() {
+        let fonts = system_fonts();
+        assert!(
+            !fonts.is_empty(),
+            "OS font discovery found no TTF/OTF files"
+        );
+        let def = default_font_path();
+        let def2 = default_font_path();
+        assert_eq!(def, def2, "default font selection must be stable");
+        let def = def.expect("default font path with fonts installed");
+        assert!(
+            fonts.iter().any(|f| f == &def),
+            "default font must come from the discovered list"
+        );
+    }
+
+    #[test]
+    fn ab_glyph_rasterization_is_nonempty_and_deterministic() {
+        let path = default_font_path().expect("default font");
+        let font = load_font_arc(&path).expect("default font parses");
+        let a = rasterize_text_with_font("AB", 64, Some(&font));
+        let b = rasterize_text_with_font("AB", 64, Some(&font));
+        assert_eq!(a.width, b.width);
+        assert_eq!(a.height, b.height);
+        assert_eq!(a.data, b.data, "two runs must be byte-identical");
+        assert!(
+            a.data.iter().any(|&v| v > 200),
+            "system-font mask should have inked texels"
+        );
+    }
+
+    #[test]
+    fn invalid_font_path_errors_and_bitmap_fallback_rasterizes() {
+        let err = rasterize_text_font("AB", 64, Some("/definitely/missing/dejavu.ttf"));
+        assert!(
+            err.is_err(),
+            "unparseable/missing font must report Err, not panic"
+        );
+        let fallback = rasterize_text("AB", 64);
+        assert!(
+            fallback.data.iter().any(|&v| v > 200),
+            "bitmap fallback still rasterizes"
+        );
+
+        // A real file with garbage content must also fail gracefully.
+        let garbage = std::env::temp_dir().join("remoainter_bad_font.ttf");
+        std::fs::write(&garbage, b"not a font at all").expect("write garbage font");
+        let err = rasterize_text_font("AB", 64, Some(garbage.to_str().unwrap()));
+        assert!(
+            err.is_err(),
+            "garbage font bytes must be rejected ({err:?})"
+        );
+    }
+
+    #[test]
+    fn kerning_is_exercised_by_default_font() {
+        let path = default_font_path().expect("default font");
+        let font = load_font_arc(&path).expect("default font parses");
+        // "AV" must be laid out narrower than side-by-side advances of "A" and "V"
+        // (or the raw kern pair must be positive/negative — DejaVu Sans kerns AV).
+        let sf = font.as_scaled(PxScale::from(64.0));
+        let advance_sum = sf.h_advance(font.glyph_id('A')) + sf.h_advance(font.glyph_id('V'));
+        let kern = sf.kern(font.glyph_id('A'), font.glyph_id('V'));
+        let w_av = layout_line_width(&font, 64.0, "AV");
+        let w_a_v = layout_line_width(&font, 64.0, "A V");
+        assert!(
+            w_av < advance_sum - f32::EPSILON,
+            "AV must kern tighter than raw advances (w={w_av}, sum={advance_sum}, kern={kern})"
+        );
+        assert!(w_a_v > w_av, "spaced 'A V' must be wider than kerned 'AV'");
+    }
+
+    #[test]
+    fn unicode_and_multiline_rasterize_with_system_font() {
+        let path = default_font_path().expect("default font");
+        let font = load_font_arc(&path).expect("default font parses");
+        let a = rasterize_text_with_font("Grüße — Ω ✓\nLine 2", 128, Some(&font));
+        assert!(
+            a.data.iter().any(|&v| v > 200),
+            "unicode multiline mask should have ink"
+        );
+        let w =
+            rasterize_text_wrapped_font("SOMETHING VERY LONG & % PANIC CHECK", 96, 6, Some(&path));
+        assert!(w.is_ok(), "wrapped font path must not error ({w:?})");
+        assert!(!w.unwrap().data.is_empty());
     }
 }

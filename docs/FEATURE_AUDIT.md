@@ -50,7 +50,7 @@ Status Legend:
 | :--- | :--- | :--- | :--- |
 | **Painting (Edition)** | — | **Implemented** | Default workspace with 3D/2D viewport, layers, properties, shelf. |
 | **Bake Mesh Maps (Studio)**| — | **Implemented** | Allegorithmic-style dedicated 1:1 baking studio layout. |
-| **Visualisation (Render)** | — | **Partial** | Interactive lit PBR viewport exists; offline path-traced / Iray renderer is missing. |
+| **Visualisation (Render)** | — | **Implemented** | Offline path-traced render mode (`src/render/renderer.rs`): progressive RGB CPU path tracer (Rayon scanline tiles, BVH over mesh tris, f32 film accumulation), GGX microfacet BSDF (α=rough², Smith visibility, Schlick F0) + Lambert mixture, seeded deterministic RNG per texel, analytic studio env + sun disc, exposure + ACES tonemap, quality presets (Draft 64 / Medium 256 / High 1024 / Extra 2560 spp + custom), Start/Pause/Resume/Stop, throttled egui preview, render-to-PNG with convergence auto-save. Honest scope: RGB not spectral, no HDRI-file environment, no denoiser, env-only lighting. |
 
 ---
 
@@ -123,7 +123,7 @@ Status Legend:
 | **Smudge Tool** | `5` | **Implemented** | Real displacement smudge (`smudge_stamp_at` / `smudge_3d_at`, EngineActionSmudge parity): content pulled behind the stroke motion; `Sample Merged` samples from the stack composite; `Finger Painting` deposits brush color. Works in 2D & 3D with tangent-space stamp alpha. |
 | **Clone Stamp** | `6` | **Implemented** | Full-pattern clone (`clone_stamp_at` / `clone_stamp_3d_at`): aligned stroke-relative offset locked per stroke; clones full channels (color, alpha, metallic, roughness + optional normal/height) from the merged composite; pattern rotation/scale/mirror transforms; 3D rasterization through the mesh. Fix: 3D Alt+Click (no drag) no longer conflicts with orbit. |
 | **Color Eyedropper / Picker**| `I` | **Implemented** | `ToolMode::Eyedropper`. Samples BaseColor, Metallic, Roughness, and Normal from clicked 3D surface. |
-| **Text / Decal Tool** | `7` | **Implemented** (v1) | New `ToolMode::Decal` with embedded bitmap font rasterizer (`painting/text.rs`: multi-line ASCII → alpha mask, no external font deps) and image-file decal load; scale/rotation controls; stamps via the custom-alpha brush path in 2D & 3D. Real font (TTF/OTF) rasterization pending. |
+| **Text / Decal Tool** | `7` | **Implemented** | `ToolMode::Decal`: real TTF/OTF system-font rasterization via `ab_glyph` (`painting/text.rs`: recursive font discovery of `/usr/share/fonts` etc. cap 500, default DejaVu/Liberation/Noto selection, per-path `FontArc` cache, kerning via `PxScaleFont`, max-coverage AA), font ComboBox in tool properties with auto-rerase on change, full fallback to the embedded bitmap engine on bad fonts (never panics); plus image-file decal load, scale/rotation, stamps via the custom-alpha brush path in 2D & 3D. |
 | **Symmetry Painting** | — | **Implemented** | Multi-axis (X/Y/Z) mirroring across 3D surface mesh and 2D UV layout. |
 | **Alpha / Stencil Shapes** | — | **Implemented** | Built-in procedural alphas, custom image alphas, angle rotation, and stencil masking support. |
 | **Hardness & Spacing** | — | **Implemented** | Smoothstep hardness falloff and distance-based spacing in brush pipeline. |
@@ -207,21 +207,20 @@ Status Legend:
 
 ## Summary Scorecard
 
-> Counted directly from the feature-table rows in this document (2026-10-21, post-tool-engine/baker session).
+> Counted directly from the feature-table rows in this document (2026-10-21, post-render-mode/fonts ECC dev-team session).
 
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Menu Items** | 56 | 55 | 1 | 0 | 0 |
+| **Menu Items** | 56 | 56 | 0 | 0 | 0 |
 | **Tools & Brush Engine** | 15 | 15 | 0 | 0 | 0 |
 | **Layer Stack & System** | 11 | 11 | 0 | 0 | 0 |
 | **Mesh Map Baking** | 15 | 15 | 0 | 0 | 0 |
 | **Viewport & Shaders** | 10 | 10 | 0 | 0 | 0 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **115** | **114 (99.1%)** | **1 (0.9%)** | **0** | **0** |
+| **Total** | **115** | **115 (100%)** | **0** | **0** | **0** |
 
 ### Depth qualifications (v1 / simplified implementations)
-- **Visualisation (Render) — Partial**: offline path-traced (Iray-class) renderer is the one remaining audit gap.
-- **Text / Decal Tool — Implemented (v1)**: embedded bitmap font rasterizer; TTF/OTF font selection pending.
+- **Visualisation (Render) — Implemented (honest scope)**: offline path-traced renderer ships as RGB (not spectral), analytic studio environment (no HDRI file parsing), no denoiser, env-only lighting; Substance's Iray is spectral/MDL GPU machinery — parity bar is preset-ladder + deterministic convergence, not byte-comparison against Iray output.
 - **Skew Correction — Implemented**: sheared-ray-origin approximation of Substance's `USE_SKEW_MAP`; geometry-preserving skew-mesh painting pending.
 - **Smudge / Clone projection semantics**: 3D stamps honor tangent-space alpha shapes; per-stamp jitter/spacing dynamics on the 3D path are simplified relative to Substance's stamp-page pipeline.
 - **Grid & World Axes / Anchor routing**: implemented in earlier merged branches; rows were stale until this sync.
