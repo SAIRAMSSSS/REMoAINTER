@@ -1,5 +1,12 @@
 use std::path::Path;
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SubMesh {
+    pub name: String,
+    pub index_start: usize,
+    pub index_count: usize,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Mesh {
     pub name: String,
@@ -8,9 +15,20 @@ pub struct Mesh {
     pub tangents: Vec<[f32; 4]>, // xyz = tangent, w = handedness (+1.0 or -1.0)
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u32>,
+    pub submeshes: Vec<SubMesh>,
 }
 
 impl Mesh {
+    /// Ensures that the mesh has at least one submesh covering its geometry
+    pub fn ensure_submeshes(&mut self) {
+        if self.submeshes.is_empty() && !self.indices.is_empty() {
+            self.submeshes.push(SubMesh {
+                name: self.name.clone(),
+                index_start: 0,
+                index_count: self.indices.len(),
+            });
+        }
+    }
     /// Creates a smooth, pristine Material Calibration Sphere with continuous UV coordinates and normals
     pub fn create_material_sphere(rings: u32, sectors: u32) -> Self {
         // 1. Try to load authentic MaterialX sphere asset if present
@@ -76,7 +94,9 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes: Vec::new(),
         };
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         mesh
     }
@@ -134,7 +154,9 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes: Vec::new(),
         };
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         mesh
     }
@@ -163,7 +185,9 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes: Vec::new(),
         };
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         mesh
     }
@@ -251,8 +275,10 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes: Vec::new(),
         };
         mesh.normalize_to_unit();
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         Ok(mesh)
     }
@@ -277,8 +303,10 @@ impl Mesh {
         let mut normals = Vec::new();
         let mut uvs = Vec::new();
         let mut indices = Vec::new();
+        let mut submeshes = Vec::new();
 
         for fbx_mesh in &scene.meshes {
+            let sm_start = indices.len();
             // Iterate over all polygonal faces and triangulate
             for face in &fbx_mesh.faces {
                 if face.num_indices < 3 {
@@ -315,6 +343,20 @@ impl Mesh {
                     }
                 }
             }
+
+            let sm_count = indices.len() - sm_start;
+            if sm_count > 0 {
+                let sm_name = if !fbx_mesh.element.name.is_empty() {
+                    fbx_mesh.element.name.to_string()
+                } else {
+                    format!("Mesh_{}", submeshes.len())
+                };
+                submeshes.push(SubMesh {
+                    name: sm_name,
+                    index_start: sm_start,
+                    index_count: sm_count,
+                });
+            }
         }
 
         if vertices.is_empty() {
@@ -328,8 +370,10 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes,
         };
         mesh.normalize_to_unit();
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         Ok(mesh)
     }
@@ -356,11 +400,13 @@ impl Mesh {
         let mut normals = Vec::new();
         let mut uvs = Vec::new();
         let mut indices = Vec::new();
+        let mut submeshes = Vec::new();
 
         let mut index_offset = 0u32;
 
         for model in models {
             let m = model.mesh;
+            let sm_start = indices.len();
             for i in (0..m.positions.len()).step_by(3) {
                 vertices.push([m.positions[i], m.positions[i + 1], m.positions[i + 2]]);
             }
@@ -387,6 +433,20 @@ impl Mesh {
                 indices.push(idx + index_offset);
             }
             index_offset = vertices.len() as u32;
+
+            let sm_count = indices.len() - sm_start;
+            if sm_count > 0 {
+                let sm_name = if !model.name.is_empty() {
+                    model.name
+                } else {
+                    format!("Mesh_{}", submeshes.len())
+                };
+                submeshes.push(SubMesh {
+                    name: sm_name,
+                    index_start: sm_start,
+                    index_count: sm_count,
+                });
+            }
         }
 
         let mut mesh = Self {
@@ -396,8 +456,10 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes,
         };
         mesh.normalize_to_unit();
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         Ok(mesh)
     }
@@ -447,8 +509,11 @@ impl Mesh {
         let mut indices = Vec::new();
         let mut index_offset = 0u32;
 
+        let mut submeshes = Vec::new();
+
         for model in models {
             let m = model.mesh;
+            let sm_start = indices.len();
             for i in (0..m.positions.len()).step_by(3) {
                 vertices.push([m.positions[i], m.positions[i + 1], m.positions[i + 2]]);
             }
@@ -472,6 +537,20 @@ impl Mesh {
                 indices.push(idx + index_offset);
             }
             index_offset = vertices.len() as u32;
+
+            let sm_count = indices.len() - sm_start;
+            if sm_count > 0 {
+                let sm_name = if !model.name.is_empty() {
+                    model.name
+                } else {
+                    format!("Mesh_{}", submeshes.len())
+                };
+                submeshes.push(SubMesh {
+                    name: sm_name,
+                    index_start: sm_start,
+                    index_count: sm_count,
+                });
+            }
         }
 
         let mut mesh = Self {
@@ -481,8 +560,10 @@ impl Mesh {
             tangents: Vec::new(),
             uvs,
             indices,
+            submeshes,
         };
         mesh.normalize_to_unit();
+        mesh.ensure_submeshes();
         mesh.compute_tangents();
         Ok(mesh)
     }
@@ -492,6 +573,7 @@ impl Mesh {
         if self.vertices.is_empty() {
             return;
         }
+        self.ensure_submeshes();
         let (center, radius) = self.compute_bounds();
         let scale = if radius > 1e-6 { 1.0 / radius } else { 1.0 };
         for v in &mut self.vertices {

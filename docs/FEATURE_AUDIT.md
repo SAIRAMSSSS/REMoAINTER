@@ -166,10 +166,10 @@ Status Legend:
 | **ID Map** | **Implemented** | Vertex color / submesh color ID baking. |
 | **High-Poly to Low-Poly** | **Implemented** | OBJ loading of high-poly mesh with raycast intersection testing. |
 | **Cage / Ray Distances** | **Implemented** | Max frontal distance and max rear distance sliders. |
-| **Match by Mesh Name** | **Partial** | UI fields for low suffix (`_low`) and high suffix (`_high`) exist; BVH name-filtering query needs completion. |
-| **Antialiasing (AA)** | **Partial** | UI dropdown for None, 2x2, 4x4, 8x8; supersampling rasterizer pass needs completion. |
+| **Match by Mesh Name** | **Implemented** | Submesh name suffix stripping (`_low` / `_high`) with isolated BVH acceleration per submesh to eliminate inter-object ray bleed. |
+| **Antialiasing (AA)** | **Implemented** | Multi-sample accumulation buffer supporting None (1x), 2x2 (4 samples), and 4x4 (16 samples) supersampling rasterization. |
 | **Skew Correction** | **Missing** | Skew mesh painting/correction not implemented. |
-| **Background Thread Baking** | **Partial** | Runs on background thread with `AtomicUsize` progress bar; needs non-blocking cancel button. |
+| **Background Thread Baking** | **Implemented** | Non-blocking background baking with atomic cancelation (`AtomicBool`), progress bar (`AtomicUsize`), and UI cancel button. |
 
 ---
 
@@ -212,7 +212,7 @@ Status Legend:
 | **Menu Items** | 32 | 20 | 3 | 0 | 9 |
 | **Tools & Brush Engine** | 15 | 11 | 2 | 1 | 1 |
 | **Layer Stack & System** | 11 | 10 | 1 | 0 | 0 |
-| **Mesh Map Baking** | 14 | 8 | 4 | 0 | 2 |
+| **Mesh Map Baking** | 14 | 11 | 1 | 0 | 2 |
 | **Viewport & Shaders** | 10 | 6 | 0 | 0 | 4 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **90** | **63 (70.0%)** | **10 (11.1%)** | **1 (1.1%)** | **16 (17.8%)** |
+| **Total** | **90** | **66 (73.3%)** | **7 (7.8%)** | **1 (1.1%)** | **16 (17.8%)** |

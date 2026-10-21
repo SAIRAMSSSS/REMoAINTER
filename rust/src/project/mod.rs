@@ -55,6 +55,11 @@ pub struct ProjectManifest {
     pub layers: Vec<LayerManifest>,
 }
 
+fn default_low_suffix() -> String { "_low".to_string() }
+fn default_high_suffix() -> String { "_high".to_string() }
+fn default_one() -> u32 { 1 }
+fn default_true() -> bool { true }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BakerOptionsManifest {
     pub resolution: u32,
@@ -72,6 +77,20 @@ pub struct BakerOptionsManifest {
     pub bake_id: bool,
     pub max_frontal_distance: f32,
     pub max_rear_distance: f32,
+    #[serde(default)]
+    pub match_by_name: bool,
+    #[serde(default = "default_low_suffix")]
+    pub low_poly_suffix: String,
+    #[serde(default = "default_high_suffix")]
+    pub high_poly_suffix: String,
+    #[serde(default = "default_one")]
+    pub anti_aliasing: u32,
+    #[serde(default)]
+    pub relative_to_bbox: bool,
+    #[serde(default = "default_true")]
+    pub average_normals: bool,
+    #[serde(default)]
+    pub ignore_backfaces: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,6 +238,13 @@ impl ProjectManager {
                 bake_id: baker_options.bake_id,
                 max_frontal_distance: baker_options.max_frontal_distance,
                 max_rear_distance: baker_options.max_rear_distance,
+                match_by_name: baker_options.match_by_name,
+                low_poly_suffix: baker_options.low_poly_suffix.clone(),
+                high_poly_suffix: baker_options.high_poly_suffix.clone(),
+                anti_aliasing: baker_options.anti_aliasing,
+                relative_to_bbox: baker_options.relative_to_bbox,
+                average_normals: baker_options.average_normals,
+                ignore_backfaces: baker_options.ignore_backfaces,
             },
             camera_yaw: camera.0,
             camera_pitch: camera.1,
@@ -550,6 +576,7 @@ impl ProjectManager {
             position: None,
             thickness: None,
             id: None,
+            is_cancelled: false,
         };
 
         if let Ok(mut zf) = zip.by_name("baked/ao.raw") {
@@ -611,6 +638,13 @@ impl ProjectManager {
             bake_id: manifest.baker_options.bake_id,
             max_frontal_distance: manifest.baker_options.max_frontal_distance,
             max_rear_distance: manifest.baker_options.max_rear_distance,
+            match_by_name: manifest.baker_options.match_by_name,
+            low_poly_suffix: manifest.baker_options.low_poly_suffix.clone(),
+            high_poly_suffix: manifest.baker_options.high_poly_suffix.clone(),
+            anti_aliasing: manifest.baker_options.anti_aliasing,
+            relative_to_bbox: manifest.baker_options.relative_to_bbox,
+            average_normals: manifest.baker_options.average_normals,
+            ignore_backfaces: manifest.baker_options.ignore_backfaces,
         };
 
         Ok((manifest, mesh, layer_stack, baked_maps, baker_options))
@@ -672,6 +706,13 @@ mod tests {
                 bake_id: true,
                 max_frontal_distance: 0.05,
                 max_rear_distance: 0.05,
+                match_by_name: false,
+                low_poly_suffix: "_low".to_string(),
+                high_poly_suffix: "_high".to_string(),
+                anti_aliasing: 1,
+                relative_to_bbox: false,
+                average_normals: true,
+                ignore_backfaces: false,
             },
             camera_yaw: 45.0,
             camera_pitch: 15.0,
