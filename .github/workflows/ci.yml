@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · check + test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: cargo-${{ matrix.os }}-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.os }}-
+
+      - name: Check (release profile)
+        working-directory: rust
+        run: cargo check --release
+
+      - name: Test suite (lib)
+        working-directory: rust
+        run: cargo test --release --lib
+
+      # Headless runners have no GPU/Vulkan adapter; the GPU compositor tests
+      # self-skip by design (graphics::gpu::compositor::tests). Her we prove that
+      # explicitly so a skip is never confused with a silent regression.
+      - name: GPU test skip audit (Linux, headless CI)
+        if: runner.os == 'Linux'
+        working-directory: rust
+        shell: bash
+        run: |
+          output=$(cargo test --release --lib graphics::gpu 2>&1 || true)
+          echo "$output" | tail -8

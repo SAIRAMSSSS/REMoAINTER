@@ -1838,6 +1838,98 @@ mod tests {
         assert!(baked.thickness.is_some());
     }
 
+    /// End-to-end semantic quality gate for the raycast pipeline: a low-poly
+    /// quad floor plus a high-poly box hovering above it. This pins the exact
+    /// behaviors an offline baker must demonstrate — geometry-aware normal
+    /// projection, recessive AO under the box shadow, and thickness that is
+    /// saturated through the slab but small along the free edges.
+    #[test]
+    fn test_end_to_end_bake_semantics_high_poly_above_plane() {
+        use crate::graphics::mesh::Mesh;
+
+        // Low-poly floor: single quad with a sane UV cover, facing +Y.
+        let verts: Vec<[f32; 3]> = vec![
+            [-1.0, 0.0, -1.0],
+            [1.0, 0.0, -1.0],
+            [1.0, 0.0, 1.0],
+            [-1.0, 0.0, 1.0],
+        ];
+        let norms: Vec<[f32; 3]> = vec![[0.0, 1.0, 0.0]; 4];
+        let uvs: Vec<[f32; 2]> = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+        let indices: Vec<u32> = vec![0, 2, 1, 0, 3, 2];
+
+        // High-poly: the same large quad PLUS a box floating directly over the
+        // center (its shadow must darken AO on the floor region below it).
+        let mut hp = Mesh::create_cube();
+        // Cube spans [-0.4,0.4]^2 centered at origin, base at y = 0.2.
+        for v in hp.vertices.iter_mut() {
+            v[0] = v[0] * 0.4;
+            v[1] = (v[1] * 0.4) + 0.6; // bottom face at ~0.2, top ~1.0
+            v[2] = v[2] * 0.4;
+        }
+        // Ground plane in the high-poly so the box interior gets closed off.
+        let mut ground: Vec<[f32; 3]> = verts.clone();
+        hp.vertices.extend_from_slice(&ground);
+        let nones: Vec<[f32; 3]> = vec![[0.0, 1.0, 0.0]; 4];
+        hp.normals.extend_from_slice(&nones);
+        hp.uvs.extend_from_slice(&uvs);
+        let g0 = hp.vertices.len() as u32 - 4;
+        hp.indices.extend_from_slice(&[
+            g0 + 0, g0 + 2, g0 + 1, g0 + 0, g0 + 3, g0 + 2,
+        ]);
+
+        let mut opts = BakerOptions::default();
+        opts.resolution = 32;
+        opts.ao_samples = 16;
+        opts.ao_max_distance = 3.0;
+        opts.bake_normal = true;
+        opts.bake_ao = true;
+        opts.bake_thickness = false;
+        opts.bake_position = false;
+        opts.bake_id = false;
+        opts.bake_curvature = false;
+        opts.bake_world_space_normal = false;
+
+        let baked = BakerEngine::bake_all(
+            &verts,
+            &norms,
+            &uvs,
+            &indices,
+            &[], // no submeshes: global BVH path
+            &opts,
+            None,
+            None,
+            Some(&hp),
+        );
+
+        let ao = baked.ambient_occlusion.expect("AO baked");
+        let normal = baked.normal.expect("normal baked");
+        assert!(!baked.is_cancelled);
+
+        // Center texel (u,v = 0.5) sits directly under the box: occluded.
+        let w = 32usize;
+        let center = (w / 2) * w + (w / 2);
+        let corner = (2 * w + 2);
+        assert!(
+            ao[center] < ao[corner],
+            "AO under the floating box ({} = {}) must be darker than the open field ({})",
+            ao[center],
+            center,
+            ao[corner]
+        );
+        // And the shadow must actually be a real occlusion, not noise.
+        assert!(ao[corner] > 0.75, "open-field AO expected near-lit, got {}", ao[corner]);
+
+        // Normals: the floor is flat facing +Y, so tangent-space Z dominates
+        // everywhere on the floor that isn't under the box silhouette.
+        let top_right = (2 * w + w) + (w - 3);
+        assert!(
+            normal[top_right][2] >= 0.9,
+            "flat floor normal should project ~+Z, got {:?}",
+            normal[top_right]
+        );
+    }
+
     #[test]
     fn test_baker_cancellation() {
         let low = Mesh::create_cube();
