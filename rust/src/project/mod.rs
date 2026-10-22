@@ -199,6 +199,17 @@ impl ProjectManager {
                 BlendMode::Exclusion => "Exclusion",
                 BlendMode::Color => "Color",
                 BlendMode::Luminosity => "Luminosity",
+                BlendMode::Hue => "Hue",
+                BlendMode::Saturation => "Saturation",
+                BlendMode::VividLight => "VividLight",
+                BlendMode::LinearLight => "LinearLight",
+                BlendMode::PinLight => "PinLight",
+                BlendMode::HardMix => "HardMix",
+                BlendMode::DarkerColor => "DarkerColor",
+                BlendMode::LighterColor => "LighterColor",
+                BlendMode::Divide => "Divide",
+                BlendMode::RNM => "RNM",
+                BlendMode::Whiteout => "Whiteout",
             };
 
             let (has_mask, mask_type_str, mask_effects) = if let Some(ref m) = layer.mask {
@@ -478,6 +489,17 @@ impl ProjectManager {
                 "Exclusion" => BlendMode::Exclusion,
                 "Color" => BlendMode::Color,
                 "Luminosity" => BlendMode::Luminosity,
+                "Hue" => BlendMode::Hue,
+                "Saturation" => BlendMode::Saturation,
+                "VividLight" => BlendMode::VividLight,
+                "LinearLight" => BlendMode::LinearLight,
+                "PinLight" => BlendMode::PinLight,
+                "HardMix" => BlendMode::HardMix,
+                "DarkerColor" => BlendMode::DarkerColor,
+                "LighterColor" => BlendMode::LighterColor,
+                "Divide" => BlendMode::Divide,
+                "RNM" => BlendMode::RNM,
+                "Whiteout" => BlendMode::Whiteout,
                 _ => BlendMode::Normal,
             };
 

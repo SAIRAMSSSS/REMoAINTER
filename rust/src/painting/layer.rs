@@ -39,6 +39,17 @@ pub enum BlendMode {
     Exclusion,
     Color,
     Luminosity,
+    Hue,
+    Saturation,
+    VividLight,
+    LinearLight,
+    PinLight,
+    HardMix,
+    DarkerColor,
+    LighterColor,
+    Divide,
+    RNM,
+    Whiteout,
 }
 
 impl BlendMode {
@@ -62,6 +73,17 @@ impl BlendMode {
             BlendMode::Exclusion => "Exclusion",
             BlendMode::Color => "Color",
             BlendMode::Luminosity => "Luminosity",
+            BlendMode::Hue => "Hue",
+            BlendMode::Saturation => "Saturation",
+            BlendMode::VividLight => "Vivid Light",
+            BlendMode::LinearLight => "Linear Light",
+            BlendMode::PinLight => "Pin Light",
+            BlendMode::HardMix => "Hard Mix",
+            BlendMode::DarkerColor => "Darker Color",
+            BlendMode::LighterColor => "Lighter Color",
+            BlendMode::Divide => "Divide",
+            BlendMode::RNM => "RNM (Reoriented Normal)",
+            BlendMode::Whiteout => "Whiteout",
         }
     }
 }
@@ -192,6 +214,118 @@ pub fn blend_colors(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] 
             let (r, g, b) = hsl_to_rgb(hb, sb, lt);
             [r, g, b]
         }
+        BlendMode::Hue => {
+            let (_hb, sb, lb) = rgb_to_hsl(base[0], base[1], base[2]);
+            let (ht, _st, _lt) = rgb_to_hsl(top[0], top[1], top[2]);
+            let (r, g, b) = hsl_to_rgb(ht, sb, lb);
+            [r, g, b]
+        }
+        BlendMode::Saturation => {
+            let (hb, _sb, lb) = rgb_to_hsl(base[0], base[1], base[2]);
+            let (_ht, st, _lt) = rgb_to_hsl(top[0], top[1], top[2]);
+            let (r, g, b) = hsl_to_rgb(hb, st, lb);
+            [r, g, b]
+        }
+        BlendMode::VividLight => {
+            // Dark half: Color Burn with 2t, light half: Color Dodge with 2t - 1.
+            let ch = |b: f32, t: f32| {
+                if t <= 0.0 {
+                    0.0
+                } else if t < 0.5 {
+                    (1.0 - (1.0 - b) / (2.0 * t)).max(0.0)
+                } else if t >= 1.0 {
+                    1.0
+                } else {
+                    (b / (2.0 * (1.0 - t))).min(1.0)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
+        }
+        BlendMode::LinearLight => {
+            // Linear Burn with 2t below, Linear Dodge with 2t - 1 above -> simple clamp form.
+            [
+                (base[0] + 2.0 * top[0] - 1.0).clamp(0.0, 1.0),
+                (base[1] + 2.0 * top[1] - 1.0).clamp(0.0, 1.0),
+                (base[2] + 2.0 * top[2] - 1.0).clamp(0.0, 1.0),
+            ]
+        }
+        BlendMode::PinLight => {
+            // Min with 2t below, Max with 2t - 1 above.
+            let ch = |b: f32, t: f32| {
+                if t <= 0.5 {
+                    b.min(2.0 * t)
+                } else {
+                    b.max(2.0 * t - 1.0)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
+        }
+        BlendMode::HardMix => {
+            // Thresholded Vivid Light: quantize each channel to 0 or 1.
+            let vivid = |b: f32, t: f32| {
+                if t <= 0.0 {
+                    0.0
+                } else if t < 0.5 {
+                    (1.0 - (1.0 - b) / (2.0 * t)).max(0.0)
+                } else if t >= 1.0 {
+                    1.0
+                } else {
+                    (b / (2.0 * (1.0 - t))).min(1.0)
+                }
+            };
+            let ch = |b: f32, t: f32| if vivid(b, t) >= 0.5 { 1.0 } else { 0.0 };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
+        }
+        BlendMode::DarkerColor => {
+            // Whole-color comparison in RGB space (sum of channels), not per-channel.
+            let base_sum = base[0] + base[1] + base[2];
+            let top_sum = top[0] + top[1] + top[2];
+            if top_sum < base_sum {
+                top
+            } else {
+                base
+            }
+        }
+        BlendMode::LighterColor => {
+            let base_sum = base[0] + base[1] + base[2];
+            let top_sum = top[0] + top[1] + top[2];
+            if top_sum > base_sum {
+                top
+            } else {
+                base
+            }
+        }
+        BlendMode::Divide => {
+            // Guard the zero denominator: dividing by black yields white (Photoshop semantics).
+            let ch = |b: f32, t: f32| {
+                if t <= 0.0 {
+                    1.0
+                } else {
+                    (b / t).min(1.0)
+                }
+            };
+            [
+                ch(base[0], top[0]),
+                ch(base[1], top[1]),
+                ch(base[2], top[2]),
+            ]
+        }
+        // RNM and Whiteout are normal-map modes: they are only meaningful through
+        // blend_normal_channels (wired into the normal channel compositing) and
+        // degrade to Normal on the color path.
+        BlendMode::RNM | BlendMode::Whiteout => top,
     }
 }
 
@@ -212,6 +346,108 @@ pub fn blend_scalar_channel(base: f32, top: f32, mode: BlendMode) -> f32 {
         BlendMode::Darken => base.min(top),
         BlendMode::Lighten => base.max(top),
         BlendMode::Difference => (base - top).abs(),
+        BlendMode::VividLight => {
+            if top <= 0.0 {
+                0.0
+            } else if top < 0.5 {
+                (1.0 - (1.0 - base) / (2.0 * top)).max(0.0)
+            } else if top >= 1.0 {
+                1.0
+            } else {
+                (base / (2.0 * (1.0 - top))).min(1.0)
+            }
+        }
+        BlendMode::LinearLight => (base + 2.0 * top - 1.0).clamp(0.0, 1.0),
+        BlendMode::PinLight => {
+            if top <= 0.5 {
+                base.min(2.0 * top)
+            } else {
+                base.max(2.0 * top - 1.0)
+            }
+        }
+        BlendMode::HardMix => {
+            let vivid = if top <= 0.0 {
+                0.0
+            } else if top < 0.5 {
+                (1.0 - (1.0 - base) / (2.0 * top)).max(0.0)
+            } else if top >= 1.0 {
+                1.0
+            } else {
+                (base / (2.0 * (1.0 - top))).min(1.0)
+            };
+            if vivid >= 0.5 { 1.0 } else { 0.0 }
+        }
+        BlendMode::Divide => {
+            if top <= 0.0 {
+                1.0
+            } else {
+                (base / top).min(1.0)
+            }
+        }
+        BlendMode::DarkerColor => {
+            if top < base {
+                top
+            } else {
+                base
+            }
+        }
+        BlendMode::LighterColor => {
+            if top > base {
+                top
+            } else {
+                base
+            }
+        }
+        _ => top,
+    }
+}
+
+/// Blends two tangent-space normal map values, each encoded as [0..1] with the
+/// neutral (0.5, 0.5, 1.0). Only RNM and Whiteout implement actual normal-map
+/// recombination; all other modes degenerate to the top normal (the callers
+/// lerp against the result with the layer's effective alpha, which reproduces
+/// the legacy Normal behavior for them).
+///
+/// RNM uses the classic Reoriented Normal Mapping cross-term: the detail's
+/// lateral xy is countered by the base's z and vice versa, with
+/// z = z_base * z_detail, then the result is re-normalized.
+/// Whiteout stacks the detail lateral at half weight and reconstructs z from
+/// sqrt(1 - x^2 - y^2), as defined by the classic Whiteout blend.
+pub fn blend_normal_channels(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> [f32; 3] {
+    match mode {
+        BlendMode::Whiteout => {
+            // Decode to signed tangent space.
+            let bx = base[0] * 2.0 - 1.0;
+            let by = base[1] * 2.0 - 1.0;
+            let sx = top[0] * 2.0 - 1.0;
+            let sy = top[1] * 2.0 - 1.0;
+            // Detail lateral at half weight, z reconstructed (guarded against negative).
+            let x = bx + sx * 0.5;
+            let y = by + sy * 0.5;
+            let z = (1.0 - x * x - y * y).max(1e-4).sqrt();
+            [x * 0.5 + 0.5, y * 0.5 + 0.5, z * 0.5 + 0.5]
+        }
+        BlendMode::RNM => {
+            let b = [
+                base[0] * 2.0 - 1.0,
+                base[1] * 2.0 - 1.0,
+                (base[2] * 2.0 - 1.0).max(1e-4),
+            ];
+            let s = [
+                top[0] * 2.0 - 1.0,
+                top[1] * 2.0 - 1.0,
+                (top[2] * 2.0 - 1.0).max(1e-4),
+            ];
+            // Classic RNM transition: xy cross-bonded, z multiplicative.
+            let mut x = b[0] * s[2] + s[0] * b[2];
+            let mut y = b[1] * s[2] + s[1] * b[2];
+            let mut z = b[2] * s[2];
+            let len = (x * x + y * y + z * z).sqrt().max(1e-6);
+            x /= len;
+            y /= len;
+            z /= len;
+            [x * 0.5 + 0.5, y * 0.5 + 0.5, z * 0.5 + 0.5]
+        }
         _ => top,
     }
 }
@@ -2475,12 +2711,21 @@ impl LayerStack {
                     if layer.channel_normal_enabled && layer.normal_buffer[i] != [0.5, 0.5, 1.0] {
                         let eff_a = (base_alpha * layer.channel_normal_opacity).clamp(0.0, 1.0);
                         if eff_a > 0.001 {
-                            let base_n = self.composite_normal[i];
                             let top_n = layer.normal_buffer[i];
+                            let mode = layer.channel_normal_blend;
+                            let base_n = self.composite_normal[i];
+                            let blended_n = if matches!(
+                                mode,
+                                BlendMode::RNM | BlendMode::Whiteout
+                            ) {
+                                blend_normal_channels(base_n, top_n, mode)
+                            } else {
+                                top_n
+                            };
                             self.composite_normal[i] = [
-                                base_n[0] * (1.0 - eff_a) + top_n[0] * eff_a,
-                                base_n[1] * (1.0 - eff_a) + top_n[1] * eff_a,
-                                base_n[2] * (1.0 - eff_a) + top_n[2] * eff_a,
+                                base_n[0] * (1.0 - eff_a) + blended_n[0] * eff_a,
+                                base_n[1] * (1.0 - eff_a) + blended_n[1] * eff_a,
+                                base_n[2] * (1.0 - eff_a) + blended_n[2] * eff_a,
                             ];
                         }
                     }
@@ -2657,10 +2902,16 @@ impl LayerStack {
                     let eff_a = (base_alpha * layer.channel_normal_opacity).clamp(0.0, 1.0);
                     if eff_a > 0.001 {
                         let top_n = layer.normal_buffer[i];
+                        let mode = layer.channel_normal_blend;
+                        let blended_n = if matches!(mode, BlendMode::RNM | BlendMode::Whiteout) {
+                            blend_normal_channels(base_norm, top_n, mode)
+                        } else {
+                            top_n
+                        };
                         base_norm = [
-                            base_norm[0] * (1.0 - eff_a) + top_n[0] * eff_a,
-                            base_norm[1] * (1.0 - eff_a) + top_n[1] * eff_a,
-                            base_norm[2] * (1.0 - eff_a) + top_n[2] * eff_a,
+                            base_norm[0] * (1.0 - eff_a) + blended_n[0] * eff_a,
+                            base_norm[1] * (1.0 - eff_a) + blended_n[1] * eff_a,
+                            base_norm[2] * (1.0 - eff_a) + blended_n[2] * eff_a,
                         ];
                     }
                 }
@@ -2750,7 +3001,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_all_18_blend_modes() {
+    fn test_all_blend_modes() {
         let base = [0.5, 0.4, 0.3];
         let top = [0.8, 0.2, 0.6];
         let modes = [
@@ -2772,6 +3023,17 @@ mod tests {
             BlendMode::Exclusion,
             BlendMode::Color,
             BlendMode::Luminosity,
+            BlendMode::Hue,
+            BlendMode::Saturation,
+            BlendMode::VividLight,
+            BlendMode::LinearLight,
+            BlendMode::PinLight,
+            BlendMode::HardMix,
+            BlendMode::DarkerColor,
+            BlendMode::LighterColor,
+            BlendMode::Divide,
+            BlendMode::RNM,
+            BlendMode::Whiteout,
         ];
         for mode in modes {
             let c = blend_colors(base, top, mode);

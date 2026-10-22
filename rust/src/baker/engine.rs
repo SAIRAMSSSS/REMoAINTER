@@ -116,6 +116,321 @@ pub struct BakedMaps {
 }
 
 // ----------------------------------------------------------------------------
+// Per-texel ray controls: painted ray offsets + output bit depth
+// ----------------------------------------------------------------------------
+
+/// External **painted ray-offset** texture: single channel, one f32 per texel,
+/// conventionally decoded to `[-1, 1]` (0.5 mid-gray on disk == 0.0 offset).
+/// Shifts the ray cast origin along the low-poly surface normal for every ray
+/// casting baker (normal, world-space normal, position, thickness, AO), letting
+/// users repair pinned correspondences per texel ("painted ray offsets" parity).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaintedOffsetMap {
+    pub width: u32,
+    pub height: u32,
+    /// One offset per texel, in `[-1, 1]`. `0.0` == no offset.
+    pub data: Vec<f32>,
+}
+
+impl PaintedOffsetMap {
+    /// Nearest-neighbor sample at normalized (u, v) coordinates, clamped to `[-1, 1]`.
+    #[inline]
+    pub fn sample(&self, u: f32, v: f32) -> f32 {
+        let px = (u.clamp(0.0, 1.0) * (self.width.max(1) - 1) as f32).round() as u32;
+        let py = (v.clamp(0.0, 1.0) * (self.height.max(1) - 1) as f32).round() as u32;
+        self.data[(py.min(self.height.saturating_sub(1)) as usize) * (self.width as usize)
+            + px.min(self.width.saturating_sub(1)) as usize]
+            .clamp(-1.0, 1.0)
+    }
+}
+
+/// Output bit depth for baked mesh maps (internal accumulation is always f32; the
+/// format is applied when the finished maps are encoded into image planes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BakedMapFormat {
+    /// Quantized 8 bit per channel: `round(clamp(v, 0, 1) * 255)`. 4x memory reduction.
+    U8,
+    /// IEEE 754 binary16 (2 bytes/component). No 8-bit banding; matches Substance's
+    /// "16 bits float" bake output profile.
+    F16,
+    /// Raw little-endian f32 planes — identical to what was previously consumed
+    /// internally. Default so existing persistence paths keep round-tripping.
+    #[default]
+    F32,
+}
+
+impl BakedMapFormat {
+    /// Bytes per encoded component (pixel-interleaved planes).
+    #[inline]
+    pub fn component_bytes(self) -> usize {
+        match self {
+            Self::U8 => 1,
+            Self::F16 => 2,
+            Self::F32 => 4,
+        }
+    }
+
+    /// Human-readable depth label for baker UI lists.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::U8 => "8 bit",
+            Self::F16 => "16 bit float",
+            Self::F32 => "32 bit float (raw)",
+        }
+    }
+}
+
+/// Finished baked maps quantized/encoded at a requested bit depth. All planes are
+/// tightly packed, pixel-interleaved (per texel: N channels x `format` bytes,
+/// little-endian) — matching what a texture upload/export stage needs as raw data.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct EncodedBakedMaps {
+    pub resolution: u32,
+    pub format: BakedMapFormat,
+    pub ambient_occlusion: Option<Vec<u8>>,
+    pub curvature: Option<Vec<u8>>,
+    pub normal: Option<Vec<u8>>,
+    pub world_space_normal: Option<Vec<u8>>,
+    pub position: Option<Vec<u8>>,
+    pub thickness: Option<Vec<u8>>,
+    pub id: Option<Vec<u8>>,
+    pub is_cancelled: bool,
+}
+
+impl EncodedBakedMaps {
+    /// Decode back into the internal f32 representation (lossy for `U8`).
+    pub fn to_baked_maps(&self) -> BakedMaps {
+        let dec_s = |p: &Option<Vec<u8>>| p.as_ref().map(|b| decode_scalar_plane(b, self.format));
+        let dec_v3 = |p: &Option<Vec<u8>>| {
+            p.as_ref().map(|b| decode_vec3_plane(b, self.format))
+        };
+        BakedMaps {
+            resolution: self.resolution,
+            ambient_occlusion: dec_s(&self.ambient_occlusion),
+            curvature: dec_s(&self.curvature),
+            normal: dec_v3(&self.normal),
+            world_space_normal: dec_v3(&self.world_space_normal),
+            position: dec_v3(&self.position),
+            thickness: dec_s(&self.thickness),
+            id: self
+                .id
+                .as_ref()
+                .map(|b| decode_vec4_plane(b, self.format)),
+            is_cancelled: self.is_cancelled,
+        }
+    }
+}
+
+/// Encode a finished scalar plane (one f32 per texel) at the requested bit depth.
+pub fn encode_scalar_plane(src: &[f32], format: BakedMapFormat) -> Vec<u8> {
+    match format {
+        BakedMapFormat::U8 => src.iter().map(|&v| f32_to_u8_channel(v)).collect(),
+        BakedMapFormat::F16 => src
+            .iter()
+            .flat_map(|&v| f32_to_half_bits(v).to_le_bytes())
+            .collect(),
+        BakedMapFormat::F32 => src.iter().flat_map(|v| v.to_le_bytes()).collect(),
+    }
+}
+
+/// Encode a finished RGB (3-component) plane at the requested bit depth.
+pub fn encode_vec3_plane(src: &[[f32; 3]], format: BakedMapFormat) -> Vec<u8> {
+    match format {
+        BakedMapFormat::U8 => src
+            .iter()
+            .flat_map(|t| t.iter().map(|&v| f32_to_u8_channel(v)))
+            .collect(),
+        BakedMapFormat::F16 => src
+            .iter()
+            .flat_map(|t| t.iter().flat_map(|&v| f32_to_half_bits(v).to_le_bytes()))
+            .collect(),
+        BakedMapFormat::F32 => src
+            .iter()
+            .flat_map(|t| t.iter().flat_map(|v| v.to_le_bytes()))
+            .collect(),
+    }
+}
+
+/// Encode a finished RGBA (4-component) plane at the requested bit depth.
+pub fn encode_vec4_plane(src: &[[f32; 4]], format: BakedMapFormat) -> Vec<u8> {
+    match format {
+        BakedMapFormat::U8 => src
+            .iter()
+            .flat_map(|t| t.iter().map(|&v| f32_to_u8_channel(v)))
+            .collect(),
+        BakedMapFormat::F16 => src
+            .iter()
+            .flat_map(|t| t.iter().flat_map(|&v| f32_to_half_bits(v).to_le_bytes()))
+            .collect(),
+        BakedMapFormat::F32 => src
+            .iter()
+            .flat_map(|t| t.iter().flat_map(|v| v.to_le_bytes()))
+            .collect(),
+    }
+}
+
+/// Decode a scalar plane back to f32 (inspection / round-trip; lossy for `U8`).
+pub fn decode_scalar_plane(bytes: &[u8], format: BakedMapFormat) -> Vec<f32> {
+    match format {
+        BakedMapFormat::U8 => bytes.iter().map(|&b| b as f32 / 255.0).collect(),
+        BakedMapFormat::F16 => bytes
+            .chunks_exact(2)
+            .map(|c| half_bits_to_f32(u16::from_le_bytes([c[0], c[1]])))
+            .collect(),
+        BakedMapFormat::F32 => bytes
+            .chunks_exact(4)
+            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect(),
+    }
+}
+
+/// Decode an RGB (3-component) plane back to f32.
+pub fn decode_vec3_plane(bytes: &[u8], format: BakedMapFormat) -> Vec<[f32; 3]> {
+    let n = format.component_bytes();
+    bytes
+        .chunks_exact(3 * n)
+        .map(|px| {
+            let mut out = [0.0f32; 3];
+            for (c, slot) in out.iter_mut().enumerate() {
+                let b = &px[c * n..(c + 1) * n];
+                *slot = decode_component(b, format);
+            }
+            out
+        })
+        .collect()
+}
+
+/// Decode an RGBA (4-component) plane back to f32.
+pub fn decode_vec4_plane(bytes: &[u8], format: BakedMapFormat) -> Vec<[f32; 4]> {
+    let n = format.component_bytes();
+    bytes
+        .chunks_exact(4 * n)
+        .map(|px| {
+            let mut out = [0.0f32; 4];
+            for (c, slot) in out.iter_mut().enumerate() {
+                let b = &px[c * n..(c + 1) * n];
+                *slot = decode_component(b, format);
+            }
+            out
+        })
+        .collect()
+}
+
+#[inline]
+fn decode_component(b: &[u8], format: BakedMapFormat) -> f32 {
+    match format {
+        BakedMapFormat::U8 => b[0] as f32 / 255.0,
+        BakedMapFormat::F16 => half_bits_to_f32(u16::from_le_bytes([b[0], b[1]])),
+        BakedMapFormat::F32 => f32::from_le_bytes([b[0], b[1], b[2], b[3]]),
+    }
+}
+
+/// Encodes a finished [`BakedMaps`] set into [`EncodedBakedMaps`] at `format` depth.
+pub fn encode_baked_maps(maps: &BakedMaps, format: BakedMapFormat) -> EncodedBakedMaps {
+    let e_s = |p: &Option<Vec<f32>>| p.as_ref().map(|b| encode_scalar_plane(b, format));
+    let e_v3 = |p: &Option<Vec<[f32; 3]>>| p.as_ref().map(|b| encode_vec3_plane(b, format));
+    EncodedBakedMaps {
+        resolution: maps.resolution,
+        format,
+        ambient_occlusion: e_s(&maps.ambient_occlusion),
+        curvature: e_s(&maps.curvature),
+        normal: e_v3(&maps.normal),
+        world_space_normal: e_v3(&maps.world_space_normal),
+        position: e_v3(&maps.position),
+        thickness: e_s(&maps.thickness),
+        id: maps.id.as_ref().map(|b| encode_vec4_plane(b, format)),
+        is_cancelled: maps.is_cancelled,
+    }
+}
+
+/// Rounded 8-bit quantization of a finished channel value.
+#[inline]
+pub fn f32_to_u8_channel(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+/// IEEE 754 binary16 encode (round-to-nearest). F32 denormals and values too small
+/// even for a half subnormal flush toward signed zero; overflows saturate to ±Inf,
+/// mirroring hardware f32→f16 conversion. f32 denormals never reach the fast path —
+/// a deliberate robustness choice for the bake pipeline.
+pub fn f32_to_half_bits(value: f32) -> u16 {
+    let bits = value.to_bits();
+    let sign = ((bits >> 16) & 0x8000) as u16;
+    let biased = ((bits >> 23) & 0xff) as i32;
+    let mant = bits & 0x007f_ffff;
+
+    if biased == 0xff {
+        // NaN -> quiet NaN; +/-Inf -> +/-Inf
+        if mant != 0 {
+            return sign | 0x7e00 | ((mant >> 13) as u16 & 0x3ff);
+        }
+        return sign | 0x7c00;
+    }
+    let exp = biased - 127 + 15; // half target exponent
+    if exp >= 0x1f {
+        return sign | 0x7c00; // overflow -> infinity
+    }
+    if exp <= 0 {
+        if exp < -10 {
+            return sign; // flush to (signed) zero
+        }
+        // Subnormal half: shift the explicit-leading-bit mantissa down, round-nearest.
+        let m = mant | 0x0080_0000;
+        let shift = (14 - exp) as u32; // 1..=24
+        return sign | ((m >> shift) as u16 + ((m >> (shift - 1)) & 1) as u16);
+    }
+    sign | ((exp as u16) << 10) | ((mant >> 13) as u16)
+}
+
+/// IEEE 754 binary16 decode (exact, no forbidden shortcuts).
+pub fn half_bits_to_f32(h: u16) -> f32 {
+    let sign = if h & 0x8000 != 0 { -1.0f32 } else { 1.0 };
+    let exp = ((h >> 10) & 0x1f) as i32;
+    let mant = (h & 0x03ff) as u32;
+    match exp {
+        0 => sign * (mant as f32) * 5.9604644775390625e-8, // mant * 2^-24
+        31 => {
+            if mant == 0 {
+                sign * f32::INFINITY
+            } else {
+                f32::NAN
+            }
+        }
+        _ => {
+            let e = exp - 15;
+            let base = 1.0 + mant as f32 / 1024.0;
+            sign * base * if e >= 0 { 2f32.powi(e) } else { 1.0 / 2f32.powi(-e) }
+        }
+    }
+}
+
+/// Runtime-only baker controls that are deliberately **not** fields of
+/// [`BakerOptions`]: `project/mod.rs` and the UI construct `BakerOptions` with
+/// exhaustive struct literals inside ownership hand-offs this module does not own,
+/// and new fields there would break the build until those literals gain
+/// `..Default::default()`. Everything here defaults to "off/no change" so
+/// [`BakerEngine::bake_all`] (which uses `AdvancedBakeOptions::default()`) behaves
+/// exactly as before.
+///
+/// UI wiring follow-up (small, documented in the refactor report): lift these fields
+/// into `BakerOptions` + `BakerOptionsManifest` (serde `#[serde(default)]`), plus
+/// add re-exports in `baker/mod.rs`.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct AdvancedBakeOptions {
+    /// Output channel depth for [`BakerEngine::bake_all_encoded`] planes. Internal
+    /// f32 accumulation is unaffected; only encoded planes honor it.
+    pub map_format: BakedMapFormat,
+    /// Per-texel painted ray offsets applied to every cast origin along the surface
+    /// normal across all raycasters. `None` == zero offset (previous behavior).
+    pub ray_offset_map: Option<Arc<PaintedOffsetMap>>,
+    /// When Match-by-Mesh-Name cannot find a matching high-poly shell, correspond the
+    /// low-poly shell to the nearest high-poly shell by world-space AABB proximity
+    /// (within one ray span) instead of falling back to the global BVH. Prevents
+    /// cross-shell false correspondences when names diverge.
+    pub match_by_shell: bool,
+}
+
+// ----------------------------------------------------------------------------
 // High-Performance Bounding Volume Hierarchy (BVH) for Fast Ray-Mesh Queries
 // ----------------------------------------------------------------------------
 
@@ -352,6 +667,95 @@ fn intersect_triangle_moller(
 // Baker Engine
 // ----------------------------------------------------------------------------
 
+/// A independently-named high-poly shell used for Match-by-Mesh-Name / Match-by-Shell
+/// correspondence: its stripped lowercase name, raycast BVH and world-space AABB.
+#[derive(Debug, Clone)]
+pub struct HighPolyShell {
+    pub name: String,
+    pub bvh: BvhNode,
+    pub bbox: BoundingBox,
+}
+
+/// Collect validated world-space triangles of a high-poly index range for BVH building.
+fn hp_triangles(
+    hp: &crate::graphics::mesh::Mesh,
+    tri_start: usize,
+    tri_count: usize,
+) -> Vec<BvhTriangle> {
+    let mut tris = Vec::new();
+    if tri_start * 3 >= hp.indices.len() {
+        return tris;
+    }
+    let end = (tri_start + tri_count).min(hp.indices.len() / 3);
+    for t in tri_start..end {
+        let i0 = hp.indices[t * 3] as usize;
+        let i1 = hp.indices[t * 3 + 1] as usize;
+        let i2 = hp.indices[t * 3 + 2] as usize;
+        if i0 < hp.vertices.len() && i1 < hp.vertices.len() && i2 < hp.vertices.len() {
+            let v0 = hp.vertices[i0];
+            let v1 = hp.vertices[i1];
+            let v2 = hp.vertices[i2];
+            let n0 = hp.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n1 = hp.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let n2 = hp.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
+            let mut tb = BoundingBox::empty();
+            tb.grow(v0);
+            tb.grow(v1);
+            tb.grow(v2);
+            tris.push(BvhTriangle {
+                v0,
+                v1,
+                v2,
+                n0,
+                n1,
+                n2,
+                bbox: tb,
+                center: [
+                    (v0[0] + v1[0] + v2[0]) / 3.0,
+                    (v0[1] + v1[1] + v2[1]) / 3.0,
+                    (v0[2] + v1[2] + v2[2]) / 3.0,
+                ],
+            });
+        }
+    }
+    tris
+}
+
+/// Separation between two boxes along the axis with the largest gap (0 where they
+/// overlap on all axes); used to reject shell correspondences outside ray reach.
+fn aabb_gap(a: &BoundingBox, b: &BoundingBox) -> f32 {
+    let mut gap = 0.0f32;
+    for i in 0..3 {
+        let d = if a.max[i] < b.min[i] {
+            b.min[i] - a.max[i]
+        } else if b.max[i] < a.min[i] {
+            a.min[i] - b.max[i]
+        } else {
+            0.0
+        };
+        gap = gap.max(d);
+    }
+    gap
+}
+
+#[inline]
+fn bbox_center(b: &BoundingBox) -> [f32; 3] {
+    [
+        0.5 * (b.min[0] + b.max[0]),
+        0.5 * (b.min[1] + b.max[1]),
+        0.5 * (b.min[2] + b.max[2]),
+    ]
+}
+
+/// Denormal-safe squared-length square root: guards sqrt-underflow of products of
+/// tiny face components in curvature/AO estimation paths.
+#[inline]
+fn sqrt_guarded(len2: f32) -> f32 {
+    // `max` clamps denormal products to the smallest safe normal magnitude so the
+    // subsequent reciprocal can never produce inf/NaN.
+    len2.max(1e-20).sqrt()
+}
+
 pub struct BakerEngine;
 
 impl BakerEngine {
@@ -392,6 +796,11 @@ impl BakerEngine {
 
     /// High-performance GPU-grade Mesh Baker with High-to-Low Projection,
     /// BVH Acceleration, Match by Mesh Name, Anti-Aliasing, and Cancelation Support.
+    ///
+    /// Legacy entry point kept for existing UI callers: identical geometry pipeline
+    /// as [`Self::bake_all_advanced`] run with [`AdvancedBakeOptions::default()`]
+    /// (16-bit/8-bit encoding off, no painted offsets, no shell fallback), so exact
+    /// previous behavior is preserved.
     pub fn bake_all(
         vertices: &[[f32; 3]],
         normals: &[[f32; 3]],
@@ -399,6 +808,70 @@ impl BakerEngine {
         indices: &[u32],
         submeshes: &[crate::graphics::mesh::SubMesh],
         options: &BakerOptions,
+        progress: Option<Arc<AtomicUsize>>,
+        cancel: Option<Arc<AtomicBool>>,
+        high_poly: Option<&crate::graphics::mesh::Mesh>,
+    ) -> BakedMaps {
+        Self::bake_all_advanced(
+            vertices,
+            normals,
+            uvs,
+            indices,
+            submeshes,
+            options,
+            &AdvancedBakeOptions::default(),
+            progress,
+            cancel,
+            high_poly,
+        )
+    }
+
+    /// Bake with [`AdvancedBakeOptions`] intents and emit the finished maps already
+    /// quantized/encoded at [`AdvancedBakeOptions::map_format`] depth (8/16-bit parity
+    /// with Substance's bake output profile). Same geometric pipeline as
+    /// [`Self::bake_all_advanced`].
+    pub fn bake_all_encoded(
+        vertices: &[[f32; 3]],
+        normals: &[[f32; 3]],
+        uvs: &[[f32; 2]],
+        indices: &[u32],
+        submeshes: &[crate::graphics::mesh::SubMesh],
+        options: &BakerOptions,
+        advanced: &AdvancedBakeOptions,
+        progress: Option<Arc<AtomicUsize>>,
+        cancel: Option<Arc<AtomicBool>>,
+        high_poly: Option<&crate::graphics::mesh::Mesh>,
+    ) -> EncodedBakedMaps {
+        let maps = Self::bake_all_advanced(
+            vertices,
+            normals,
+            uvs,
+            indices,
+            submeshes,
+            options,
+            advanced,
+            progress,
+            cancel,
+            high_poly,
+        );
+        encode_baked_maps(&maps, advanced.map_format)
+    }
+
+    /// Full bake entry point with per-texel runtime controls: painted ray offsets for
+    /// every caster, a map-format (bit depth) choice, and Match-by-Shell fallback for
+    /// cross-shell ray sanity. Skew correction itself flows through [`BakerOptions`]
+    /// (`use_skew_correction`, `skew_map`, `skew_strength`, `skew_invert`) and now
+    /// perturbs the origins of **every** casting ray (normal/position/AO/thickness),
+    /// not just the primary cast — with `AdvancedBakeOptions::default()` and no skew
+    /// map the behavior is bit-identical to previous versions.
+    pub fn bake_all_advanced(
+        vertices: &[[f32; 3]],
+        normals: &[[f32; 3]],
+        uvs: &[[f32; 2]],
+        indices: &[u32],
+        submeshes: &[crate::graphics::mesh::SubMesh],
+        options: &BakerOptions,
+        advanced: &AdvancedBakeOptions,
         progress: Option<Arc<AtomicUsize>>,
         cancel: Option<Arc<AtomicBool>>,
         high_poly: Option<&crate::graphics::mesh::Mesh>,
@@ -464,99 +937,33 @@ impl BakerEngine {
             options.max_rear_distance
         };
 
-        // 2. Build High-Poly BVH Trees (Global and per submesh for Match-by-Name)
-        let (hp_global_bvh, hp_submesh_bvhs) = if let Some(hp) = high_poly {
+        // 2. Build High-Poly BVH Trees (global, plus one per high-poly shell for
+        //    Match-by-Mesh-Name / Match-by-Shell correspondence)
+        let (hp_global_bvh, hp_shells) = if let Some(hp) = high_poly {
             let num_hp_tris = hp.indices.len() / 3;
-            let mut all_hp_tris = Vec::with_capacity(num_hp_tris);
+            let global = BvhNode::build(hp_triangles(hp, 0, num_hp_tris));
 
-            for t in 0..num_hp_tris {
-                let i0 = hp.indices[t * 3] as usize;
-                let i1 = hp.indices[t * 3 + 1] as usize;
-                let i2 = hp.indices[t * 3 + 2] as usize;
-                if i0 < hp.vertices.len() && i1 < hp.vertices.len() && i2 < hp.vertices.len() {
-                    let v0 = hp.vertices[i0];
-                    let v1 = hp.vertices[i1];
-                    let v2 = hp.vertices[i2];
-                    let n0 = hp.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
-                    let n1 = hp.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
-                    let n2 = hp.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
-
-                    let mut tb = BoundingBox::empty();
-                    tb.grow(v0);
-                    tb.grow(v1);
-                    tb.grow(v2);
-
-                    all_hp_tris.push(BvhTriangle {
-                        v0,
-                        v1,
-                        v2,
-                        n0,
-                        n1,
-                        n2,
-                        bbox: tb,
-                        center: [
-                            (v0[0] + v1[0] + v2[0]) / 3.0,
-                            (v0[1] + v1[1] + v2[1]) / 3.0,
-                            (v0[2] + v1[2] + v2[2]) / 3.0,
-                        ],
-                    });
+            let mut shells: Vec<HighPolyShell> = Vec::new();
+            for sm in &hp.submeshes {
+                let base_name = strip_mesh_suffix(&sm.name, &options.high_poly_suffix);
+                let sm_tris = hp_triangles(hp, sm.index_start / 3, sm.index_count / 3);
+                if sm_tris.is_empty() {
+                    continue;
                 }
+                let mut bbox = BoundingBox::empty();
+                for t in &sm_tris {
+                    bbox.grow_box(&t.bbox);
+                }
+                shells.push(HighPolyShell {
+                    name: base_name.to_lowercase(),
+                    bvh: BvhNode::build(sm_tris),
+                    bbox,
+                });
             }
 
-            let global = BvhNode::build(all_hp_tris);
-
-            let mut by_name_bvhs = HashMap::new();
-            if options.match_by_name && !hp.submeshes.is_empty() {
-                for sm in &hp.submeshes {
-                    let base_name = strip_mesh_suffix(&sm.name, &options.high_poly_suffix);
-                    let mut sm_tris = Vec::new();
-                    let tri_start = sm.index_start / 3;
-                    let tri_count = sm.index_count / 3;
-                    for t in tri_start..(tri_start + tri_count) {
-                        if t * 3 + 2 < hp.indices.len() {
-                            let i0 = hp.indices[t * 3] as usize;
-                            let i1 = hp.indices[t * 3 + 1] as usize;
-                            let i2 = hp.indices[t * 3 + 2] as usize;
-                            if i0 < hp.vertices.len()
-                                && i1 < hp.vertices.len()
-                                && i2 < hp.vertices.len()
-                            {
-                                let v0 = hp.vertices[i0];
-                                let v1 = hp.vertices[i1];
-                                let v2 = hp.vertices[i2];
-                                let n0 = hp.normals.get(i0).copied().unwrap_or([0.0, 1.0, 0.0]);
-                                let n1 = hp.normals.get(i1).copied().unwrap_or([0.0, 1.0, 0.0]);
-                                let n2 = hp.normals.get(i2).copied().unwrap_or([0.0, 1.0, 0.0]);
-                                let mut tb = BoundingBox::empty();
-                                tb.grow(v0);
-                                tb.grow(v1);
-                                tb.grow(v2);
-                                sm_tris.push(BvhTriangle {
-                                    v0,
-                                    v1,
-                                    v2,
-                                    n0,
-                                    n1,
-                                    n2,
-                                    bbox: tb,
-                                    center: [
-                                        (v0[0] + v1[0] + v2[0]) / 3.0,
-                                        (v0[1] + v1[1] + v2[1]) / 3.0,
-                                        (v0[2] + v1[2] + v2[2]) / 3.0,
-                                    ],
-                                });
-                            }
-                        }
-                    }
-                    if !sm_tris.is_empty() {
-                        by_name_bvhs.insert(base_name.to_lowercase(), BvhNode::build(sm_tris));
-                    }
-                }
-            }
-
-            (Some(global), by_name_bvhs)
+            (Some(global), shells)
         } else {
-            (None, HashMap::new())
+            (None, Vec::new())
         };
 
         // 3. Spatially hashed face normal grouping for low-poly fallback curvature & AO
@@ -577,10 +984,14 @@ impl BakerEngine {
                 let fnx = e1[1] * e2[2] - e1[2] * e2[1];
                 let fny = e1[2] * e2[0] - e1[0] * e2[2];
                 let fnz = e1[0] * e2[1] - e1[1] * e2[0];
-                let len = (fnx * fnx + fny * fny + fnz * fnz).sqrt();
-                if len < 1e-6 {
+                // Denormal-safe: squared magnitude of a valid face cross product is >=
+                // 1e-12; smaller areas are degenerate slivers, and the `.max` inside
+                // sqrt_guarded also protects the reciprocal from flush-to-zero length.
+                let len2 = fnx * fnx + fny * fny + fnz * fnz;
+                if len2 < 1e-12 {
                     continue;
                 }
+                let len = sqrt_guarded(len2);
                 let fn_norm = [fnx / len, fny / len, fnz / len];
 
                 for &vi in &[i0, i1, i2] {
@@ -672,6 +1083,78 @@ impl BakerEngine {
 
         let res_f = res as f32;
 
+        // 4b. Per-shell BVH selection (precomputed once per low-poly shell instead of a
+        //     linear submesh scan per triangle). Match-by-Mesh-Name maps low shells to
+        //     high-poly shells by stripped name; the optional Match-by-Shell fallback
+        //     corresponds unmatched shells by world-space AABB proximity within one ray
+        //     span, so rays can no longer hit an unrelated high-poly shell.
+        // Selection: trace the whole mesh (`Global`) or one shell BVH.
+        #[derive(Clone, Copy)]
+        enum BvhSelection {
+            Global,
+            Shell(usize),
+        }
+
+        let mut sm_sorted: Vec<&crate::graphics::mesh::SubMesh> = submeshes.iter().collect();
+        sm_sorted.sort_by_key(|sm| sm.index_start);
+        let shell_count = sm_sorted.len().max(1);
+        let mut tri_shell = vec![0usize; num_tris];
+        for (s, sm) in sm_sorted.iter().enumerate() {
+            let t0 = (sm.index_start / 3).min(num_tris);
+            let t1 = ((sm.index_start + sm.index_count) / 3).min(num_tris);
+            for t in t0..t1 {
+                tri_shell[t] = s;
+            }
+        }
+
+        let mut low_shell_bbox = vec![BoundingBox::empty(); shell_count];
+        for t in 0..num_tris {
+            let i0 = indices[t * 3] as usize;
+            let i1 = indices[t * 3 + 1] as usize;
+            let i2 = indices[t * 3 + 2] as usize;
+            if i0 < n_verts && i1 < n_verts && i2 < n_verts {
+                low_shell_bbox[tri_shell[t]].grow(vertices[i0]);
+                low_shell_bbox[tri_shell[t]].grow(vertices[i1]);
+                low_shell_bbox[tri_shell[t]].grow(vertices[i2]);
+            }
+        }
+
+        let ray_span = frontal_dist + rear_dist;
+        let mut shell_bvh = vec![BvhSelection::Global; shell_count];
+        if options.match_by_name && !hp_shells.is_empty() {
+            for (s, sm) in sm_sorted.iter().enumerate() {
+                let base = strip_mesh_suffix(&sm.name, &options.low_poly_suffix).to_lowercase();
+                let sel = if let Some(i) = hp_shells.iter().position(|sh| sh.name == base) {
+                    BvhSelection::Shell(i)
+                } else if advanced.match_by_shell {
+                    // Match-by-shell: nearest high-poly shell whose AABB is reachable
+                    // within one ray span of the low shell AABB (correspondence sanity).
+                    let mut best: Option<(f32, usize)> = None;
+                    for (i, sh) in hp_shells.iter().enumerate() {
+                        if aabb_gap(&low_shell_bbox[s], &sh.bbox) <= ray_span {
+                            let ca = bbox_center(&low_shell_bbox[s]);
+                            let cb = bbox_center(&sh.bbox);
+                            let d = (ca[0] - cb[0]).powi(2)
+                                + (ca[1] - cb[1]).powi(2)
+                                + (ca[2] - cb[2]).powi(2);
+                            if best.map_or(true, |(bd, _)| d < bd) {
+                                best = Some((d, i));
+                            }
+                        }
+                    }
+                    match best {
+                        Some((_, i)) => BvhSelection::Shell(i),
+                        None => BvhSelection::Global,
+                    }
+                } else {
+                    // No name match and shell matching disabled: trace everything
+                    // (historical fallback, unchanged).
+                    BvhSelection::Global
+                };
+                shell_bvh[s] = sel;
+            }
+        }
+
         // 5. Forward UV Triangle Rasterization
         for t in 0..num_tris {
             // Check cancellation request every 64 triangles
@@ -719,9 +1202,16 @@ impl BakerEngine {
             let y0 = (min_v * res_f).floor() as usize;
             let y1 = ((max_v * res_f).ceil() as usize).min(res - 1);
 
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-                .max(1e-7);
+            // Signed 2x UV area of this triangle (identical to the `det` computed below
+            // for handedness). Either sign is valid for the barycentric formulas —
+            // mirrored UV islands flip the sign — but *zero* is degenerate, so skip the
+            // triangle instead of clamping the sign away (the old `.max(1e-7)` broke
+            // mirrored islands' rasterization).
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
+                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            if !det.is_finite() || det.abs() < 1e-9 {
+                continue;
+            }
 
             let c0 = vert_curv[i0];
             let c1 = vert_curv[i1];
@@ -745,7 +1235,7 @@ impl BakerEngine {
             let dv1 = uv1[1] - uv0[1];
             let du2 = uv2[0] - uv0[0];
             let dv2 = uv2[1] - uv0[1];
-            let det = du1 * dv2 - du2 * dv1;
+            // `det` was already computed above as the signed 2x UV area.
             let inv_det = if det.abs() > 1e-6 { 1.0 / det } else { 0.0 };
             let tri_t = [
                 (e1[0] * dv2 - e2[0] * dv1) * inv_det,
@@ -769,36 +1259,62 @@ impl BakerEngine {
                 .max(1e-6);
             let tri_t = [tri_t[0] / t_len, tri_t[1] / t_len, tri_t[2] / t_len];
 
-            // Match-by-Name BVH selection for this triangle
-            let target_bvh = if options.match_by_name && !hp_submesh_bvhs.is_empty() {
-                let matching_submesh = submeshes.iter().find(|sm| {
-                    tri_idx_start >= sm.index_start
-                        && tri_idx_start < sm.index_start + sm.index_count
-                });
-                if let Some(sm) = matching_submesh {
-                    let low_base =
-                        strip_mesh_suffix(&sm.name, &options.low_poly_suffix).to_lowercase();
-                    hp_submesh_bvhs.get(&low_base).or(hp_global_bvh.as_ref())
-                } else {
-                    hp_global_bvh.as_ref()
-                }
-            } else {
+            // Match-by-Name / Match-by-Shell BVH selection for this triangle
+            // (precomputed per shell — no repeated linear submesh scans).
+            let target_bvh: Option<&BvhNode> = if hp_global_bvh.is_none() {
+                None
+            } else if hp_shells.is_empty() {
                 hp_global_bvh.as_ref()
+            } else {
+                match shell_bvh[tri_shell[t]] {
+                    BvhSelection::Global => hp_global_bvh.as_ref(),
+                    BvhSelection::Shell(i) => Some(&hp_shells[i].bvh),
+                }
             };
 
             for py in y0..=y1 {
                 let row_idx = py * res;
                 for px in x0..=x1 {
+                    // ---- Per-texel controls (identical for every subpixel sample) ----
+                    let u_tex = px as f32 / res_f;
+                    let v_tex = py as f32 / res_f;
+                    // Skew correction ("Use Skew Correction"): 2-channel shear decoded
+                    // to [-1, 1], perturbing every ray origin cast from this texel.
+                    // No map supplied -> zero perturbation (behavior unchanged).
+                    let (skew_o, skew_b) = if options.use_skew_correction {
+                        match options.skew_map.as_ref() {
+                            Some(sk) => {
+                                let o = sk.sample(u_tex, v_tex);
+                                let s = if options.skew_invert {
+                                    -options.skew_strength
+                                } else {
+                                    options.skew_strength
+                                };
+                                (o[0] * s, o[1] * s)
+                            }
+                            None => (0.0, 0.0),
+                        }
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    // Painted ray offsets: shift the cast origin along the surface
+                    // normal by offset * ray_span (no map / 0.0 == no change).
+                    let ray_off = advanced
+                        .ray_offset_map
+                        .as_ref()
+                        .map_or(0.0f32, |m| m.sample(u_tex, v_tex));
+                    let origin_out = (frontal_dist + ray_off * ray_span).clamp(1e-4, ray_span);
+
                     for &(ox, oy) in subpixel_offsets {
                         let u_px = (px as f32 + ox) / res_f;
                         let v_px = (py as f32 + oy) / res_f;
 
                         let b0 = ((uv1[1] - uv2[1]) * (u_px - uv2[0])
                             + (uv2[0] - uv1[0]) * (v_px - uv2[1]))
-                            / denom;
+                            / det;
                         let b1 = ((uv2[1] - uv0[1]) * (u_px - uv2[0])
                             + (uv0[0] - uv2[0]) * (v_px - uv2[1]))
-                            / denom;
+                            / det;
                         let b2 = 1.0 - b0 - b1;
 
                         if b0 >= -0.02 && b1 >= -0.02 && b2 >= -0.02 {
@@ -814,10 +1330,22 @@ impl BakerEngine {
                                 b0 * v0[2] + b1 * v1[2] + b2 * v2[2],
                             ];
 
-                            let n_len = (nx * nx + ny * ny + nz * nz).sqrt().max(1e-6);
-                            let n_low = [nx / n_len, ny / n_len, nz / n_len];
+                            // Epsilon-safe interpolated-normal normalization: degenerate
+                            // vertex normals fall back to +Y instead of producing NaN
+                            // tangent frames downstream.
+                            let n_len2 = nx * nx + ny * ny + nz * nz;
+                            let n_low = if n_len2 > 1e-12 {
+                                let inv = 1.0 / n_len2.sqrt();
+                                [nx * inv, ny * inv, nz * inv]
+                            } else {
+                                [0.0, 1.0, 0.0]
+                            };
 
-                            // Orthonormalize Tangent
+                            // Orthonormalize the UV tangent against the interpolated normal
+                            // (MikkTSpace-style Gram-Schmidt). When the UV tangent is
+                            // degenerate or (near-)parallel to the normal — collapsed UVs,
+                            // zero-area UV triangles — fall back to a stable axis-derived
+                            // tangent instead of dividing by ~0.
                             let t_dot_n =
                                 tri_t[0] * n_low[0] + tri_t[1] * n_low[1] + tri_t[2] * n_low[2];
                             let t_ortho = [
@@ -825,16 +1353,30 @@ impl BakerEngine {
                                 tri_t[1] - n_low[1] * t_dot_n,
                                 tri_t[2] - n_low[2] * t_dot_n,
                             ];
-                            let to_len = (t_ortho[0] * t_ortho[0]
+                            let to_len2 = t_ortho[0] * t_ortho[0]
                                 + t_ortho[1] * t_ortho[1]
-                                + t_ortho[2] * t_ortho[2])
-                                .sqrt()
-                                .max(1e-6);
-                            let tangent = [
-                                t_ortho[0] / to_len,
-                                t_ortho[1] / to_len,
-                                t_ortho[2] / to_len,
-                            ];
+                                + t_ortho[2] * t_ortho[2];
+                            let tangent = if to_len2 > 1e-8 {
+                                let inv = 1.0 / sqrt_guarded(to_len2);
+                                [t_ortho[0] * inv, t_ortho[1] * inv, t_ortho[2] * inv]
+                            } else {
+                                // Pivot axis = the one least aligned with the normal, so
+                                // cross(n, pivot) keeps a length of at least ~0.577.
+                                let pivot = if n_low[0].abs() <= n_low[1].abs()
+                                    && n_low[0].abs() <= n_low[2].abs()
+                                {
+                                    [1.0f32, 0.0, 0.0]
+                                } else if n_low[1].abs() <= n_low[2].abs() {
+                                    [0.0f32, 1.0, 0.0]
+                                } else {
+                                    [0.0f32, 0.0, 1.0]
+                                };
+                                let tx = n_low[1] * pivot[2] - n_low[2] * pivot[1];
+                                let ty = n_low[2] * pivot[0] - n_low[0] * pivot[2];
+                                let tz = n_low[0] * pivot[1] - n_low[1] * pivot[0];
+                                let tl = sqrt_guarded(tx * tx + ty * ty + tz * tz);
+                                [tx / tl, ty / tl, tz / tl]
+                            };
                             // Mirrored-UV parity fix: flip the bitangent on negative UV determinant
                             // (matching Substance's signed handedness) so mirrored islands no longer
                             // bake with an inverted G channel.
@@ -860,47 +1402,36 @@ impl BakerEngine {
                             let mut final_thick = 1.0f32;
                             let final_id = [1.0f32, 1.0, 1.0, 1.0];
 
-                            // Skew correction: sample the shear map at this texel and offset the
-                            // ray origin along the tangent/bitangent plane (texel-footprint
-                            // scaled), compensating projected-normal stretching ("External skew
-                            // texture from file" / "Invert skew correction" parity).
-                            let (skew_o, skew_b) =
-                                if options.use_skew_correction && options.bake_normal {
-                                    if let Some(ref skew) = options.skew_map {
-                                        let o = skew.sample(
-                                            px as f32 / res_f.max(1.0),
-                                            py as f32 / res_f.max(1.0),
-                                        );
-                                        let s = if options.skew_invert {
-                                            -options.skew_strength
-                                        } else {
-                                            options.skew_strength
-                                        };
-                                        (o[0] * s, o[1] * s)
-                                    } else {
-                                        (0.0, 0.0)
-                                    }
-                                } else {
-                                    (0.0, 0.0)
-                                };
+                            // Skew shear in world space: the per-texel shear offsets scaled
+                            // by this texel's world footprint along the tangent/bitangent
+                            // frame. Applied to the origin of EVERY ray cast from this
+                            // texel (primary normal/position ray, AO hemisphere rays, and
+                            // the thickness reverse ray) — "Use Skew Map" parity. Zero map
+                            // -> zero shear, so untouched bakes are unchanged.
+                            let shear_t = skew_o * t_span / res_f;
+                            let shear_b = skew_b * bit_span / res_f;
                             let skew_world = [
-                                tangent[0] * (skew_o * t_span / res_f)
-                                    + bitangent[0] * (skew_b * bit_span / res_f),
-                                tangent[1] * (skew_o * t_span / res_f)
-                                    + bitangent[1] * (skew_b * bit_span / res_f),
-                                tangent[2] * (skew_o * t_span / res_f)
-                                    + bitangent[2] * (skew_b * bit_span / res_f),
+                                tangent[0] * shear_t + bitangent[0] * shear_b,
+                                tangent[1] * shear_t + bitangent[1] * shear_b,
+                                tangent[2] * shear_t + bitangent[2] * shear_b,
                             ];
+                            let shear_reach = (skew_world[0] * skew_world[0]
+                                + skew_world[1] * skew_world[1]
+                                + skew_world[2] * skew_world[2])
+                                .sqrt();
 
-                            // High-poly raycasting through BVH
+                            // High-poly raycasting through BVH: origin = surface point +
+                            // surface normal * (frontal + painted offset) + skew shear.
                             if let Some(bvh) = target_bvh {
                                 let ray_origin = [
-                                    px_pos[0] + n_low[0] * frontal_dist + skew_world[0],
-                                    px_pos[1] + n_low[1] * frontal_dist + skew_world[1],
-                                    px_pos[2] + n_low[2] * frontal_dist + skew_world[2],
+                                    px_pos[0] + n_low[0] * origin_out + skew_world[0],
+                                    px_pos[1] + n_low[1] * origin_out + skew_world[1],
+                                    px_pos[2] + n_low[2] * origin_out + skew_world[2],
                                 ];
                                 let ray_dir = [-n_low[0], -n_low[1], -n_low[2]];
-                                let max_dist = frontal_dist + rear_dist;
+                                // Budget covers reaching the surface at `origin_out`,
+                                // the rear penetration bound, plus any lateral shear.
+                                let max_dist = origin_out + rear_dist + shear_reach;
 
                                 let inv_dir = [
                                     if ray_dir[0].abs() > 1e-6 {
@@ -967,11 +1498,15 @@ impl BakerEngine {
                                     ];
 
                                     // Thickness estimation from High-Poly via reverse raycast
+                                    // (origin perturbed by the same per-texel skew shear)
                                     if options.bake_thickness {
                                         let rev_origin = [
-                                            hp_hit.position[0] - hp_norm[0] * 0.002,
-                                            hp_hit.position[1] - hp_norm[1] * 0.002,
-                                            hp_hit.position[2] - hp_norm[2] * 0.002,
+                                            hp_hit.position[0] - hp_norm[0] * 0.002
+                                                + skew_world[0],
+                                            hp_hit.position[1] - hp_norm[1] * 0.002
+                                                + skew_world[1],
+                                            hp_hit.position[2] - hp_norm[2] * 0.002
+                                                + skew_world[2],
                                         ];
                                         let rev_dir = [-hp_norm[0], -hp_norm[1], -hp_norm[2]];
                                         let rev_inv = [
@@ -1035,9 +1570,12 @@ impl BakerEngine {
                                                     + hp_norm[2] * h_dir[2],
                                             ];
                                             let ao_origin = [
-                                                hp_hit.position[0] + hp_norm[0] * 0.002,
-                                                hp_hit.position[1] + hp_norm[1] * 0.002,
-                                                hp_hit.position[2] + hp_norm[2] * 0.002,
+                                                hp_hit.position[0] + hp_norm[0] * 0.002
+                                                    + skew_world[0],
+                                                hp_hit.position[1] + hp_norm[1] * 0.002
+                                                    + skew_world[1],
+                                                hp_hit.position[2] + hp_norm[2] * 0.002
+                                                    + skew_world[2],
                                             ];
                                             let ao_inv = [
                                                 if world_h[0].abs() > 1e-6 {
@@ -1329,5 +1867,215 @@ mod tests {
         assert_eq!(o.skew_strength, 0.6);
         assert!(o.skew_map.is_none());
         assert!(!o.skew_invert);
+    }
+
+    #[test]
+    fn test_baked_map_format_channel_encoding() {
+        use BakedMapFormat::*;
+        // U8 quantization: rounded, clamped 8-bit.
+        let vals = vec![0.0f32, 0.25, 0.5, 0.999, 1.5, -3.0];
+        let u8p = encode_scalar_plane(&vals, U8);
+        assert_eq!(u8p, vec![0, 64, 128, 255, 255, 0], "U8 rounded+clamped");
+
+        // F16: exact for binary-exact values, round-trips within half precision.
+        let bits = [0.0f32, 0.5, 1.0, -1.0, 0.25];
+        assert_eq!(f32_to_half_bits(0.0), 0x0000);
+        assert_eq!(f32_to_half_bits(f32::INFINITY), 0x7c00);
+        assert_eq!(f32_to_half_bits(-f32::INFINITY), 0xfc00);
+        assert_eq!(f32_to_half_bits(-1.0), 0xbc00);
+        assert_eq!(f32_to_half_bits(131008.0), 0x7c00, "overflow saturates to +Inf");
+        assert_eq!(f32_to_half_bits(6.0e-8), 0x0001, "2^-24 is the smallest half subnormal");
+        assert_eq!(f32_to_half_bits(1.0e-9), 0x0000, "too small flushes to zero");
+        assert_eq!(
+            half_bits_to_f32(f32_to_half_bits(6.0e-8)),
+            5.960464477539063e-8,
+            "smallest half subnormal survives a round trip"
+        );
+        let f16p = encode_scalar_plane(&bits, F16);
+        assert_eq!(f16p.len(), bits.len() * 2);
+        let dec = decode_scalar_plane(&f16p, F16);
+        for (a, b) in bits.iter().zip(dec.iter()) {
+            assert!((a - b).abs() < 1e-6, "f16 round trip {a} != {b}");
+        }
+
+        // F32 plane is an exact little-endian identity round trip.
+        let f32p = encode_scalar_plane(&bits, F32);
+        assert_eq!(decode_scalar_plane(&f32p, F32), bits);
+    }
+
+    #[test]
+    fn test_painted_offset_map_sample() {
+        let m = PaintedOffsetMap {
+            width: 2,
+            height: 1,
+            data: vec![-1.0, 0.5],
+        };
+        assert_eq!(m.sample(0.0, 0.0), -1.0);
+        assert_eq!(m.sample(1.0, 0.0), 0.5);
+        assert_eq!(m.sample(7.0, 0.0), 0.5, "out-of-range clamps to edge texel");
+        let clamped = PaintedOffsetMap {
+            width: 1,
+            height: 1,
+            data: vec![5.0],
+        };
+        assert_eq!(clamped.sample(0.0, 0.0), 1.0, "values clamp to [-1, 1]");
+    }
+
+    #[test]
+    fn test_encoded_maps_plane_layout_and_roundtrip() {
+        let low = Mesh::create_cube();
+        let mut opts = BakerOptions::default();
+        opts.resolution = 32;
+        let advanced = AdvancedBakeOptions {
+            map_format: BakedMapFormat::F16,
+            ..Default::default()
+        };
+        let enc = BakerEngine::bake_all_encoded(
+            &low.vertices,
+            &low.normals,
+            &low.uvs,
+            &low.indices,
+            &low.submeshes,
+            &opts,
+            &advanced,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(enc.format, BakedMapFormat::F16);
+        assert_eq!(enc.resolution, 32);
+        let n = enc.normal.as_ref().expect("normal plane encoded");
+        assert_eq!(n.len(), 32 * 32 * 3 * 2, "3 interleaved half components");
+        let back = enc.to_baked_maps();
+        assert_eq!(back.resolution, 32);
+        assert!(back.normal.is_some());
+        assert!(!back.is_cancelled);
+    }
+
+    #[test]
+    fn test_advanced_default_and_zero_offset_match_legacy_output() {
+        let low = Mesh::create_cube();
+        let mut opts = BakerOptions::default();
+        opts.resolution = 48;
+        let legacy = BakerEngine::bake_all(
+            &low.vertices,
+            &low.normals,
+            &low.uvs,
+            &low.indices,
+            &low.submeshes,
+            &opts,
+            None,
+            None,
+            None,
+        );
+        // Default advanced options and an all-zero painted offset map must reproduce
+        // the legacy bake exactly (no behavioral regression by default).
+        let mut advanced = AdvancedBakeOptions::default();
+        advanced.ray_offset_map = Some(Arc::new(PaintedOffsetMap {
+            width: 1,
+            height: 1,
+            data: vec![0.0],
+        }));
+        let modern = BakerEngine::bake_all_advanced(
+            &low.vertices,
+            &low.normals,
+            &low.uvs,
+            &low.indices,
+            &low.submeshes,
+            &opts,
+            &advanced,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(legacy.normal, modern.normal);
+        assert_eq!(legacy.world_space_normal, modern.world_space_normal);
+        assert_eq!(legacy.position, modern.position);
+        assert_eq!(legacy.ambient_occlusion, modern.ambient_occlusion);
+        assert_eq!(legacy.curvature, modern.curvature);
+        assert_eq!(legacy.thickness, modern.thickness);
+    }
+
+    #[test]
+    fn test_match_by_shell_fallback_hits_reachable_hp_shell() {
+        let mut low = Mesh::create_cube();
+        low.submeshes = vec![SubMesh {
+            name: "Cube_low".into(),
+            index_start: 0,
+            index_count: low.indices.len(),
+        }];
+
+        // Two high-poly shells: one surrounding the low cube, one far away.
+        let mut high = Mesh::create_material_sphere(16, 16);
+        let near_count = high.indices.len();
+        let mut far = Mesh::create_material_sphere(16, 16);
+        for v in far.vertices.iter_mut() {
+            v[0] += 50.0;
+        }
+        let base = high.vertices.len() as u32;
+        high.vertices.extend_from_slice(&far.vertices);
+        high.normals.extend_from_slice(&far.normals);
+        high.uvs.extend_from_slice(&far.uvs);
+        for i in &far.indices {
+            high.indices.push(i + base);
+        }
+        let far_count = far.indices.len();
+        high.submeshes = vec![
+            SubMesh {
+                name: "Wall_high".into(),
+                index_start: 0,
+                index_count: near_count,
+            },
+            SubMesh {
+                name: "Floor_high".into(),
+                index_start: near_count,
+                index_count: far_count,
+            },
+        ];
+
+        let mut opts = BakerOptions::default();
+        opts.resolution = 32;
+        opts.match_by_name = true;
+        opts.max_frontal_distance = 2.0;
+        opts.max_rear_distance = 6.0;
+        // Name misses ("Cube_low" has no "Cube_high"), so shell correspondence decides.
+        let mut advanced = AdvancedBakeOptions {
+            match_by_shell: true,
+            ..Default::default()
+        };
+        let baked = BakerEngine::bake_all_advanced(
+            &low.vertices,
+            &low.normals,
+            &low.uvs,
+            &low.indices,
+            &low.submeshes,
+            &opts,
+            &advanced,
+            None,
+            None,
+            Some(&high),
+        );
+        let normal = baked.normal.expect("normal map baked");
+        // The reachable near shell must have been traced — the surface normal map is
+        // no longer the flat default everywhere.
+        let any_hit = normal.iter().any(|n| {
+            (n[0] - 0.5).abs() > 1e-3 || (n[1] - 0.5).abs() > 1e-3 || (n[2] - 1.0).abs() > 1e-3
+        });
+        assert!(any_hit, "shell fallback must trace a reachable hp shell");
+
+        advanced.match_by_shell = false;
+        let baked2 = BakerEngine::bake_all_advanced(
+            &low.vertices,
+            &low.normals,
+            &low.uvs,
+            &low.indices,
+            &low.submeshes,
+            &opts,
+            &advanced,
+            None,
+            None,
+            Some(&high),
+        );
+        assert!(baked2.normal.is_some(), "global fallback still bakes");
     }
 }

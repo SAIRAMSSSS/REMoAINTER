@@ -6,7 +6,7 @@ use crate::painting::texture_importer::PbrTextureSet;
 use crate::painting::{
     apply_smart_material_hierarchy, load_real_pbr_material, AnchorPoint, BitDepth, BlendMode,
     Brush, ExportPreset, FilterEffect, FilterTargetChannel, Layer, LayerStack, LayerType,
-    MaskBlendMode, MaskEffect, OutputFormat, TextureExportContext,
+    MaskBlendMode, MaskEffect, OutputFormat, PaddingAlgorithm, TextureExportContext,
 };
 use crate::project::AppConfig;
 use crate::ui::icons::{draw_icon, IconType};
@@ -191,6 +191,8 @@ pub struct RemoainterApp {
     pub export_resolution: u32,
     pub export_file_format: usize,
     pub export_padding: u32,
+    /// UV gutter fill mode: 0 = Color, 1 = Transparent, 2 = Diffusion, 3 = Passthrough
+    pub export_padding_algorithm: u32,
     pub export_status: String,
     pub baker_tab_idx: usize,
 
@@ -708,6 +710,7 @@ impl Default for RemoainterApp {
             export_resolution: 2048,
             export_file_format: 0,
             export_padding: 16,
+            export_padding_algorithm: 0,
             export_status: String::new(),
             baker_tab_idx: 0,
 
@@ -1865,7 +1868,7 @@ impl RemoainterApp {
 
     /// Full Substance Painter-grade texture export (Unreal ORM, Unity URP/HDRP, glTF, Generic PBR, OpenEXR)
     pub fn export_textures(&mut self) {
-        let preset = match self.export_preset_idx {
+        let mut preset = match self.export_preset_idx {
             0 => ExportPreset::unreal_engine(),
             1 => ExportPreset::unity_urp(),
             2 => ExportPreset::unity_hdrp(),
@@ -1873,6 +1876,12 @@ impl RemoainterApp {
             4 => ExportPreset::generic_pbr(),
             _ => ExportPreset::studio_exr(),
         };
+        preset.set_padding_algorithm(match self.export_padding_algorithm {
+            1 => PaddingAlgorithm::Transparent,
+            2 => PaddingAlgorithm::Diffusion,
+            3 => PaddingAlgorithm::Passthrough,
+            _ => PaddingAlgorithm::Color,
+        });
 
         let (format_override, depth_override) = match self.export_file_format {
             1 => (Some(OutputFormat::Png), Some(BitDepth::U8)),
@@ -5837,7 +5846,7 @@ impl RemoainterApp {
                         });
                         ui.separator();
 
-                        // ── 4. Blending Options (All 18 Substance Painter Blend Modes) ─
+                        // ── 4. Blending Options (All 29 Substance Painter Blend Modes) ─
                         ui.menu_button("Blending options", |ui| {
                             let modes = [
                                 BlendMode::Normal,
@@ -5858,6 +5867,17 @@ impl RemoainterApp {
                                 BlendMode::Exclusion,
                                 BlendMode::Color,
                                 BlendMode::Luminosity,
+                                BlendMode::Hue,
+                                BlendMode::Saturation,
+                                BlendMode::VividLight,
+                                BlendMode::LinearLight,
+                                BlendMode::PinLight,
+                                BlendMode::HardMix,
+                                BlendMode::DarkerColor,
+                                BlendMode::LighterColor,
+                                BlendMode::Divide,
+                                BlendMode::RNM,
+                                BlendMode::Whiteout,
                             ];
                             for mode in modes {
                                 if ui.button(mode.name()).clicked() {
@@ -6515,6 +6535,17 @@ impl RemoainterApp {
                                     BlendMode::Exclusion,
                                     BlendMode::Color,
                                     BlendMode::Luminosity,
+                                    BlendMode::Hue,
+                                    BlendMode::Saturation,
+                                    BlendMode::VividLight,
+                                    BlendMode::LinearLight,
+                                    BlendMode::PinLight,
+                                    BlendMode::HardMix,
+                                    BlendMode::DarkerColor,
+                                    BlendMode::LighterColor,
+                                    BlendMode::Divide,
+                                    BlendMode::RNM,
+                                    BlendMode::Whiteout,
                                 ];
                                 for m in modes {
                                     if ui
@@ -6584,6 +6615,16 @@ impl RemoainterApp {
                                             BlendMode::HardLight,
                                             BlendMode::SoftLight,
                                             BlendMode::Difference,
+                                            BlendMode::Exclusion,
+                                            BlendMode::VividLight,
+                                            BlendMode::LinearLight,
+                                            BlendMode::PinLight,
+                                            BlendMode::HardMix,
+                                            BlendMode::DarkerColor,
+                                            BlendMode::LighterColor,
+                                            BlendMode::Divide,
+                                            BlendMode::RNM,
+                                            BlendMode::Whiteout,
                                         ];
                                         for m in modes {
                                             if ui.selectable_value(blend, m, m.name()).clicked() {
@@ -8814,6 +8855,22 @@ Res: {}×{}",
                         ui.horizontal(|ui| {
                             ui.add(egui::Slider::new(&mut self.export_padding, 0..=64).text("pixels"));
                         });
+                        ui.end_row();
+
+                        // Padding algorithm (Substance parity: transparent / color / diffusion / passthrough)
+                        ui.label(egui::RichText::new("Padding Algorithm:").strong());
+                        let padding_modes = ["Color (Dilate)", "Transparent", "Diffusion", "Passthrough"];
+                        egui::ComboBox::from_id_salt("export_padding_algo_combo")
+                            .selected_text(padding_modes.get(self.export_padding_algorithm as usize).copied().unwrap_or("Color"))
+                            .show_ui(ui, |ui| {
+                                for (i, name) in padding_modes.iter().enumerate() {
+                                    ui.selectable_value(
+                                        &mut self.export_padding_algorithm,
+                                        i as u32,
+                                        *name,
+                                    );
+                                }
+                            });
                         ui.end_row();
                     });
 

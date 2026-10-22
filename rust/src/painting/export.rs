@@ -82,6 +82,37 @@ pub enum ColorSpace {
     Linear,
 }
 
+/// UV gutter fill / edge-dilation algorithm (Substance 3D Painter parity).
+///
+/// Painter's export engine (`exportpresethelpers.cpp`) validates four padding
+/// algorithms per export map: `passthrough`, `transparent`, `color` and
+/// `diffusion`, each requiring a dilation distance except for `passthrough`.
+///
+/// The engine default is [`PaddingAlgorithm::Color`], which reproduces the
+/// legacy averaged push-pull dilation this exporter has always used, so
+/// existing presets and saved projects behave identically to previous
+/// versions. The other three modes are opt-in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum PaddingAlgorithm {
+    /// Substance `color`: extend edge colors into the gutter, dilating all
+    /// four channels (RGB + alpha). This is the exporter's original and
+    /// default behavior (averaged push-pull sweep over `dilation_radius`).
+    #[default]
+    Color,
+    /// Substance `transparent`: extend edge RGB into the gutter but keep the
+    /// gutter pixels fully transparent (alpha = 0) so the biome-linear
+    /// sampler bleed does not alter opacity. Coverage alpha is preserved.
+    Transparent,
+    /// Substance `diffusion`: seed the gutter with the push-pull sweep, then
+    /// iteratively diffuse (blur / Jacobi relaxation of the Laplace equation)
+    /// the edge values into the remaining unfilled gutter, with the UV
+    /// coverage acting as a Dirichlet boundary. Produces the smoothest,
+    /// most artifact-free biome mipmap down-chains.
+    Diffusion,
+    /// Substance `passthrough`: leave the gutter completely untouched.
+    Passthrough,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportTextureOutput {
     pub filename_suffix: String,
@@ -96,9 +127,36 @@ pub struct ExportPreset {
     pub name: String,
     pub description: String,
     pub outputs: Vec<ExportTextureOutput>,
+    /// Optional texture-set name used when resolving naming tokens in
+    /// `filename_suffix` templates (`$set_name$`, `$texture_set$`, ...).
+    /// Falls back to the mesh name when absent.
+    #[serde(default)]
+    pub texture_set_name: Option<String>,
+    /// UV gutter fill / edge-dilation algorithm (Substance parity).
+    /// Defaults to [`PaddingAlgorithm::Color`] — the legacy push-pull
+    /// dilation — so presets serialized before this field existed keep
+    /// their exact previous behavior.
+    #[serde(default)]
+    pub padding_algorithm: PaddingAlgorithm,
 }
 
 impl ExportPreset {
+    /// Builder-style override of the gutter padding algorithm (Substance's
+    /// "padding algorithm" dropdown: passthrough / transparent / color /
+    /// diffusion).
+    // NOTE: wired by the export dialog UI in a later integration step.
+    #[allow(dead_code)]
+    pub fn with_padding_algorithm(mut self, algorithm: PaddingAlgorithm) -> Self {
+        self.padding_algorithm = algorithm;
+        self
+    }
+
+    /// In-place override of the gutter padding algorithm.
+    // NOTE: wired by the export dialog UI in a later integration step.
+    #[allow(dead_code)]
+    pub fn set_padding_algorithm(&mut self, algorithm: PaddingAlgorithm) {
+        self.padding_algorithm = algorithm;
+    }
     /// Unreal Engine 4 / 5 Packed ORM Preset
     pub fn unreal_engine() -> Self {
         Self {
@@ -176,6 +234,8 @@ impl ExportPreset {
                     ],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 
@@ -221,6 +281,8 @@ impl ExportPreset {
                     ],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 
@@ -228,7 +290,7 @@ impl ExportPreset {
     pub fn unity_hdrp() -> Self {
         Self {
             name: "Unity HDRP (MaskMap Standard)".into(),
-            description: "BaseColor (sRGB), MaskMap (R=Metallic, G=AO, B=Detail/Thickness, A=Smoothness), Normal (OpenGL)".into(),
+            description: "BaseColor (sRGB), MaskMap (R=Metallic, G=AO, B=Detail Mask, A=Smoothness), Normal (OpenGL)".into(),
             outputs: vec![
                 ExportTextureOutput {
                     filename_suffix: "_BaseColor".into(),
@@ -250,7 +312,10 @@ impl ExportPreset {
                     channels: vec![
                         ChannelMapping { target: TargetChannel::Red, source: SourceMap::Metallic, component: SourceComponent::Gray },
                         ChannelMapping { target: TargetChannel::Green, source: SourceMap::AmbientOcclusion, component: SourceComponent::Gray },
-                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Thickness, component: SourceComponent::Gray },
+                        // Unity HDRP MaskMap B = detail mask (NOT thickness/height).
+                        // White (1.0) is the neutral value: detail layers are
+                        // unmasked when no detail map is authored.
+                        ChannelMapping { target: TargetChannel::Blue, source: SourceMap::Constant(255), component: SourceComponent::Gray },
                         ChannelMapping { target: TargetChannel::Alpha, source: SourceMap::Roughness, component: SourceComponent::InvertedGray },
                     ],
                 },
@@ -266,6 +331,8 @@ impl ExportPreset {
                     ],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 
@@ -273,7 +340,7 @@ impl ExportPreset {
     pub fn gltf2() -> Self {
         Self {
             name: "glTF 2.0 (Khronos Standard)".into(),
-            description: "baseColorTexture (sRGB), metallicRoughnessTexture (G=Roughness, B=Metallic), normalTexture (OpenGL)".into(),
+            description: "baseColorTexture (sRGB), metallicRoughnessTexture (R=Occlusion for combined ORM, G=Roughness, B=Metallic per Khronos), normalTexture (OpenGL)".into(),
             outputs: vec![
                 ExportTextureOutput {
                     filename_suffix: "_BaseColor".into(),
@@ -310,6 +377,8 @@ impl ExportPreset {
                     ],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 
@@ -411,6 +480,8 @@ impl ExportPreset {
                     }],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 
@@ -496,6 +567,8 @@ impl ExportPreset {
                     ],
                 },
             ],
+            padding_algorithm: PaddingAlgorithm::Color,
+            texture_set_name: None,
         }
     }
 }
@@ -570,13 +643,204 @@ pub fn rasterize_uv_coverage(mesh: &Mesh, width: usize, height: usize) -> Vec<bo
     mask
 }
 
-/// Dilates texture color into invalid (transparent / gutter) regions by `radius` pixels
+/// Alpha-channel handling during UV gutter dilation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GutterAlphaMode {
+    /// Dilate all four channels, including alpha (legacy "color" behavior).
+    DilateAll,
+    /// Dilate RGB only; after dilation the gutter alpha becomes 0 (fully
+    /// transparent), while the UV-coverage alpha is preserved untouched
+    /// (Substance "transparent" padding).
+    TransparentGutter,
+}
+
+/// Legacy averaged push-pull dilation into gutter regions by `radius` pixels
+/// (all four channels — Substance "color" padding). Kept as the public
+/// entry point for compatibility; equivalent to
+/// `dilate_rgba_mode(.., PaddingAlgorithm::Color)`.
 pub fn dilate_rgba(
     buffer: &mut [[f32; 4]],
     valid_mask: &[bool],
     width: usize,
     height: usize,
     radius: usize,
+) {
+    push_pull_dilate(
+        buffer,
+        valid_mask,
+        width,
+        height,
+        radius,
+        GutterAlphaMode::DilateAll,
+    );
+}
+
+/// Applies one of the four Substance padding algorithms to the gutter outside
+/// `valid_mask`.
+pub fn dilate_rgba_mode(
+    buffer: &mut [[f32; 4]],
+    valid_mask: &[bool],
+    width: usize,
+    height: usize,
+    radius: usize,
+    mode: PaddingAlgorithm,
+) {
+    if radius == 0 || width == 0 || height == 0 || buffer.len() != width * height {
+        return;
+    }
+    match mode {
+        PaddingAlgorithm::Color => {
+            push_pull_dilate(buffer, valid_mask, width, height, radius, GutterAlphaMode::DilateAll)
+        }
+        PaddingAlgorithm::Transparent => push_pull_dilate(
+            buffer,
+            valid_mask,
+            width,
+            height,
+            radius,
+            GutterAlphaMode::TransparentGutter,
+        ),
+        PaddingAlgorithm::Diffusion => diffusion_dilate(buffer, valid_mask, width, height, radius),
+        PaddingAlgorithm::Passthrough => {}
+    }
+}
+
+/// Dilates a boolean coverage mask itself (binary 4-neighborhood sweep), used
+/// to bound the diffusion relaxation band.
+fn dilate_binary_mask(mask: &[bool], width: usize, height: usize, radius: usize) -> Vec<bool> {
+    let mut current = mask.to_vec();
+    if (radius == 0)
+        || (width == 0)
+        || (height == 0)
+        || (mask.len() != width * height)
+        || !mask.iter().any(|&v| v)
+    {
+        return current;
+    }
+    for _ in 0..radius {
+        let prev = current.clone();
+        for y in 0..height {
+            for x in 0..width {
+                let idx = y * width + x;
+                if current[idx] {
+                    continue;
+                }
+                let expands = (x > 0 && prev[idx - 1])
+                    || (x + 1 < width && prev[idx + 1])
+                    || (y > 0 && prev[idx - width])
+                    || (y + 1 < height && prev[idx + width]);
+                if expands {
+                    current[idx] = true;
+                }
+            }
+        }
+    }
+    current
+}
+
+/// Substance's "diffusion" padding.
+///
+/// Phase 1 seeds the gutter band with the conventional push-pull sweep up to
+/// `radius` pixels; phase 2 runs Jacobi relaxation of the Laplace equation
+/// (iterative blur) over the unfilled gutter in a band around the coverage,
+/// diffusing the edge values smoothly inward with the UV coverage acting as
+/// the Dirichlet boundary. This renders biome mipmaps significantly cleaner
+/// than a straight push sweep.
+fn diffusion_dilate(
+    buffer: &mut [[f32; 4]],
+    valid_mask: &[bool],
+    width: usize,
+    height: usize,
+    radius: usize,
+) {
+    if radius == 0 || width == 0 || height == 0 || buffer.len() != width * height {
+        return;
+    }
+
+    // Phase 1 — seed the gutter band with edge values.
+    push_pull_dilate(
+        buffer,
+        valid_mask,
+        width,
+        height,
+        radius,
+        GutterAlphaMode::DilateAll,
+    );
+
+    // Phase 2 — divergent blur diffusion into the remaining unfilled area.
+    let band = dilate_binary_mask(valid_mask, width, height, radius + 2);
+    let relax: Vec<usize> = (0..width * height)
+        .filter(|&i| !valid_mask[i] && band[i])
+        .collect();
+    if relax.is_empty() {
+        return;
+    }
+
+    let passes = (radius.saturating_mul(4)).clamp(16, 128);
+    for _ in 0..passes {
+        // Jacobi: read every neighbor at the previous iteration so boundary
+        // conditions diffuse symmetrically.
+        let prev: Vec<[f32; 4]> = relax.iter().map(|&i| buffer[i]).collect();
+        for &idx in relax.iter() {
+            let x = idx % width;
+            let y = idx / width;
+
+            let mut sum = [0.0f32; 4];
+            let mut neighbor_count = 0.0f32;
+
+            let neighbors = [
+                if x > 0 { Some(idx - 1) } else { None },
+                if x + 1 < width { Some(idx + 1) } else { None },
+                if y > 0 { Some(idx - width) } else { None },
+                if y + 1 < height {
+                    Some(idx + width)
+                } else {
+                    None
+                },
+            ];
+
+            for n_opt in neighbors {
+                if let Some(n_idx) = n_opt {
+                    // Coverage pixels are fixed Dirichlet values and stay in
+                    // `buffer`; gutter neighbors were either seeded by the
+                    // push sweep and are relaxed (read from `prev`), or lie
+                    // outside the band and never change (also read from
+                    // `buffer`).
+                    let val = match relax.binary_search(&n_idx) {
+                        Ok(p) => prev[p],
+                        Err(_) => buffer[n_idx],
+                    };
+                    for ch in 0..4 {
+                        sum[ch] += val[ch];
+                    }
+                    neighbor_count += 1.0;
+                }
+            }
+
+            if neighbor_count > 0.0 {
+                buffer[idx] = [
+                    sum[0] / neighbor_count,
+                    sum[1] / neighbor_count,
+                    sum[2] / neighbor_count,
+                    sum[3] / neighbor_count,
+                ];
+            }
+        }
+    }
+}
+
+/// Averaged push-pull dilation implementation. Iteratively floods gutter
+/// pixels with the averaged values of their valid (UV-coverage) neighbors,
+/// `radius` pixels at a time — Substance's "color" padding algorithm.
+/// `alpha_mode` selects whether alpha participates in the dilation or the
+/// gutter is made transparent afterwards.
+fn push_pull_dilate(
+    buffer: &mut [[f32; 4]],
+    valid_mask: &[bool],
+    width: usize,
+    height: usize,
+    radius: usize,
+    alpha_mode: GutterAlphaMode,
 ) {
     if radius == 0 || width == 0 || height == 0 || buffer.len() != width * height {
         return;
@@ -631,22 +895,35 @@ pub fn dilate_rgba(
                 if let Some(n_idx) = n_opt {
                     if current_mask[n_idx] {
                         let c = buffer[n_idx];
-                        sum[0] += c[0];
-                        sum[1] += c[1];
-                        sum[2] += c[2];
-                        sum[3] += c[3];
+                        let channels = match alpha_mode {
+                            GutterAlphaMode::DilateAll => 4,
+                            GutterAlphaMode::TransparentGutter => 3,
+                        };
+                        for ch in 0..channels {
+                            sum[ch] += c[ch];
+                        }
                         count += 1.0;
                     }
                 }
             }
 
             if count > 0.0 {
-                let avg = [
-                    sum[0] / count,
-                    sum[1] / count,
-                    sum[2] / count,
-                    sum[3] / count,
-                ];
+                let avg = match alpha_mode {
+                    GutterAlphaMode::DilateAll => [
+                        sum[0] / count,
+                        sum[1] / count,
+                        sum[2] / count,
+                        sum[3] / count,
+                    ],
+                    // Alpha stays untouched in "transparent" mode; the gutter
+                    // is zeroed after the sweep below.
+                    GutterAlphaMode::TransparentGutter => [
+                        sum[0] / count,
+                        sum[1] / count,
+                        sum[2] / count,
+                        buffer[idx][3],
+                    ],
+                };
                 updates.push((idx, avg));
             }
         }
@@ -684,6 +961,74 @@ pub fn dilate_rgba(
         next_frontier.dedup();
         frontier = next_frontier;
     }
+
+    // Substance "transparent" padding: gutter alpha is fully transparent while
+    // the coverage keeps its authored alpha untouched.
+    if alpha_mode == GutterAlphaMode::TransparentGutter {
+        for (idx, pixel) in buffer.iter_mut().enumerate() {
+            if !current_mask[idx] {
+                pixel[3] = 0.0;
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Texture Export Execution
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Does a filename template contain naming tokens? If not, the exporter keeps
+/// the legacy `"<mesh><suffix>"` concatenation, which is byte-identical to the
+/// pre-token behavior.
+fn uses_naming_tokens(template: &str) -> bool {
+    template.contains('$')
+        || template.contains("{-resolution}")
+        || template.contains("{resolution}")
+        || template.contains("{lod}")
+}
+
+/// Resolves Substance-Painter-style naming tokens in a filename template
+/// (parity with `.spexp` `DataExportMap` file templates and the common Blender
+/// / Painter token set):
+///
+/// - `$mesh$`, `$meshname$` — mesh (texture set fallback) name
+/// - `$set_name$`, `$texture_set$`, `$textureset$` — texture set name
+/// - `$resolution$`, `{resolution}` — largest texture edge, e.g. `2048`
+/// - `$-resolution$`, `{-resolution}` — same, preceded by the `_` separator
+/// - `$width$`, `$height$` — exact per-axis resolution
+/// - `$lod$`, `{lod}` — LOD index (always `0` for full-resolution exports)
+///
+/// Spaces in names are normalized to `_`, matching the legacy mesh-name path.
+fn resolve_naming_tokens(
+    template: &str,
+    mesh_name: &str,
+    texture_set_name: Option<&str>,
+    width: usize,
+    height: usize,
+    lod: u32,
+) -> String {
+    let set_name = texture_set_name
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.replace(' ', "_"))
+        .unwrap_or_else(|| mesh_name.to_string());
+    let square_edge = width.max(height).to_string();
+    let dash_resolution = format!("_{square_edge}");
+
+    template
+        .replace("$mesh$", mesh_name)
+        .replace("$meshname$", mesh_name)
+        .replace("$set_name$", &set_name)
+        .replace("$texture_set$", &set_name)
+        .replace("$textureset$", &set_name)
+        .replace("$width$", &width.to_string())
+        .replace("$height$", &height.to_string())
+        .replace("$resolution$", &square_edge)
+        .replace("{resolution}", &square_edge)
+        .replace("$-resolution$", &dash_resolution)
+        .replace("{-resolution}", &dash_resolution)
+        .replace("$lod$", &lod.to_string())
+        .replace("{lod}", &lod.to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -859,8 +1204,15 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
         logs: Vec::new(),
     };
 
+    let mesh_clean_name = ctx.mesh.name.replace(' ', "_");
+    let padding_algorithm = ctx.preset.padding_algorithm;
+
+    // Passthrough leaves the gutter untouched; no coverage mask is needed.
+    let needs_uv_mask =
+        ctx.padding_radius > 0 && padding_algorithm != PaddingAlgorithm::Passthrough;
+
     // Calculate UV coverage mask for dilation
-    let uv_mask = if ctx.padding_radius > 0 {
+    let uv_mask = if needs_uv_mask {
         let mask = rasterize_uv_coverage(ctx.mesh, dst_w, dst_h);
         // If mask is completely empty (no valid UVs found), mark all painted pixels as valid
         let has_any_uv = mask.iter().any(|&v| v);
@@ -873,17 +1225,25 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
         vec![true; dst_w * dst_h]
     };
 
-    let mesh_clean_name = ctx.mesh.name.replace(' ', "_");
-
     for output in &ctx.preset.outputs {
         let format = ctx.file_format_override.unwrap_or(output.format);
         let bit_depth = ctx.bit_depth_override.unwrap_or(output.bit_depth);
-        let file_name = format!(
-            "{}{}.{}",
-            mesh_clean_name,
-            output.filename_suffix,
-            format.extension()
-        );
+
+        // Naming: tokenized templates ($mesh$, $set_name$, $-resolution$, ...)
+        // or the legacy "<mesh><suffix>" concatenation.
+        let file_stem = if uses_naming_tokens(&output.filename_suffix) {
+            resolve_naming_tokens(
+                &output.filename_suffix,
+                &mesh_clean_name,
+                ctx.preset.texture_set_name.as_deref(),
+                dst_w,
+                dst_h,
+                0,
+            )
+        } else {
+            format!("{}{}", mesh_clean_name, output.filename_suffix)
+        };
+        let file_name = format!("{}.{}", file_stem, format.extension());
         let file_path = ctx.output_dir.join(&file_name);
 
         let num_channels = if output
@@ -941,15 +1301,55 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
             }
         }
 
-        // Apply UV Island Edge Dilation / Seam Padding
+        // sRGB / linear transfer-function correctness. The layer-stack
+        // composite stores BaseColor in display (gamma 2.2) space — the GL
+        // viewport (`viewport_gl.rs`) and the CPU raytracer (`renderer.rs`)
+        // both degamma sample it with `pow(2.2)`. Linear-space exports must
+        // therefore receive the decoded linear values so the on-disk file
+        // matches its declared color space. Non-color data (AO, roughness,
+        // metallic, normal, height, thickness) is authored linear and is
+        // written as-is; alpha is linear even inside sRGB textures.
+        if output.color_space == ColorSpace::Linear {
+            for mapping in &output.channels {
+                if !matches!(mapping.source, SourceMap::BaseColor) {
+                    continue;
+                }
+                let channel_index = match mapping.target {
+                    TargetChannel::Red => 0,
+                    TargetChannel::Green => 1,
+                    TargetChannel::Blue => 2,
+                    TargetChannel::Alpha => continue,
+                };
+                for pixel in float_buffer.iter_mut() {
+                    pixel[channel_index] =
+                        pixel[channel_index].clamp(0.0, 1.0).powf(1.0 / 2.2);
+                }
+            }
+        }
+
+        // Apply UV Island Edge Dilation / Seam Padding (per-preset
+        // Substance padding algorithm; dilation happens in the export's
+        // working space, after the linearization above). The default route
+        // goes through the legacy `dilate_rgba` entry point so the default
+        // behavior stays bit-identical to previous versions.
         if ctx.padding_radius > 0 {
-            dilate_rgba(
-                &mut float_buffer,
-                &uv_mask,
-                dst_w,
-                dst_h,
-                ctx.padding_radius,
-            );
+            match padding_algorithm {
+                PaddingAlgorithm::Color => dilate_rgba(
+                    &mut float_buffer,
+                    &uv_mask,
+                    dst_w,
+                    dst_h,
+                    ctx.padding_radius,
+                ),
+                _ => dilate_rgba_mode(
+                    &mut float_buffer,
+                    &uv_mask,
+                    dst_w,
+                    dst_h,
+                    ctx.padding_radius,
+                    padding_algorithm,
+                ),
+            }
         }
 
         // Write file depending on format & bit depth
@@ -1101,8 +1501,8 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
         }
 
         result.logs.push(format!(
-            "Exported {} ({}×{}, {:?}, {:?})",
-            file_name, dst_w, dst_h, format, bit_depth
+            "Exported {} ({}×{}, {:?}, {:?}, padding: {:?})",
+            file_name, dst_w, dst_h, format, bit_depth, padding_algorithm
         ));
         result.exported_files.push(file_path);
     }
@@ -1117,6 +1517,172 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_padding_algorithm_defaults_to_legacy_color() {
+        assert_eq!(PaddingAlgorithm::default(), PaddingAlgorithm::Color);
+        for preset in [
+            ExportPreset::unreal_engine(),
+            ExportPreset::unity_urp(),
+            ExportPreset::unity_hdrp(),
+            ExportPreset::gltf2(),
+            ExportPreset::generic_pbr(),
+            ExportPreset::studio_exr(),
+        ] {
+            assert_eq!(preset.padding_algorithm, PaddingAlgorithm::Color);
+        }
+    }
+
+    #[test]
+    fn test_passthrough_leaves_gutter_untouched() {
+        let w = 3;
+        let h = 3;
+        let mut buffer = vec![[0.0f32; 4]; w * h];
+        let mut mask = vec![false; w * h];
+        let center_idx = 1 * w + 1;
+        buffer[center_idx] = [1.0, 1.0, 1.0, 1.0];
+        mask[center_idx] = true;
+
+        dilate_rgba_mode(&mut buffer, &mask, w, h, 3, PaddingAlgorithm::Passthrough);
+
+        // Gutter must be exactly as it was (alpha untouched as well).
+        assert_eq!(buffer[0], [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(buffer[1 * w + 2], [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(buffer[center_idx], [1.0, 1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn test_transparent_padding_zeroes_gutter_alpha() {
+        let w = 3;
+        let h = 3;
+        let mut buffer = vec![[0.0f32; 4]; w * h];
+        let mut mask = vec![false; w * h];
+        let center_idx = 1 * w + 1;
+        buffer[center_idx] = [1.0, 0.0, 0.0, 0.25];
+        mask[center_idx] = true;
+
+        dilate_rgba_mode(&mut buffer, &mask, w, h, 1, PaddingAlgorithm::Transparent);
+
+        // Neighbor gutter: RGB extended from the edge, alpha forced to 0.
+        let gutter_idx = 1 * w + 2;
+        assert!(buffer[gutter_idx][0] > 0.0, "gutter RGB must be extended");
+        assert_eq!(buffer[gutter_idx][3], 0.0);
+        // Coverage alpha is preserved untouched.
+        assert_eq!(buffer[center_idx][3], 0.25);
+    }
+
+    #[test]
+    fn test_diffusion_padding_diffuses_into_gutter() {
+        let w = 5;
+        let h = 1;
+        let mut buffer = vec![[0.0f32; 4]; w * h];
+        let mut mask = vec![false; w];
+        // Left column red, right column green, gutter in between.
+        for y in 0..h {
+            mask[y * w] = true;
+            mask[y * w + 4] = true;
+            buffer[y * w] = [1.0, 0.0, 0.0, 1.0];
+            buffer[y * w + 4] = [0.0, 1.0, 0.0, 1.0];
+        }
+
+        dilate_rgba_mode(&mut buffer, &mask, w, h, 2, PaddingAlgorithm::Diffusion);
+
+        // The gutter must have received BOTH edge colors (diffusion blends
+        // both boundaries smoothly into the unfilled area).
+        let mid = 2;
+        assert!(buffer[mid][0] > 0.01, "red must diffuse to mid: {:?}", buffer[mid]);
+        assert!(buffer[mid][1] > 0.01, "green must diffuse to mid: {:?}", buffer[mid]);
+        // Boundary colors themselves are unchanged (Dirichlet condition).
+        assert_eq!(buffer[0], [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(buffer[4], [0.0, 1.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn test_naming_tokens() {
+        // No tokens: legacy concatenation still applies at the call site;
+        // the resolver itself just substitutes.
+        assert_eq!(
+            resolve_naming_tokens("_BaseColor", "Cube", None, 2048, 1024, 0),
+            "_BaseColor"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$mesh$_BaseColor", "Cube", None, 2048, 1024, 0),
+            "Cube_BaseColor"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$set_name$_$-resolution$", "Cube", Some("My Material Set"), 2048, 1024, 0),
+            "My_Material_Set__2048"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$mesh${-resolution}", "Cube", None, 2048, 2048, 0),
+            "Cube_2048"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$mesh$_{lod}", "Cube", None, 2048, 2048, 0),
+            "Cube_0"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$width$x$height$", "Cube", None, 1024, 512, 0),
+            "1024x512"
+        );
+        // Texture set fallback = mesh name when unset.
+        assert_eq!(
+            resolve_naming_tokens("$textureset$", "", Option::<&str>::None, 512, 512, 0),
+            ""
+        );
+    }
+
+    #[test]
+    fn test_hdrp_maskmap_channel_spec() {
+        // Unity HDRP MaskMap: R=Metallic, G=AO, B=Detail Mask, A=Smoothness.
+        let preset = ExportPreset::unity_hdrp();
+        let mask = &preset.outputs[1];
+        assert_eq!(mask.filename_suffix, "_MaskMap");
+        assert_eq!(mask.channels[0].target, TargetChannel::Red);
+        assert_eq!(mask.channels[0].source, SourceMap::Metallic);
+        assert_eq!(mask.channels[1].target, TargetChannel::Green);
+        assert_eq!(mask.channels[1].source, SourceMap::AmbientOcclusion);
+        assert_eq!(mask.channels[2].target, TargetChannel::Blue);
+        assert!(
+            matches!(mask.channels[2].source, SourceMap::Constant(255)),
+            "HDRP MaskMap B must be a neutral detail mask, got {:?}",
+            mask.channels[2].source
+        );
+        assert_eq!(mask.channels[3].target, TargetChannel::Alpha);
+        assert_eq!(mask.channels[3].source, SourceMap::Roughness);
+        assert_eq!(mask.channels[3].component, SourceComponent::InvertedGray);
+    }
+
+    #[test]
+    fn test_unreal_orm_channel_spec() {
+        // Unreal ORM: R=AO, G=Roughness, B=Metallic, linear space.
+        let preset = ExportPreset::unreal_engine();
+        let orm = &preset.outputs[1];
+        assert_eq!(orm.filename_suffix, "_OcclusionRoughnessMetallic");
+        assert_eq!(orm.color_space, ColorSpace::Linear);
+        assert_eq!(orm.channels[0].source, SourceMap::AmbientOcclusion);
+        assert_eq!(orm.channels[1].source, SourceMap::Roughness);
+        assert_eq!(orm.channels[2].source, SourceMap::Metallic);
+    }
+
+    #[test]
+    fn test_gltf_metallic_roughness_spec() {
+        // Khronos glTF 2.0: metallicRoughness G=Roughness, B=Metallic with AO
+        // packed in R for the combined occlusion-roughness-metallic texture.
+        let preset = ExportPreset::gltf2();
+        let orm = &preset.outputs[1];
+        assert_eq!(orm.channels[0].source, SourceMap::AmbientOcclusion);
+        assert_eq!(orm.channels[1].source, SourceMap::Roughness);
+        assert_eq!(orm.channels[2].source, SourceMap::Metallic);
+        assert_eq!(preset.outputs[0].color_space, ColorSpace::SRgb);
+    }
+
+    #[test]
+    fn test_with_padding_algorithm_builder() {
+        let preset = ExportPreset::unreal_engine()
+            .with_padding_algorithm(PaddingAlgorithm::Diffusion);
+        assert_eq!(preset.padding_algorithm, PaddingAlgorithm::Diffusion);
+    }
 
     #[test]
     fn test_export_presets_definitions() {
