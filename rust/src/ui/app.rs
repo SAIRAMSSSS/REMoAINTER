@@ -10216,6 +10216,48 @@ Res: {}×{}",
                             });
                         ui.end_row();
 
+                        ui.label("Compositing Engine:");
+                        ui.horizontal(|ui| {
+                            let gpu_ok = crate::graphics::gpu::is_available();
+                            let engine_text = if !gpu_ok {
+                                "CPU (no wgpu adapter detected)".to_string()
+                            } else if self.config.prefer_gpu_compositor {
+                                format!(
+                                    "GPU ({} · experimental)",
+                                    crate::graphics::gpu::adapter_name()
+                                        .unwrap_or_else(|| "GPU".into())
+                                )
+                            } else {
+                                format!(
+                                    "CPU (GPU available: {})",
+                                    crate::graphics::gpu::adapter_name()
+                                        .unwrap_or_else(|| "GPU".into())
+                                )
+                            };
+                            egui::ComboBox::from_id_salt("pref_gpu_comp")
+                                .selected_text(engine_text)
+                                .width(240.0)
+                                .show_ui(ui, |ui| {
+                                    let _ = ui.selectable_value(
+                                        &mut self.config.prefer_gpu_compositor,
+                                        false,
+                                        "CPU (Safe)",
+                                    );
+                                    if gpu_ok {
+                                        let _ = ui.selectable_value(
+                                            &mut self.config.prefer_gpu_compositor,
+                                            true,
+                                            format!(
+                                                "GPU — {} (experimental)",
+                                                crate::graphics::gpu::adapter_name()
+                                                    .unwrap_or_else(|| "GPU".into())
+                                            ),
+                                        );
+                                    }
+                                });
+                        });
+                        ui.end_row();
+
                         ui.label("Color Management:");
                         egui::ComboBox::from_id_salt("pref_color_mgmt")
                             .selected_text(match self.config.color_management_mode {

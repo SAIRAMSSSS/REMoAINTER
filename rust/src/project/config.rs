@@ -7,6 +7,12 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub recent_projects: Vec<String>,
+    /// Compositing engine preference: `true` = prefer the wgpu compute
+    /// compositor when a supported adapter is present (automatic CPU fallback
+    /// per stack); `false` = always CPU. Default off until the GPU stack
+    /// composite pass reaches full masks/folders parity with the CPU engine.
+    #[serde(default)]
+    pub prefer_gpu_compositor: bool,
     pub autosave_interval_secs: u64,
     pub undo_depth: usize,
     pub ui_scale: f32,
@@ -48,6 +54,7 @@ impl Default for AppConfig {
 
         Self {
             recent_projects: Vec::new(),
+            prefer_gpu_compositor: false,
             autosave_interval_secs: 180,
             undo_depth: 64,
             ui_scale: 1.0,
