@@ -580,7 +580,13 @@ mod tests {
 
     #[test]
     fn ab_glyph_rasterization_is_nonempty_and_deterministic() {
-        let path = default_font_path().expect("default font");
+        // CI runners and minimal containers carry no system fonts; the
+        // fixture-dependent half of this suite self-skips there the same way
+        // the .sbsar sample test does.
+        let Some(path) = default_font_path() else {
+            eprintln!("[text] no system fonts — skipping rasterization fixture test");
+            return;
+        };
         let font = load_font_arc(&path).expect("default font parses");
         let a = rasterize_text_with_font("AB", 64, Some(&font));
         let b = rasterize_text_with_font("AB", 64, Some(&font));
