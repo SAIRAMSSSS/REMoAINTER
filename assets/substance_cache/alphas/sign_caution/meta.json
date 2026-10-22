@@ -1,0 +1,9 @@
+{
+  "source_file": "alphas/Symbol/sign_caution.sbsar",
+  "label": "Sign Caution",
+  "sp_category": "Symbol",
+  "keywords": "text,caution,stripe,border",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

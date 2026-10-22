@@ -1,0 +1,445 @@
+{
+  "presets": [
+    {
+      "label": "Wet Wood Bark",
+      "inputs": [
+        {
+          "identifier": "bark_color",
+          "type": 2,
+          "value": [
+            0.36,
+            0.264457,
+            0.2016
+          ],
+          "uid": 3046716794
+        },
+        {
+          "identifier": "bark_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3046435878
+        },
+        {
+          "identifier": "bark_roughness",
+          "type": 0,
+          "value": 0.26,
+          "uid": 3046716786
+        },
+        {
+          "identifier": "bark_density",
+          "type": 0,
+          "value": 0.48,
+          "uid": 3046435238
+        },
+        {
+          "identifier": "missing_part_density",
+          "type": 0,
+          "value": 0.64,
+          "uid": 3047056366
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952661
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576511
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576508
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952682
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952683
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576496
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576497
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576503
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2937492178
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348272
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2722794898
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3721348290
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348261
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721313233
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885296
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885185
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2948443003
+        }
+      ]
+    },
+    {
+      "label": "Long Wood Bark",
+      "inputs": [
+        {
+          "identifier": "bark_color",
+          "type": 2,
+          "value": [
+            0.45,
+            0.330572,
+            0.252
+          ],
+          "uid": 3046716794
+        },
+        {
+          "identifier": "bark_color_variation",
+          "type": 0,
+          "value": 0.53,
+          "uid": 3046435878
+        },
+        {
+          "identifier": "bark_roughness",
+          "type": 0,
+          "value": 0.65,
+          "uid": 3046716786
+        },
+        {
+          "identifier": "bark_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3046435238
+        },
+        {
+          "identifier": "missing_part_density",
+          "type": 0,
+          "value": 0.39,
+          "uid": 3047056366
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952661
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576511
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576508
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952682
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952683
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576496
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576497
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576503
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2937492178
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348272
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2722794898
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3721348290
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348261
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721313233
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885296
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885185
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2948443003
+        }
+      ]
+    },
+    {
+      "label": "Small Wood Bark",
+      "inputs": [
+        {
+          "identifier": "bark_color",
+          "type": 2,
+          "value": [
+            0.45,
+            0.31428,
+            0.216
+          ],
+          "uid": 3046716794
+        },
+        {
+          "identifier": "bark_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3046435878
+        },
+        {
+          "identifier": "bark_roughness",
+          "type": 0,
+          "value": 0.65,
+          "uid": 3046716786
+        },
+        {
+          "identifier": "bark_density",
+          "type": 0,
+          "value": 0.97,
+          "uid": 3046435238
+        },
+        {
+          "identifier": "missing_part_density",
+          "type": 0,
+          "value": 0.4,
+          "uid": 3047056366
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952661
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576511
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576508
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952682
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2857952683
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576496
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576497
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2767576503
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2937492178
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348272
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2722794898
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3721348290
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721348261
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3721313233
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885296
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2783885185
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2948443003
+        }
+      ]
+    }
+  ]
+}

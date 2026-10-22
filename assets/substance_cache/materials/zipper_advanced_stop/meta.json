@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/zipper_advanced_stop.sbsar",
+  "label": "Zipper Advanced Stop",
+  "sp_category": "Tool",
+  "keywords": "zipper,stop,tool",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

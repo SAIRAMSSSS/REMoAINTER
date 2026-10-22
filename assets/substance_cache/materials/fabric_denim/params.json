@@ -1,0 +1,487 @@
+{
+  "presets": [
+    {
+      "label": "Dark Blue Denim",
+      "inputs": [
+        {
+          "identifier": "warp_yarn_color",
+          "type": 2,
+          "value": [
+            0.188235,
+            0.215686,
+            0.32549
+          ],
+          "uid": 796155837
+        },
+        {
+          "identifier": "weft_yarn_color",
+          "type": 2,
+          "value": [
+            0.156145,
+            0.178916,
+            0.27
+          ],
+          "uid": 796155822
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.25,
+          "uid": 796054660
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 795333792
+        },
+        {
+          "identifier": "random_fibers_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 795332020
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 0.8,
+          "uid": 795892533
+        },
+        {
+          "identifier": "denim_distortion",
+          "type": 0,
+          "value": 0.3,
+          "uid": 795582412
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813782988
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099622
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099621
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783027
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783026
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099625
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099624
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099630
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 902766731
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687337
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 949174219
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1192687259
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687356
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192692104
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1060570537
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1060570584
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 895752482
+        }
+      ]
+    },
+    {
+      "label": "Classic Blue  Denim",
+      "inputs": [
+        {
+          "identifier": "warp_yarn_color",
+          "type": 2,
+          "value": [
+            0.262745,
+            0.384314,
+            0.517647
+          ],
+          "uid": 796155837
+        },
+        {
+          "identifier": "weft_yarn_color",
+          "type": 2,
+          "value": [
+            0.262745,
+            0.384314,
+            0.517647
+          ],
+          "uid": 796155822
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.18,
+          "uid": 796054660
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.54,
+          "uid": 795333792
+        },
+        {
+          "identifier": "random_fibers_intensity",
+          "type": 0,
+          "value": 0.59,
+          "uid": 795332020
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 0.04,
+          "uid": 795892533
+        },
+        {
+          "identifier": "denim_distortion",
+          "type": 0,
+          "value": 0.16,
+          "uid": 795582412
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813782988
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099622
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099621
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783027
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783026
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099625
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099624
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099630
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 902766731
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687337
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 949174219
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1192687259
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687356
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192692104
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1060570537
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1060570584
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 895752482
+        }
+      ]
+    },
+    {
+      "label": "Bi-Color Denim",
+      "inputs": [
+        {
+          "identifier": "warp_yarn_color",
+          "type": 2,
+          "value": [
+            0.994475,
+            0.872041,
+            0.761849
+          ],
+          "uid": 796155837
+        },
+        {
+          "identifier": "weft_yarn_color",
+          "type": 2,
+          "value": [
+            0.52,
+            0.499116,
+            0.480321
+          ],
+          "uid": 796155822
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 796054660
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 795333792
+        },
+        {
+          "identifier": "random_fibers_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 795332020
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 0.29,
+          "uid": 795892533
+        },
+        {
+          "identifier": "denim_distortion",
+          "type": 0,
+          "value": 1.0,
+          "uid": 795582412
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813782988
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099622
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099621
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783027
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 813783026
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099625
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099624
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1043099630
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 902766731
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687337
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 949174219
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1192687259
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192687356
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1192692104
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1060570537
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1060570584
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 895752482
+        }
+      ]
+    }
+  ]
+}

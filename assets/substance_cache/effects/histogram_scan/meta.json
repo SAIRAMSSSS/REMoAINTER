@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/histogram_scan.sbsar",
+  "label": "Histogram Scan",
+  "sp_category": "Standard",
+  "keywords": "grayscale",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

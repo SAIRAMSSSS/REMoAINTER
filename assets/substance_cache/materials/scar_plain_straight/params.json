@@ -1,0 +1,437 @@
+{
+  "presets": [
+    {
+      "label": "Fresh",
+      "inputs": [
+        {
+          "identifier": "scar_color_01",
+          "type": 2,
+          "value": [
+            0.65098,
+            0.466667,
+            0.423529
+          ],
+          "uid": 3420023994
+        },
+        {
+          "identifier": "scar_color_02",
+          "type": 2,
+          "value": [
+            0.552941,
+            0.368627,
+            0.32549
+          ],
+          "uid": 3402296904
+        },
+        {
+          "identifier": "scar_color_03",
+          "type": 2,
+          "value": [
+            0.690196,
+            0.608627,
+            0.486275
+          ],
+          "uid": 3402297458
+        },
+        {
+          "identifier": "scar_height",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3417269965
+        },
+        {
+          "identifier": "scar_thickness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3416774792
+        },
+        {
+          "identifier": "shape_blurriness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3416371386
+        },
+        {
+          "identifier": "distortion",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416286156
+        },
+        {
+          "identifier": "wrinkling_intensity",
+          "type": 0,
+          "value": 0.71,
+          "uid": 3417121868
+        },
+        {
+          "identifier": "wrinkling_scale",
+          "type": 0,
+          "value": 0.63,
+          "uid": 3402353291
+        },
+        {
+          "identifier": "use_stitch_marks",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3417253152
+        },
+        {
+          "identifier": "stitch_bulge_intensity",
+          "type": 0,
+          "value": 0.82,
+          "uid": 3416581450
+        },
+        {
+          "identifier": "stitch_mark_visibility",
+          "type": 0,
+          "value": 0.06,
+          "uid": 3402475695
+        }
+      ]
+    },
+    {
+      "label": "Narrow",
+      "inputs": [
+        {
+          "identifier": "scar_color_01",
+          "type": 2,
+          "value": [
+            0.65098,
+            0.466667,
+            0.423529
+          ],
+          "uid": 3420023994
+        },
+        {
+          "identifier": "scar_color_02",
+          "type": 2,
+          "value": [
+            0.552941,
+            0.368627,
+            0.32549
+          ],
+          "uid": 3402296904
+        },
+        {
+          "identifier": "scar_color_03",
+          "type": 2,
+          "value": [
+            0.690196,
+            0.608627,
+            0.486275
+          ],
+          "uid": 3402297458
+        },
+        {
+          "identifier": "scar_height",
+          "type": 0,
+          "value": 0.15,
+          "uid": 3417269965
+        },
+        {
+          "identifier": "scar_thickness",
+          "type": 0,
+          "value": 0.025,
+          "uid": 3416774792
+        },
+        {
+          "identifier": "shape_blurriness",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3416371386
+        },
+        {
+          "identifier": "distortion",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416286156
+        },
+        {
+          "identifier": "wrinkling_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3417121868
+        },
+        {
+          "identifier": "wrinkling_scale",
+          "type": 0,
+          "value": 0.63,
+          "uid": 3402353291
+        },
+        {
+          "identifier": "use_stitch_marks",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3417253152
+        },
+        {
+          "identifier": "stitch_bulge_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416581450
+        },
+        {
+          "identifier": "stitch_mark_visibility",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3402475695
+        }
+      ]
+    },
+    {
+      "label": "Thick",
+      "inputs": [
+        {
+          "identifier": "scar_color_01",
+          "type": 2,
+          "value": [
+            0.65098,
+            0.466667,
+            0.423529
+          ],
+          "uid": 3420023994
+        },
+        {
+          "identifier": "scar_color_02",
+          "type": 2,
+          "value": [
+            0.552941,
+            0.368627,
+            0.32549
+          ],
+          "uid": 3402296904
+        },
+        {
+          "identifier": "scar_color_03",
+          "type": 2,
+          "value": [
+            0.690196,
+            0.608627,
+            0.486275
+          ],
+          "uid": 3402297458
+        },
+        {
+          "identifier": "scar_height",
+          "type": 0,
+          "value": 0.3,
+          "uid": 3417269965
+        },
+        {
+          "identifier": "scar_thickness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3416774792
+        },
+        {
+          "identifier": "shape_blurriness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416371386
+        },
+        {
+          "identifier": "distortion",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416286156
+        },
+        {
+          "identifier": "wrinkling_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3417121868
+        },
+        {
+          "identifier": "wrinkling_scale",
+          "type": 0,
+          "value": 0.63,
+          "uid": 3402353291
+        },
+        {
+          "identifier": "use_stitch_marks",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3417253152
+        },
+        {
+          "identifier": "stitch_bulge_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416581450
+        }
+      ]
+    },
+    {
+      "label": "Faint",
+      "inputs": [
+        {
+          "identifier": "scar_color_01",
+          "type": 2,
+          "value": [
+            0.65098,
+            0.466667,
+            0.423529
+          ],
+          "uid": 3420023994
+        },
+        {
+          "identifier": "scar_color_02",
+          "type": 2,
+          "value": [
+            0.552941,
+            0.368627,
+            0.32549
+          ],
+          "uid": 3402296904
+        },
+        {
+          "identifier": "scar_color_03",
+          "type": 2,
+          "value": [
+            0.690196,
+            0.608627,
+            0.486275
+          ],
+          "uid": 3402297458
+        },
+        {
+          "identifier": "scar_height",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3417269965
+        },
+        {
+          "identifier": "scar_thickness",
+          "type": 0,
+          "value": 0.14,
+          "uid": 3416774792
+        },
+        {
+          "identifier": "shape_blurriness",
+          "type": 0,
+          "value": 0.88,
+          "uid": 3416371386
+        },
+        {
+          "identifier": "distortion",
+          "type": 0,
+          "value": 0.22,
+          "uid": 3416286156
+        },
+        {
+          "identifier": "wrinkling_intensity",
+          "type": 0,
+          "value": 0.17,
+          "uid": 3417121868
+        },
+        {
+          "identifier": "wrinkling_scale",
+          "type": 0,
+          "value": 0.63,
+          "uid": 3402353291
+        },
+        {
+          "identifier": "use_stitch_marks",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3417253152
+        },
+        {
+          "identifier": "stitch_bulge_intensity",
+          "type": 0,
+          "value": 0.3,
+          "uid": 3416581450
+        }
+      ]
+    },
+    {
+      "label": "Aged",
+      "inputs": [
+        {
+          "identifier": "scar_color_01",
+          "type": 2,
+          "value": [
+            0.65098,
+            0.466667,
+            0.423529
+          ],
+          "uid": 3420023994
+        },
+        {
+          "identifier": "scar_color_02",
+          "type": 2,
+          "value": [
+            0.552941,
+            0.368627,
+            0.32549
+          ],
+          "uid": 3402296904
+        },
+        {
+          "identifier": "scar_color_03",
+          "type": 2,
+          "value": [
+            0.690196,
+            0.608627,
+            0.486275
+          ],
+          "uid": 3402297458
+        },
+        {
+          "identifier": "scar_height",
+          "type": 0,
+          "value": 0.12,
+          "uid": 3417269965
+        },
+        {
+          "identifier": "scar_thickness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3416774792
+        },
+        {
+          "identifier": "shape_blurriness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3416371386
+        },
+        {
+          "identifier": "distortion",
+          "type": 0,
+          "value": 0.17,
+          "uid": 3416286156
+        },
+        {
+          "identifier": "wrinkling_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3417121868
+        },
+        {
+          "identifier": "wrinkling_scale",
+          "type": 0,
+          "value": 0.63,
+          "uid": 3402353291
+        },
+        {
+          "identifier": "use_stitch_marks",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3417253152
+        },
+        {
+          "identifier": "stitch_bulge_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3416581450
+        },
+        {
+          "identifier": "stitch_mark_visibility",
+          "type": 0,
+          "value": 0.06,
+          "uid": 3402475695
+        }
+      ]
+    }
+  ]
+}

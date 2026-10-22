@@ -1,0 +1,511 @@
+{
+  "presets": [
+    {
+      "label": "Glossy Brown Paper Cardboard",
+      "inputs": [
+        {
+          "identifier": "paper_cardboard_color",
+          "type": 2,
+          "value": [
+            0.729282,
+            0.592148,
+            0.473393
+          ],
+          "uid": 4007361970
+        },
+        {
+          "identifier": "paper_cardboard_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 4007371595
+        },
+        {
+          "identifier": "paper_cardboard_roughness_variation",
+          "type": 0,
+          "value": 0.59,
+          "uid": 4007156134
+        },
+        {
+          "identifier": "paper_cardboard_grain_intensity",
+          "type": 0,
+          "value": 0.27,
+          "uid": 4007149819
+        },
+        {
+          "identifier": "inserts_color",
+          "type": 2,
+          "value": [
+            0.370166,
+            0.335028,
+            0.300895
+          ],
+          "uid": 4007377907
+        },
+        {
+          "identifier": "inserts_intensity",
+          "type": 0,
+          "value": 0.96,
+          "uid": 4007378189
+        },
+        {
+          "identifier": "structure_height_intensity",
+          "type": 0,
+          "value": 0.54,
+          "uid": 4007371682
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812292
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496558
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496557
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812347
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812346
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496545
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496544
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3967832817
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496550
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621857
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4177827843
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2256621907
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621876
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256580160
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 4271940193
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4271940112
+        }
+      ]
+    },
+    {
+      "label": "Matte Damaged Paper Cardboard",
+      "inputs": [
+        {
+          "identifier": "paper_cardboard_color",
+          "type": 2,
+          "value": [
+            0.839779,
+            0.758327,
+            0.653161
+          ],
+          "uid": 4007361970
+        },
+        {
+          "identifier": "paper_cardboard_roughness",
+          "type": 0,
+          "value": 0.57,
+          "uid": 4007371595
+        },
+        {
+          "identifier": "paper_cardboard_roughness_variation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4007156134
+        },
+        {
+          "identifier": "paper_cardboard_grain_intensity",
+          "type": 0,
+          "value": 0.34,
+          "uid": 4007149819
+        },
+        {
+          "identifier": "inserts_color",
+          "type": 2,
+          "value": [
+            0.370166,
+            0.335028,
+            0.300895
+          ],
+          "uid": 4007377907
+        },
+        {
+          "identifier": "inserts_intensity",
+          "type": 0,
+          "value": 0.38,
+          "uid": 4007378189
+        },
+        {
+          "identifier": "structure_density",
+          "type": 0,
+          "value": 0.58,
+          "uid": 4007372164
+        },
+        {
+          "identifier": "structure_color_intensity",
+          "type": 0,
+          "value": 0.79,
+          "uid": 4007374634
+        },
+        {
+          "identifier": "structure_height_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4007371682
+        },
+        {
+          "identifier": "structure_deformation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4007372331
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812292
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496558
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496557
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812347
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812346
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496545
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496544
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3967832817
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496550
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621857
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4177827843
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2256621907
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621876
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256580160
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 4271940193
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4271940112
+        }
+      ]
+    },
+    {
+      "label": "Fiber Brown Paper Cardboard",
+      "inputs": [
+        {
+          "identifier": "paper_cardboard_color",
+          "type": 2,
+          "value": [
+            0.856354,
+            0.711428,
+            0.585926
+          ],
+          "uid": 4007361970
+        },
+        {
+          "identifier": "paper_cardboard_roughness",
+          "type": 0,
+          "value": 0.48,
+          "uid": 4007371595
+        },
+        {
+          "identifier": "paper_cardboard_roughness_variation",
+          "type": 0,
+          "value": 0.58,
+          "uid": 4007156134
+        },
+        {
+          "identifier": "paper_cardboard_grain_intensity",
+          "type": 0,
+          "value": 0.24,
+          "uid": 4007149819
+        },
+        {
+          "identifier": "inserts_color",
+          "type": 2,
+          "value": [
+            0.59116,
+            0.415801,
+            0.245453
+          ],
+          "uid": 4007377907
+        },
+        {
+          "identifier": "inserts_intensity",
+          "type": 0,
+          "value": 0.45,
+          "uid": 4007378189
+        },
+        {
+          "identifier": "structure_density",
+          "type": 0,
+          "value": 0.1,
+          "uid": 4007372164
+        },
+        {
+          "identifier": "structure_color_intensity",
+          "type": 0,
+          "value": 0.67,
+          "uid": 4007374634
+        },
+        {
+          "identifier": "structure_height_intensity",
+          "type": 0,
+          "value": 0.92,
+          "uid": 4007371682
+        },
+        {
+          "identifier": "structure_deformation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4007372331
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812292
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496558
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496557
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812347
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4044812346
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496545
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496544
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3967832817
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4290496550
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621857
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4177827843
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2256621907
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256621876
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2256580160
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 4271940193
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4271940112
+        }
+      ]
+    }
+  ]
+}

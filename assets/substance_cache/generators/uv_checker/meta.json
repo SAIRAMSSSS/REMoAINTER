@@ -1,0 +1,9 @@
+{
+  "source_file": "generators/uv_checker.sbsar",
+  "label": "UV Checker",
+  "sp_category": "",
+  "keywords": "uv,border,random",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

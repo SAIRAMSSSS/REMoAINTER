@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Wood/wood_plain.sbsar",
+  "label": "Wood Plain",
+  "sp_category": "Wood",
+  "keywords": "painter;base;material;wood;plank;design;product;interior;architecture",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

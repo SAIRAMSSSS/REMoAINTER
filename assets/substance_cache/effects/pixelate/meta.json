@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/pixelate.sbsar",
+  "label": "Pixelate",
+  "sp_category": "Standard",
+  "keywords": "pixel,block,blocky",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

@@ -1,0 +1,9 @@
+{
+  "source_file": "alphas/Handprint/handprint_heavy_leak.sbsar",
+  "label": "Handprint Heavy Leak",
+  "sp_category": "Handprint",
+  "keywords": "organic,human,ink",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

@@ -1,0 +1,463 @@
+{
+  "presets": [
+    {
+      "label": "Cracked Coarse Concrete",
+      "inputs": [
+        {
+          "identifier": "concrete_color",
+          "type": 2,
+          "value": [
+            0.670588,
+            0.643137,
+            0.631373
+          ],
+          "uid": 966760123
+        },
+        {
+          "identifier": "concrete_color_variation",
+          "type": 0,
+          "value": 0.28,
+          "uid": 972998618
+        },
+        {
+          "identifier": "concrete_roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 966352723
+        },
+        {
+          "identifier": "concrete_roughness_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 966352711
+        },
+        {
+          "identifier": "Damage_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 972562755
+        },
+        {
+          "identifier": "damage_scale",
+          "type": 0,
+          "value": 0.1,
+          "uid": 966653516
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199443
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842617
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842618
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199468
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199469
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842614
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842615
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 966665406
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842609
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 593943636
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474486
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 775602964
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1371474500
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474467
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371469143
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 698284406
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 698284295
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 600696317
+        }
+      ]
+    },
+    {
+      "label": "Dune Coarse Concrete",
+      "inputs": [
+        {
+          "identifier": "concrete_color",
+          "type": 2,
+          "value": [
+            0.670588,
+            0.643137,
+            0.631373
+          ],
+          "uid": 966760123
+        },
+        {
+          "identifier": "concrete_color_variation",
+          "type": 0,
+          "value": 0.28,
+          "uid": 972998618
+        },
+        {
+          "identifier": "concrete_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 966352723
+        },
+        {
+          "identifier": "concrete_roughness_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 966352711
+        },
+        {
+          "identifier": "Damage_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 972562755
+        },
+        {
+          "identifier": "damage_scale",
+          "type": 0,
+          "value": 0.25,
+          "uid": 966653516
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199443
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842617
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842618
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199468
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199469
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842614
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842615
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 966665406
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842609
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 593943636
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474486
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 775602964
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1371474500
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474467
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371469143
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 698284406
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 698284295
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 600696317
+        }
+      ]
+    },
+    {
+      "label": "Wet Coarse Concrete",
+      "inputs": [
+        {
+          "identifier": "concrete_color",
+          "type": 2,
+          "value": [
+            0.39,
+            0.386724,
+            0.3783
+          ],
+          "uid": 966760123
+        },
+        {
+          "identifier": "concrete_color_variation",
+          "type": 0,
+          "value": 0.65,
+          "uid": 972998618
+        },
+        {
+          "identifier": "concrete_roughness",
+          "type": 0,
+          "value": 0.26,
+          "uid": 966352723
+        },
+        {
+          "identifier": "concrete_roughness_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 966352711
+        },
+        {
+          "identifier": "Damage_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 972562755
+        },
+        {
+          "identifier": "damage_scale",
+          "type": 0,
+          "value": 0.5,
+          "uid": 966653516
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199443
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842617
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842618
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199468
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 640199469
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842614
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842615
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 966665406
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 679842609
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 593943636
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474486
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 775602964
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1371474500
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371474467
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1371469143
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.2,
+          "uid": 698284406
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 698284295
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 600696317
+        }
+      ]
+    }
+  ]
+}

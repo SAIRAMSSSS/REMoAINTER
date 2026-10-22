@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/glow.sbsar",
+  "label": "Glow",
+  "sp_category": "Standard",
+  "keywords": "Effect,color",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

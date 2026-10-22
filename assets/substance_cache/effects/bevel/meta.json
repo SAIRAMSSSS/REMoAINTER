@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Advanced/bevel.sbsar",
+  "label": "Bevel",
+  "sp_category": "Filter",
+  "keywords": "bevel,distance,grayscale",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

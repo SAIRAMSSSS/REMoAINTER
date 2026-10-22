@@ -1,0 +1,9 @@
+{
+  "source_file": "alphas/Geometric/triangle_border_band.sbsar",
+  "label": "Triangle Border Band",
+  "sp_category": "Geometric",
+  "keywords": "tri,border,width",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

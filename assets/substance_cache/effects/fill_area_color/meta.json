@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/fill_area_color.sbsar",
+  "label": "Fill Area Color",
+  "sp_category": "Effect",
+  "keywords": "fill, shape, outline, rgba, color",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

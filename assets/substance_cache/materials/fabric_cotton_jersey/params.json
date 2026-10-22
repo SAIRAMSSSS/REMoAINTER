@@ -1,0 +1,481 @@
+{
+  "presets": [
+    {
+      "label": "Blue Clean Cotton",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.572549,
+            0.764706,
+            0.894118
+          ],
+          "uid": 2504754270
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.44,
+          "uid": 2504823309
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2504849868
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2504849901
+        },
+        {
+          "identifier": "weft_distortion",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2503059792
+        },
+        {
+          "identifier": "pilling_density",
+          "type": 0,
+          "value": 0.32,
+          "uid": 2504849877
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798926
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791780
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791783
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798961
+        },
+        {
+          "identifier": "channel_emissive",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103616
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798960
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791787
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791786
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103809
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791788
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2409847817
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666475
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2197766985
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4252666393
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666494
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252726538
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.15,
+          "uid": 2237364523
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2237364570
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2399692192
+        }
+      ]
+    },
+    {
+      "label": "Green Pilling Cotton",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.48,
+            0.6,
+            0.514286
+          ],
+          "uid": 2504754270
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2504823309
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2504849868
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2504849901
+        },
+        {
+          "identifier": "weft_distortion",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2503059792
+        },
+        {
+          "identifier": "pilling_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2504849877
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798926
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791780
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791783
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798961
+        },
+        {
+          "identifier": "channel_emissive",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103616
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798960
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791787
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791786
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103809
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791788
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2409847817
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666475
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2197766985
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4252666393
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666494
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252726538
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.15,
+          "uid": 2237364523
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2237364570
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2399692192
+        }
+      ]
+    },
+    {
+      "label": "Orange Metallic Cotton",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.792157,
+            0.639216,
+            0.243137
+          ],
+          "uid": 2504754270
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.11,
+          "uid": 2504823309
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.49,
+          "uid": 2504849868
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.78,
+          "uid": 2504849901
+        },
+        {
+          "identifier": "weft_distortion",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2503059792
+        },
+        {
+          "identifier": "pilling_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2504849877
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798926
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791780
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791783
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798961
+        },
+        {
+          "identifier": "channel_emissive",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103616
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2330798960
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791787
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791786
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2400103809
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2218791788
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2409847817
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666475
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2197766985
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4252666393
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252666494
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4252726538
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.15,
+          "uid": 2237364523
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2237364570
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2399692192
+        }
+      ]
+    }
+  ]
+}

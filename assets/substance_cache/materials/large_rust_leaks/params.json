@@ -1,0 +1,481 @@
+{
+  "presets": [
+    {
+      "label": "Dark Brown Rusty Small Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_width",
+          "type": 0,
+          "value": 0.41,
+          "uid": 1984377667
+        },
+        {
+          "identifier": "leaks_color",
+          "type": 2,
+          "value": [
+            0.34902,
+            0.235294,
+            0.223529
+          ],
+          "uid": 1984059683
+        },
+        {
+          "identifier": "leaks_roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 1984053950
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.38,
+          "uid": 1985767140
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.55,
+          "uid": 1984422439
+        },
+        {
+          "identifier": "leaks_diffusion",
+          "type": 0,
+          "value": 0.54,
+          "uid": 1985773263
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176403
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031929
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031930
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176428
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176429
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031926
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031927
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031921
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1761713684
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1772993480
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159158
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1683849556
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 467159044
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159139
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467253015
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1659028058
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1677310774
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1677310791
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1772791741
+        }
+      ]
+    },
+    {
+      "label": "Soft Orange Rusty Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_width",
+          "type": 0,
+          "value": 0.77,
+          "uid": 1984377667
+        },
+        {
+          "identifier": "leaks_color",
+          "type": 2,
+          "value": [
+            0.623529,
+            0.317647,
+            0.188235
+          ],
+          "uid": 1984059683
+        },
+        {
+          "identifier": "leaks_roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 1984053950
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.56,
+          "uid": 1985767140
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.34,
+          "uid": 1984422439
+        },
+        {
+          "identifier": "leaks_diffusion",
+          "type": 0,
+          "value": 0.65,
+          "uid": 1985773263
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176403
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031929
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031930
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176428
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176429
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031926
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031927
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031921
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1761713684
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1772993480
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159158
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1683849556
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 467159044
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159139
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467253015
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1659028058
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1677310774
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1677310791
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1772791741
+        }
+      ]
+    },
+    {
+      "label": "Strong Brown Rusty Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_width",
+          "type": 0,
+          "value": 0.77,
+          "uid": 1984377667
+        },
+        {
+          "identifier": "leaks_color",
+          "type": 2,
+          "value": [
+            0.65641,
+            0.33562,
+            0.161155
+          ],
+          "uid": 1984059683
+        },
+        {
+          "identifier": "leaks_roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 1984053950
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.9,
+          "uid": 1985767140
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.77,
+          "uid": 1984422439
+        },
+        {
+          "identifier": "leaks_diffusion",
+          "type": 0,
+          "value": 0.9,
+          "uid": 1985773263
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176403
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031929
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031930
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176428
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1817176429
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031926
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031927
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1659031921
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1761713684
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1772993480
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159158
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1683849556
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 467159044
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467159139
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 467253015
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1659028058
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1677310774
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1677310791
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1772791741
+        }
+      ]
+    }
+  ]
+}

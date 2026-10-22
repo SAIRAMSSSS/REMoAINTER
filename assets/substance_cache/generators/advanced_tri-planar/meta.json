@@ -1,0 +1,9 @@
+{
+  "source_file": "generators/advanced_tri-planar.sbsar",
+  "label": "Tri-Planar Advanced",
+  "sp_category": "",
+  "keywords": "mask,generator",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

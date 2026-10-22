@@ -1,0 +1,1639 @@
+{
+  "presets": [
+    {
+      "label": "Bumps",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.5,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.025,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Camouflage",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            0.5,
+            1.0,
+            0.5
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Cells",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 50.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.79,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.025,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Cells Carved",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.55,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 50.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.79,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.025,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Cells Edge",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 50.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 5.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Cells Flat",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 50.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Cells Tiles",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.02,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.41,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Dirt",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.08,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 128.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.625,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.7,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.7,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.41,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Dust",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.8,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 56.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            0.75,
+            0.25,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 64.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.41,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.416,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Fibers",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.68,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.95,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.34,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Fragments",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.39,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 64.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.3,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.75,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.76,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Shavings",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.08,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 128.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.3,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.6,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.75,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.65,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.9,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.25,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Shreds",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            0.73,
+            0.25,
+            0.22
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.18,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.058,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Speckles",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.08,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 128.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.36,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.41,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    },
+    {
+      "label": "Wireframe",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3289419462
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.025,
+          "uid": 3289419510
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3289419470
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 64.0,
+          "uid": 3749984543
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 3749984529
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 3749984531
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984533
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3749984535
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 3749984617
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3749984619
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3749984621
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 3749984623
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.79,
+          "uid": 3749984609
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 3749984611
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 3749984613
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3749984615
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,511 @@
+{
+  "presets": [
+    {
+      "label": "Clean Paint",
+      "inputs": [
+        {
+          "identifier": "wall_color",
+          "type": 2,
+          "value": [
+            0.86,
+            0.86,
+            0.86
+          ],
+          "uid": 3746156367
+        },
+        {
+          "identifier": "paint_color",
+          "type": 2,
+          "value": [
+            0.71,
+            0.5112,
+            0.0
+          ],
+          "uid": 3746156352
+        },
+        {
+          "identifier": "paint_color_variation",
+          "type": 0,
+          "value": 0.15,
+          "uid": 3746164010
+        },
+        {
+          "identifier": "wall_roughness",
+          "type": 0,
+          "value": 0.74,
+          "uid": 3746156321
+        },
+        {
+          "identifier": "paint_roughness",
+          "type": 0,
+          "value": 0.28,
+          "uid": 3746156332
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.03,
+          "uid": 3746437658
+        },
+        {
+          "identifier": "stroke_density",
+          "type": 0,
+          "value": 0.38,
+          "uid": 3746436658
+        },
+        {
+          "identifier": "paint_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746156349
+        },
+        {
+          "identifier": "paint_surface_imperfection",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3746437819
+        },
+        {
+          "identifier": "wall_grain_intensity",
+          "type": 0,
+          "value": 0.65,
+          "uid": 3746152624
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699390
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020052
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020055
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699329
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699328
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020059
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020058
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020060
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732763
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3365086521
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3071732841
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732750
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071742842
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.012,
+          "uid": 3476496219
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3476496170
+        }
+      ]
+    },
+    {
+      "label": "Rough Paint",
+      "inputs": [
+        {
+          "identifier": "wall_color",
+          "type": 2,
+          "value": [
+            0.86,
+            0.86,
+            0.86
+          ],
+          "uid": 3746156367
+        },
+        {
+          "identifier": "paint_color",
+          "type": 2,
+          "value": [
+            0.933333,
+            0.478431,
+            0.654902
+          ],
+          "uid": 3746156352
+        },
+        {
+          "identifier": "paint_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746164010
+        },
+        {
+          "identifier": "wall_roughness",
+          "type": 0,
+          "value": 0.74,
+          "uid": 3746156321
+        },
+        {
+          "identifier": "paint_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 3746156332
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3746437658
+        },
+        {
+          "identifier": "stroke_density",
+          "type": 0,
+          "value": 0.91,
+          "uid": 3746436658
+        },
+        {
+          "identifier": "paint_density",
+          "type": 0,
+          "value": 0.45,
+          "uid": 3746156349
+        },
+        {
+          "identifier": "paint_surface_imperfection",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746437819
+        },
+        {
+          "identifier": "wall_grain_intensity",
+          "type": 0,
+          "value": 0.57,
+          "uid": 3746152624
+        },
+        {
+          "identifier": "stroke_rotation",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3746147958
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699390
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020052
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020055
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699329
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699328
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020059
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020058
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020060
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732763
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3365086521
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3071732841
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732750
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071742842
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.012,
+          "uid": 3476496219
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3476496170
+        }
+      ]
+    },
+    {
+      "label": "Fresh Paint",
+      "inputs": [
+        {
+          "identifier": "wall_color",
+          "type": 2,
+          "value": [
+            0.945098,
+            0.937255,
+            0.968627
+          ],
+          "uid": 3746156367
+        },
+        {
+          "identifier": "paint_color",
+          "type": 2,
+          "value": [
+            0.164706,
+            0.537255,
+            0.411765
+          ],
+          "uid": 3746156352
+        },
+        {
+          "identifier": "paint_color_variation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3746164010
+        },
+        {
+          "identifier": "wall_roughness",
+          "type": 0,
+          "value": 0.61,
+          "uid": 3746156321
+        },
+        {
+          "identifier": "paint_roughness",
+          "type": 0,
+          "value": 0.12,
+          "uid": 3746156332
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746437658
+        },
+        {
+          "identifier": "stroke_density",
+          "type": 0,
+          "value": 0.8,
+          "uid": 3746436658
+        },
+        {
+          "identifier": "paint_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746156349
+        },
+        {
+          "identifier": "paint_surface_imperfection",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3746437819
+        },
+        {
+          "identifier": "wall_grain_intensity",
+          "type": 0,
+          "value": 0.8,
+          "uid": 3746152624
+        },
+        {
+          "identifier": "stroke_rotation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3746147958
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699390
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020052
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020055
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699329
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3229699328
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020059
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020058
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3459020060
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732763
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3365086521
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3071732841
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071732750
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3071742842
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.012,
+          "uid": 3476496219
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3476496170
+        }
+      ]
+    }
+  ]
+}

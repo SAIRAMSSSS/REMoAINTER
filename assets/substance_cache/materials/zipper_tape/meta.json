@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/zipper_tape.sbsar",
+  "label": "Zipper Tape",
+  "sp_category": "Tool",
+  "keywords": "fabric,textile,clothing,apparel,design,fashion,zipper,tape",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

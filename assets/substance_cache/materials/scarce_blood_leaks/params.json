@@ -1,0 +1,634 @@
+{
+  "presets": [
+    {
+      "label": "Dry Scarce Blood Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_input_selection",
+          "type": 4,
+          "value": 2.0,
+          "uid": 402329769
+        },
+        {
+          "identifier": "custom_mask_input_size",
+          "type": 1,
+          "value": [
+            1.0,
+            1.0
+          ],
+          "uid": 402572775
+        },
+        {
+          "identifier": "pattern_width",
+          "type": 0,
+          "value": 0.2,
+          "uid": 339050218
+        },
+        {
+          "identifier": "pattern_thickness",
+          "type": 0,
+          "value": 0.38,
+          "uid": 399158677
+        },
+        {
+          "identifier": "pattern_vertical_offset",
+          "type": 0,
+          "value": 0.44,
+          "uid": 398839734
+        },
+        {
+          "identifier": "pattern_warping_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 399183576
+        },
+        {
+          "identifier": "blood_color",
+          "type": 2,
+          "value": [
+            0.14902,
+            0.0545194,
+            0.0545194
+          ],
+          "uid": 401997784
+        },
+        {
+          "identifier": "blood_roughness",
+          "type": 0,
+          "value": 0.85,
+          "uid": 399816277
+        },
+        {
+          "identifier": "blood_translucency",
+          "type": 0,
+          "value": 0.45,
+          "uid": 401997815
+        },
+        {
+          "identifier": "leaks_density",
+          "type": 0,
+          "value": 0.36,
+          "uid": 401881480
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.35,
+          "uid": 401881554
+        },
+        {
+          "identifier": "leaks_length_random",
+          "type": 0,
+          "value": 1.0,
+          "uid": 401881544
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.0,
+          "uid": 399201864
+        },
+        {
+          "identifier": "tiny_drops_density",
+          "type": 0,
+          "value": 0.5,
+          "uid": 398945109
+        },
+        {
+          "identifier": "mask_sharpness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 339053610
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121165
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242279
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242276
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121202
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121203
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242280
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242281
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242287
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 192874378
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 198386262
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975848
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 102963402
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2040975770
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975869
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040999561
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 10247108
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 25633448
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 25633497
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 198458915
+        }
+      ]
+    },
+    {
+      "label": "Fresh Scarce Blood Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_input_selection",
+          "type": 4,
+          "value": 2.0,
+          "uid": 402329769
+        },
+        {
+          "identifier": "custom_mask_input_size",
+          "type": 1,
+          "value": [
+            1.0,
+            1.0
+          ],
+          "uid": 402572775
+        },
+        {
+          "identifier": "pattern_width",
+          "type": 0,
+          "value": 0.6,
+          "uid": 339050218
+        },
+        {
+          "identifier": "pattern_thickness",
+          "type": 0,
+          "value": 0.54,
+          "uid": 399158677
+        },
+        {
+          "identifier": "pattern_vertical_offset",
+          "type": 0,
+          "value": 0.57,
+          "uid": 398839734
+        },
+        {
+          "identifier": "pattern_warping_intensity",
+          "type": 0,
+          "value": 0.74,
+          "uid": 399183576
+        },
+        {
+          "identifier": "blood_color",
+          "type": 2,
+          "value": [
+            0.160784,
+            0.0588235,
+            0.0588235
+          ],
+          "uid": 401997784
+        },
+        {
+          "identifier": "blood_roughness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 399816277
+        },
+        {
+          "identifier": "blood_translucency",
+          "type": 0,
+          "value": 0.0,
+          "uid": 401997815
+        },
+        {
+          "identifier": "leaks_density",
+          "type": 0,
+          "value": 0.6,
+          "uid": 401881480
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.76,
+          "uid": 401881554
+        },
+        {
+          "identifier": "leaks_length_random",
+          "type": 0,
+          "value": 0.87,
+          "uid": 401881544
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.62,
+          "uid": 399201864
+        },
+        {
+          "identifier": "tiny_drops_density",
+          "type": 0,
+          "value": 0.84,
+          "uid": 398945109
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121165
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242279
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242276
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121202
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121203
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242280
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242281
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242287
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 192874378
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 198386262
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975848
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 102963402
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2040975770
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975869
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040999561
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 10247108
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 25633448
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 25633497
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 198458915
+        }
+      ]
+    },
+    {
+      "label": "Large Fresh Scarce Blood Leaks",
+      "inputs": [
+        {
+          "identifier": "mask_input_selection",
+          "type": 4,
+          "value": 2.0,
+          "uid": 402329769
+        },
+        {
+          "identifier": "custom_mask_input_size",
+          "type": 1,
+          "value": [
+            1.0,
+            1.0
+          ],
+          "uid": 402572775
+        },
+        {
+          "identifier": "pattern_thickness",
+          "type": 0,
+          "value": 0.79,
+          "uid": 399158677
+        },
+        {
+          "identifier": "pattern_vertical_offset",
+          "type": 0,
+          "value": 0.88,
+          "uid": 398839734
+        },
+        {
+          "identifier": "pattern_warping_intensity",
+          "type": 0,
+          "value": 0.74,
+          "uid": 399183576
+        },
+        {
+          "identifier": "blood_color",
+          "type": 2,
+          "value": [
+            0.160784,
+            0.0588235,
+            0.0588235
+          ],
+          "uid": 401997784
+        },
+        {
+          "identifier": "blood_roughness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 399816277
+        },
+        {
+          "identifier": "blood_translucency",
+          "type": 0,
+          "value": 0.0,
+          "uid": 401997815
+        },
+        {
+          "identifier": "leaks_density",
+          "type": 0,
+          "value": 0.7,
+          "uid": 401881480
+        },
+        {
+          "identifier": "leaks_length",
+          "type": 0,
+          "value": 0.85,
+          "uid": 401881554
+        },
+        {
+          "identifier": "leaks_length_random",
+          "type": 0,
+          "value": 0.87,
+          "uid": 401881544
+        },
+        {
+          "identifier": "leaks_width",
+          "type": 0,
+          "value": 0.83,
+          "uid": 399201864
+        },
+        {
+          "identifier": "tiny_drops_density",
+          "type": 0,
+          "value": 0.84,
+          "uid": 398945109
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121165
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242279
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242276
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121202
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 238121203
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242280
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242281
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 10242287
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 192874378
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 198386262
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975848
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 102963402
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2040975770
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040975869
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2040999561
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 10247108
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 25633448
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 25633497
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 198458915
+        }
+      ]
+    }
+  ]
+}

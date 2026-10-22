@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Finishes/matfinish_powder_coated.sbsar",
+  "label": "MatFinish Powder Coated",
+  "sp_category": "Finishes",
+  "keywords": "finish,surface",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

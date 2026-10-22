@@ -1,0 +1,9 @@
+{
+  "source_file": "procedurals/Patterns/triangle_grid.sbsar",
+  "label": "Triangle Grid",
+  "sp_category": "Pattern",
+  "keywords": "pattern,generator,organic,leather,delaunay,triangulation,triangle,grid",
+  "graph_type": "texture_generator",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

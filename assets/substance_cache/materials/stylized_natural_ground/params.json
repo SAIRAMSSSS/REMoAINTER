@@ -1,0 +1,583 @@
+{
+  "presets": [
+    {
+      "label": "Damp Rocky Ground",
+      "inputs": [
+        {
+          "identifier": "ground_color",
+          "type": 2,
+          "value": [
+            0.218391,
+            0.168335,
+            0.114943
+          ],
+          "uid": 2127034525
+        },
+        {
+          "identifier": "ground_roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2127020118
+        },
+        {
+          "identifier": "pebble_color",
+          "type": 2,
+          "value": [
+            0.373563,
+            0.323518,
+            0.238119
+          ],
+          "uid": 2127034486
+        },
+        {
+          "identifier": "pebble_roughness",
+          "type": 0,
+          "value": 0.77,
+          "uid": 2129189978
+        },
+        {
+          "identifier": "ground_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2126774612
+        },
+        {
+          "identifier": "ground_spread",
+          "type": 0,
+          "value": 0.53,
+          "uid": 2128575374
+        },
+        {
+          "identifier": "pebble_density",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2127908063
+        },
+        {
+          "identifier": "pebble_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2127734654
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2126905623
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1896418673
+        },
+        {
+          "identifier": "highlight_color_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 1896421418
+        },
+        {
+          "identifier": "shadow_color",
+          "type": 2,
+          "value": [
+            1.0,
+            0.230769,
+            0.0
+          ],
+          "uid": 1896423274
+        },
+        {
+          "identifier": "shadow_color_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1896421586
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931515
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509201
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509202
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931460
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931461
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509214
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509215
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509209
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1683616508
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496734
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1761996220
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 377496812
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496715
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377609215
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1856100318
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1856100271
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1693633365
+        }
+      ]
+    },
+    {
+      "label": "Rough Mountain Ground",
+      "inputs": [
+        {
+          "identifier": "ground_color",
+          "type": 2,
+          "value": [
+            0.272232,
+            0.286689,
+            0.310345
+          ],
+          "uid": 2127034525
+        },
+        {
+          "identifier": "ground_roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2127020118
+        },
+        {
+          "identifier": "pebble_color",
+          "type": 2,
+          "value": [
+            0.401089,
+            0.419964,
+            0.448276
+          ],
+          "uid": 2127034486
+        },
+        {
+          "identifier": "pebble_roughness",
+          "type": 0,
+          "value": 0.77,
+          "uid": 2129189978
+        },
+        {
+          "identifier": "ground_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2126774612
+        },
+        {
+          "identifier": "ground_spread",
+          "type": 0,
+          "value": 0.52,
+          "uid": 2128575374
+        },
+        {
+          "identifier": "pebble_density",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2127908063
+        },
+        {
+          "identifier": "pebble_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2127734654
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2126905623
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1896418673
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931515
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509201
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509202
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931460
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931461
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509214
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509215
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509209
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1683616508
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496734
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1761996220
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 377496812
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496715
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377609215
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1856100318
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1856100271
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1693633365
+        }
+      ]
+    },
+    {
+      "label": "Dry Desert Ground",
+      "inputs": [
+        {
+          "identifier": "ground_color",
+          "type": 2,
+          "value": [
+            0.534483,
+            0.439205,
+            0.32194
+          ],
+          "uid": 2127034525
+        },
+        {
+          "identifier": "ground_roughness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2127020118
+        },
+        {
+          "identifier": "pebble_color",
+          "type": 2,
+          "value": [
+            0.533333,
+            0.439216,
+            0.321569
+          ],
+          "uid": 2127034486
+        },
+        {
+          "identifier": "pebble_roughness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2129189978
+        },
+        {
+          "identifier": "ground_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2126774612
+        },
+        {
+          "identifier": "ground_spread",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2128575374
+        },
+        {
+          "identifier": "pebble_density",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2127908063
+        },
+        {
+          "identifier": "pebble_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2127734654
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2126905623
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1896418673
+        },
+        {
+          "identifier": "highlight_color",
+          "type": 2,
+          "value": [
+            0.304598,
+            0.19916,
+            0.101533
+          ],
+          "uid": 1896423233
+        },
+        {
+          "identifier": "highlight_color_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1896421418
+        },
+        {
+          "identifier": "shadow_color",
+          "type": 2,
+          "value": [
+            0.833333,
+            0.73718,
+            0.0
+          ],
+          "uid": 1896423274
+        },
+        {
+          "identifier": "shadow_color_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1896421586
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931515
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509201
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509202
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931460
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1628931461
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509214
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509215
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1874509209
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1683616508
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496734
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1761996220
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 377496812
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377496715
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 377609215
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1856100318
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1856100271
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1693633365
+        }
+      ]
+    }
+  ]
+}

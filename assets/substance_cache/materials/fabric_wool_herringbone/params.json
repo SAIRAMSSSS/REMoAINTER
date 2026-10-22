@@ -1,0 +1,511 @@
+{
+  "presets": [
+    {
+      "label": "Glossy Red Fabric Wool",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.615385,
+            0.509258,
+            0.449562
+          ],
+          "uid": 244489789
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.52,
+          "uid": 244489938
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 244489918
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            0.427451,
+            0.172549,
+            0.329412
+          ],
+          "uid": 244489740
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.53,
+          "uid": 244489925
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 244489882
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 191571617
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615277
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585927
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585924
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615250
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615251
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585928
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585929
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585935
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 301352810
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 291136182
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061704
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 480925738
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1664061818
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061725
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1663987305
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.12,
+          "uid": 453927496
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 453927481
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 291339971
+        }
+      ]
+    },
+    {
+      "label": "Stretch Wool Fabric",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.741176,
+            0.596078,
+            0.431373
+          ],
+          "uid": 244489789
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.82,
+          "uid": 244489938
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 244489918
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            0.57,
+            0.458413,
+            0.331746
+          ],
+          "uid": 244489740
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.82,
+          "uid": 244489925
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 244489882
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.29,
+          "uid": 191571617
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615277
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585927
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585924
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615250
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615251
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585928
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585929
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585935
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 301352810
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 291136182
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061704
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 480925738
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1664061818
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061725
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1663987305
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.12,
+          "uid": 453927496
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 453927481
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 291339971
+        }
+      ]
+    },
+    {
+      "label": "Purple Fabric Wool",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.43,
+            0.349375,
+            0.362813
+          ],
+          "uid": 244489789
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.53,
+          "uid": 244489938
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 244489918
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            0.25098,
+            0.203922,
+            0.211765
+          ],
+          "uid": 244489740
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.65,
+          "uid": 244489925
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 244489882
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 191571617
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615277
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585927
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585924
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615250
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 347615251
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585928
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585929
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 437585935
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 301352810
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 291136182
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061704
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 480925738
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1664061818
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1664061725
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1663987305
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.12,
+          "uid": 453927496
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 453927481
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 291339971
+        }
+      ]
+    }
+  ]
+}

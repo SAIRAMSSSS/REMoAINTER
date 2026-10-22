@@ -1,0 +1,205 @@
+{
+  "presets": [
+    {
+      "label": "Major Brown Ground Natural Mud",
+      "inputs": [
+        {
+          "identifier": "ground_natural_mud_color",
+          "type": 2,
+          "value": [
+            0.305882,
+            0.25098,
+            0.231373
+          ],
+          "uid": 3020529134
+        },
+        {
+          "identifier": "ground_natural_mud_roughness",
+          "type": 0,
+          "value": 0.44,
+          "uid": 3023395124
+        },
+        {
+          "identifier": "dryness",
+          "type": 0,
+          "value": 0.19,
+          "uid": 3021886160
+        },
+        {
+          "identifier": "pebbles_density",
+          "type": 0,
+          "value": 0.84,
+          "uid": 3020516964
+        },
+        {
+          "identifier": "pebbles_color",
+          "type": 2,
+          "value": [
+            0.792157,
+            0.760784,
+            0.72549
+          ],
+          "uid": 3020528403
+        },
+        {
+          "identifier": "pebbles_roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3020496639
+        },
+        {
+          "identifier": "terrain_variation",
+          "type": 0,
+          "value": 0.26,
+          "uid": 3001697176
+        },
+        {
+          "identifier": "terrain_variation_softness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2996317106
+        },
+        {
+          "identifier": "rpipples_intensity",
+          "type": 0,
+          "value": 0.85,
+          "uid": 1472442093
+        }
+      ]
+    },
+    {
+      "label": "Golden Brown Ground Natural Mud",
+      "inputs": [
+        {
+          "identifier": "ground_natural_mud_color",
+          "type": 2,
+          "value": [
+            0.407843,
+            0.368627,
+            0.309804
+          ],
+          "uid": 3020529134
+        },
+        {
+          "identifier": "ground_natural_mud_roughness",
+          "type": 0,
+          "value": 0.67,
+          "uid": 3023395124
+        },
+        {
+          "identifier": "dryness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3021886160
+        },
+        {
+          "identifier": "pebbles_density",
+          "type": 0,
+          "value": 0.67,
+          "uid": 3020516964
+        },
+        {
+          "identifier": "pebbles_color",
+          "type": 2,
+          "value": [
+            0.407843,
+            0.368627,
+            0.309804
+          ],
+          "uid": 3020528403
+        },
+        {
+          "identifier": "pebbles_roughness",
+          "type": 0,
+          "value": 0.64,
+          "uid": 3020496639
+        },
+        {
+          "identifier": "terrain_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3001697176
+        },
+        {
+          "identifier": "terrain_variation_softness",
+          "type": 0,
+          "value": 0.39,
+          "uid": 2996317106
+        },
+        {
+          "identifier": "rpipples_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 1472442093
+        }
+      ]
+    },
+    {
+      "label": "Red Brown Ground Natural Mud",
+      "inputs": [
+        {
+          "identifier": "ground_natural_mud_color",
+          "type": 2,
+          "value": [
+            0.337143,
+            0.249911,
+            0.22207
+          ],
+          "uid": 3020529134
+        },
+        {
+          "identifier": "ground_natural_mud_roughness",
+          "type": 0,
+          "value": 0.67,
+          "uid": 3023395124
+        },
+        {
+          "identifier": "dryness",
+          "type": 0,
+          "value": 0.22,
+          "uid": 3021886160
+        },
+        {
+          "identifier": "pebbles_density",
+          "type": 0,
+          "value": 0.71,
+          "uid": 3020516964
+        },
+        {
+          "identifier": "pebbles_color",
+          "type": 2,
+          "value": [
+            0.407843,
+            0.368627,
+            0.309804
+          ],
+          "uid": 3020528403
+        },
+        {
+          "identifier": "pebbles_roughness",
+          "type": 0,
+          "value": 0.64,
+          "uid": 3020496639
+        },
+        {
+          "identifier": "terrain_variation",
+          "type": 0,
+          "value": 0.51,
+          "uid": 3001697176
+        },
+        {
+          "identifier": "terrain_variation_softness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2996317106
+        },
+        {
+          "identifier": "rpipples_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 1472442093
+        }
+      ]
+    }
+  ]
+}

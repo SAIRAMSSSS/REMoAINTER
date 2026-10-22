@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Dynamic/pebble.sbsar",
+  "label": "Pebble",
+  "sp_category": "Dynamic",
+  "keywords": "rock,generator",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

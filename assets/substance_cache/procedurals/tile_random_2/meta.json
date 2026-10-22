@@ -1,0 +1,9 @@
+{
+  "source_file": "procedurals/Patterns/tile_random_2.sbsar",
+  "label": "Tile Random 2",
+  "sp_category": "Pattern",
+  "keywords": "pattern,tiling,brick,tile,generator,random,square",
+  "graph_type": "texture_generator",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

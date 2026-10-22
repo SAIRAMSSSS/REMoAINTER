@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/fabric_topstitching.sbsar",
+  "label": "Fabric Topstitching",
+  "sp_category": "Tool",
+  "keywords": "path,tool,fabric,textile,clothing,apparel,design,fashion,stitch, topstitching",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

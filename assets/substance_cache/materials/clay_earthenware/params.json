@@ -1,0 +1,619 @@
+{
+  "presets": [
+    {
+      "label": "Glossy Plasticine Clay",
+      "inputs": [
+        {
+          "identifier": "clay_color",
+          "type": 2,
+          "value": [
+            0.633663,
+            0.438182,
+            0.366858
+          ],
+          "uid": 723315259
+        },
+        {
+          "identifier": "clay_roughness",
+          "type": 0,
+          "value": 0.53,
+          "uid": 723315010
+        },
+        {
+          "identifier": "roughness_variations",
+          "type": 0,
+          "value": 0.88,
+          "uid": 690067196
+        },
+        {
+          "identifier": "strokes_intensity",
+          "type": 0,
+          "value": 0.16,
+          "uid": 723309644
+        },
+        {
+          "identifier": "strokes_density",
+          "type": 0,
+          "value": 0.96,
+          "uid": 692994200
+        },
+        {
+          "identifier": "volume_intensity",
+          "type": 0,
+          "value": 0.2,
+          "uid": 681918266
+        },
+        {
+          "identifier": "volume_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 682559324
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.65,
+          "uid": 691930229
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968754
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367128
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367131
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968717
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968716
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367127
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367126
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367120
+        },
+        {
+          "identifier": "channel_translucency",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177703
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 866822517
+        },
+        {
+          "identifier": "channel_scatter",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177725
+        },
+        {
+          "identifier": "channel_scatteringcolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177722
+        },
+        {
+          "identifier": "channel_scatteringdistancescale",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177677
+        },
+        {
+          "identifier": "channel_redshift",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1471788138
+        },
+        {
+          "identifier": "channel_rayleigh",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1471788143
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088215
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1056355893
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1098088293
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088194
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098023030
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 961711191
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 961711142
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 855740636
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 692177888
+        },
+        {
+          "identifier": "redshift_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1471788178
+        },
+        {
+          "identifier": "rayleigh_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1471788184
+        }
+      ]
+    },
+    {
+      "label": "Fresh Raked Green Clay",
+      "inputs": [
+        {
+          "identifier": "clay_color",
+          "type": 2,
+          "value": [
+            0.627451,
+            0.615686,
+            0.537255
+          ],
+          "uid": 723315259
+        },
+        {
+          "identifier": "clay_roughness",
+          "type": 0,
+          "value": 0.6,
+          "uid": 723315010
+        },
+        {
+          "identifier": "roughness_variations",
+          "type": 0,
+          "value": 0.3,
+          "uid": 690067196
+        },
+        {
+          "identifier": "strokes_intensity",
+          "type": 0,
+          "value": 0.53,
+          "uid": 723309644
+        },
+        {
+          "identifier": "strokes_density",
+          "type": 0,
+          "value": 0.5,
+          "uid": 692994200
+        },
+        {
+          "identifier": "volume_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 681918266
+        },
+        {
+          "identifier": "volume_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 682559324
+        },
+        {
+          "identifier": "irregularity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1473361708
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 691930229
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968754
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367128
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367131
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968717
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968716
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367127
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367126
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367120
+        },
+        {
+          "identifier": "channel_translucency",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177703
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 866822517
+        },
+        {
+          "identifier": "channel_scatter",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177725
+        },
+        {
+          "identifier": "channel_scatteringcolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177722
+        },
+        {
+          "identifier": "channel_scatteringdistancescale",
+          "type": 4,
+          "value": 1.0,
+          "uid": 692177677
+        },
+        {
+          "identifier": "channel_redshift",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1471788138
+        },
+        {
+          "identifier": "channel_rayleigh",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1471788143
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088215
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1056355893
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1098088293
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088194
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098023030
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 961711191
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 961711142
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 855740636
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 692177888
+        },
+        {
+          "identifier": "redshift_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1471788178
+        },
+        {
+          "identifier": "rayleigh_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1471788184
+        }
+      ]
+    },
+    {
+      "label": "Wet Blue Clay",
+      "inputs": [
+        {
+          "identifier": "clay_color",
+          "type": 2,
+          "value": [
+            0.686324,
+            0.743889,
+            0.747525
+          ],
+          "uid": 723315259
+        },
+        {
+          "identifier": "clay_roughness",
+          "type": 0,
+          "value": 0.53,
+          "uid": 723315010
+        },
+        {
+          "identifier": "roughness_variations",
+          "type": 0,
+          "value": 0.8,
+          "uid": 690067196
+        },
+        {
+          "identifier": "strokes_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 723309644
+        },
+        {
+          "identifier": "strokes_density",
+          "type": 0,
+          "value": 0.36,
+          "uid": 692994200
+        },
+        {
+          "identifier": "volume_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 681918266
+        },
+        {
+          "identifier": "volume_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 682559324
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 691930229
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968754
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367128
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367131
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968717
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 920968716
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367127
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367126
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 944367120
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 866822517
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088215
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1056355893
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1098088293
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098088194
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1098023030
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 961711191
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 961711142
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 855740636
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 692177888
+        }
+      ]
+    }
+  ]
+}

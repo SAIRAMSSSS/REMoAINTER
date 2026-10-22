@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Paper/paper_cardboard.sbsar",
+  "label": "Paper Cardboard",
+  "sp_category": "Paper",
+  "keywords": "painter;base;material;paper;cardboard;packaging;print;graphic;design;stationary",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

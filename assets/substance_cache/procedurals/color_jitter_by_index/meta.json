@@ -1,0 +1,9 @@
+{
+  "source_file": "procedurals/Dynamic/color_jitter_by_index.sbsar",
+  "label": "Color Jitter (By Index)",
+  "sp_category": "Dynamic",
+  "keywords": "jitter,hue,saturation,color",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

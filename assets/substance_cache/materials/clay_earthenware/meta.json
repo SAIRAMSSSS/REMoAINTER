@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Ceramic/clay_earthenware.sbsar",
+  "label": "Clay Earthenware",
+  "sp_category": "Ceramic",
+  "keywords": "painter;base;material;ceramic;earthenware;clay;sculpt;sculpture;modeling;character;look;dev;design;entertainment",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

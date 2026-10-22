@@ -1,0 +1,9 @@
+{
+  "source_file": "alphas/Geometric/triangle_border_cut.sbsar",
+  "label": "Triangle Border Cut",
+  "sp_category": "Geometric",
+  "keywords": "tri,border,width,cut,corner",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

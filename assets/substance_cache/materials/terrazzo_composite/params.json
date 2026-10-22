@@ -1,0 +1,599 @@
+{
+  "presets": [
+    {
+      "label": "Small Terrazzo Composite",
+      "inputs": [
+        {
+          "identifier": "cement_color",
+          "type": 2,
+          "value": [
+            0.52549,
+            0.352941,
+            0.356863
+          ],
+          "uid": 2731158366
+        },
+        {
+          "identifier": "cement_roughness",
+          "type": 0,
+          "value": 0.16,
+          "uid": 2732047390
+        },
+        {
+          "identifier": "insert_color_amount",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2732564647
+        },
+        {
+          "identifier": "insert_color_01",
+          "type": 2,
+          "value": [
+            0.988235,
+            0.87451,
+            0.803922
+          ],
+          "uid": 2732564706
+        },
+        {
+          "identifier": "insert_color_02",
+          "type": 2,
+          "value": [
+            0.815686,
+            0.470588,
+            0.376471
+          ],
+          "uid": 2732564728
+        },
+        {
+          "identifier": "insert_color_03",
+          "type": 2,
+          "value": [
+            0.52549,
+            0.352941,
+            0.356863
+          ],
+          "uid": 2732564730
+        },
+        {
+          "identifier": "insert_color_04",
+          "type": 2,
+          "value": [
+            0.874998,
+            0.548165,
+            0.244999
+          ],
+          "uid": 2731781930
+        },
+        {
+          "identifier": "insert_color_contrast",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2732564628
+        },
+        {
+          "identifier": "insert_color_variation",
+          "type": 0,
+          "value": 0.13,
+          "uid": 2731781667
+        },
+        {
+          "identifier": "insert_roughness",
+          "type": 0,
+          "value": 0.12,
+          "uid": 2732045387
+        },
+        {
+          "identifier": "large_insert_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2731989698
+        },
+        {
+          "identifier": "medium_insert_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2731989727
+        },
+        {
+          "identifier": "small_insert_density",
+          "type": 0,
+          "value": 0.18,
+          "uid": 2731989738
+        },
+        {
+          "identifier": "tiny_insert_density",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2731995403
+        },
+        {
+          "identifier": "insert_thickness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2733784407
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332507
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363569
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363570
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332516
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332517
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363582
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363583
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363577
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504638
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3038042524
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3398504652
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504619
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398496223
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2997937150
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2997937039
+        }
+      ]
+    },
+    {
+      "label": "Medium Terrazzo Composite",
+      "inputs": [
+        {
+          "identifier": "cement_color",
+          "type": 2,
+          "value": [
+            0.78,
+            0.78,
+            0.764646
+          ],
+          "uid": 2731158366
+        },
+        {
+          "identifier": "cement_roughness",
+          "type": 0,
+          "value": 0.66,
+          "uid": 2732047390
+        },
+        {
+          "identifier": "insert_color_amount",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2732564647
+        },
+        {
+          "identifier": "insert_color_01",
+          "type": 2,
+          "value": [
+            0.427451,
+            0.447059,
+            0.458824
+          ],
+          "uid": 2732564706
+        },
+        {
+          "identifier": "insert_color_02",
+          "type": 2,
+          "value": [
+            0.707835,
+            0.729458,
+            0.745098
+          ],
+          "uid": 2732564728
+        },
+        {
+          "identifier": "insert_color_03",
+          "type": 2,
+          "value": [
+            0.921569,
+            0.909804,
+            0.882353
+          ],
+          "uid": 2732564730
+        },
+        {
+          "identifier": "insert_color_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2732564628
+        },
+        {
+          "identifier": "insert_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2731781667
+        },
+        {
+          "identifier": "insert_roughness",
+          "type": 0,
+          "value": 0.36,
+          "uid": 2732045387
+        },
+        {
+          "identifier": "large_insert_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2731989698
+        },
+        {
+          "identifier": "medium_insert_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2731989727
+        },
+        {
+          "identifier": "small_insert_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2731989738
+        },
+        {
+          "identifier": "tiny_insert_density",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2731995403
+        },
+        {
+          "identifier": "insert_thickness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2733784407
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332507
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363569
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363570
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332516
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332517
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363582
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363583
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363577
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504638
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3038042524
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3398504652
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504619
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398496223
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2997937150
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2997937039
+        }
+      ]
+    },
+    {
+      "label": "Large Terrazzo Composite",
+      "inputs": [
+        {
+          "identifier": "cement_color",
+          "type": 2,
+          "value": [
+            0.75,
+            0.75,
+            0.75
+          ],
+          "uid": 2731158366
+        },
+        {
+          "identifier": "cement_roughness",
+          "type": 0,
+          "value": 0.16,
+          "uid": 2732047390
+        },
+        {
+          "identifier": "insert_color_amount",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2732564647
+        },
+        {
+          "identifier": "insert_color_01",
+          "type": 2,
+          "value": [
+            0.788235,
+            0.596078,
+            0.380392
+          ],
+          "uid": 2732564706
+        },
+        {
+          "identifier": "insert_color_02",
+          "type": 2,
+          "value": [
+            0.223529,
+            0.156863,
+            0.105882
+          ],
+          "uid": 2732564728
+        },
+        {
+          "identifier": "insert_color_03",
+          "type": 2,
+          "value": [
+            0.635294,
+            0.486275,
+            0.345098
+          ],
+          "uid": 2732564730
+        },
+        {
+          "identifier": "insert_color_contrast",
+          "type": 0,
+          "value": 0.43,
+          "uid": 2732564628
+        },
+        {
+          "identifier": "insert_color_variation",
+          "type": 0,
+          "value": 0.58,
+          "uid": 2731781667
+        },
+        {
+          "identifier": "insert_roughness",
+          "type": 0,
+          "value": 0.12,
+          "uid": 2732045387
+        },
+        {
+          "identifier": "large_insert_density",
+          "type": 0,
+          "value": 0.36,
+          "uid": 2731989698
+        },
+        {
+          "identifier": "medium_insert_density",
+          "type": 0,
+          "value": 0.52,
+          "uid": 2731989727
+        },
+        {
+          "identifier": "small_insert_density",
+          "type": 0,
+          "value": 0.43,
+          "uid": 2731989738
+        },
+        {
+          "identifier": "tiny_insert_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2731995403
+        },
+        {
+          "identifier": "insert_thickness",
+          "type": 0,
+          "value": 0.32,
+          "uid": 2733784407
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332507
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363569
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363570
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332516
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3171332517
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363582
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363583
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3014363577
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504638
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3038042524
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3398504652
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398504619
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3398496223
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2997937150
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2997937039
+        }
+      ]
+    }
+  ]
+}

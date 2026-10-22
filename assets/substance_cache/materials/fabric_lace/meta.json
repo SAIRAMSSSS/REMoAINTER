@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Fabric/fabric_lace.sbsar",
+  "label": "Fabric Lace",
+  "sp_category": "Fabric",
+  "keywords": "painter;base;material;fabric;textile;cloth;clothing;design;fashion;lace;mesh;underwear;undergarment",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

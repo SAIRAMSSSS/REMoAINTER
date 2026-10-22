@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/mirror.sbsar",
+  "label": "Mirror",
+  "sp_category": "Standard",
+  "keywords": "Mirror, side, copy, symmetry, reflect",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

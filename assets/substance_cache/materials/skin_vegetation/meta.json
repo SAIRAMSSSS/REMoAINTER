@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Organic/skin_vegetation.sbsar",
+  "label": "Skin Vegetation",
+  "sp_category": "Organic",
+  "keywords": "painter;base;material;organic;vegetation;vegetable;green;food;plant",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

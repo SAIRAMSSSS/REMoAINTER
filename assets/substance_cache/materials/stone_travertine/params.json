@@ -1,0 +1,463 @@
+{
+  "presets": [
+    {
+      "label": "Ancient Silver Travertine",
+      "inputs": [
+        {
+          "identifier": "travertine_color",
+          "type": 2,
+          "value": [
+            0.847059,
+            0.835294,
+            0.815686
+          ],
+          "uid": 4013715793
+        },
+        {
+          "identifier": "travertine_roughness",
+          "type": 0,
+          "value": 0.41,
+          "uid": 4013715779
+        },
+        {
+          "identifier": "travertine_color_variation_type",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4011778656
+        },
+        {
+          "identifier": "travertine_color_variation_density",
+          "type": 0,
+          "value": 0.32,
+          "uid": 4013715843
+        },
+        {
+          "identifier": "holes_density",
+          "type": 0,
+          "value": 0.7,
+          "uid": 4013716917
+        },
+        {
+          "identifier": "holes_scale",
+          "type": 0,
+          "value": 0.74,
+          "uid": 4013694846
+        },
+        {
+          "identifier": "holes_deformation_intensity",
+          "type": 0,
+          "value": 0.42,
+          "uid": 4013715926
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261155
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522697
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522698
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261148
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261149
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522694
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522695
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522689
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4121868068
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747846
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4176652388
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2272747828
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747859
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272697895
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4283863558
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4283863671
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4110782093
+        }
+      ]
+    },
+    {
+      "label": "Chocolate Vein Cut Travertine",
+      "inputs": [
+        {
+          "identifier": "travertine_color",
+          "type": 2,
+          "value": [
+            0.603922,
+            0.54902,
+            0.486275
+          ],
+          "uid": 4013715793
+        },
+        {
+          "identifier": "travertine_roughness",
+          "type": 0,
+          "value": 0.09,
+          "uid": 4013715779
+        },
+        {
+          "identifier": "travertine_color_variation_type",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4011778656
+        },
+        {
+          "identifier": "travertine_color_variation_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4013715843
+        },
+        {
+          "identifier": "holes_density",
+          "type": 0,
+          "value": 0.24,
+          "uid": 4013716917
+        },
+        {
+          "identifier": "holes_scale",
+          "type": 0,
+          "value": 0.76,
+          "uid": 4013694846
+        },
+        {
+          "identifier": "holes_deformation_intensity",
+          "type": 0,
+          "value": 0.82,
+          "uid": 4013715926
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261155
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522697
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522698
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261148
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261149
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522694
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522695
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522689
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4121868068
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747846
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4176652388
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2272747828
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747859
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272697895
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4283863558
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4283863671
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4110782093
+        }
+      ]
+    },
+    {
+      "label": "Minimal White Travertine",
+      "inputs": [
+        {
+          "identifier": "travertine_color",
+          "type": 2,
+          "value": [
+            0.862069,
+            0.822615,
+            0.761242
+          ],
+          "uid": 4013715793
+        },
+        {
+          "identifier": "travertine_roughness",
+          "type": 0,
+          "value": 0.09,
+          "uid": 4013715779
+        },
+        {
+          "identifier": "travertine_color_variation_type",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4011778656
+        },
+        {
+          "identifier": "travertine_color_variation_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4013715843
+        },
+        {
+          "identifier": "holes_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4013716917
+        },
+        {
+          "identifier": "holes_scale",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4013694846
+        },
+        {
+          "identifier": "holes_deformation_intensity",
+          "type": 0,
+          "value": 0.3,
+          "uid": 4013715926
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261155
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522697
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522698
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261148
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 4041261149
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522694
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522695
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4266522689
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 4121868068
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747846
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4176652388
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2272747828
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272747859
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2272697895
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 4283863558
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4283863671
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4110782093
+        }
+      ]
+    }
+  ]
+}

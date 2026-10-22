@@ -1,0 +1,873 @@
+{
+  "presets": [
+    {
+      "label": "Cloud Large",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.46,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 10.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.2,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Cloud Small",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.46,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Dirt",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.175,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 200.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 1.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Mountains",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 20.96,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.2,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.0,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 1.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Murky",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.49,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 27.45,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.87,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.2,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Noisy",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 256.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Perturbation",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 45.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.25,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Smudge",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 64.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.4,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.25,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Spots",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.14,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 128.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Veins",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.72,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 20.96,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.15,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.25,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 1.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    },
+    {
+      "label": "Wave",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1068664423
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.46,
+          "uid": 1068664348
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1068664386
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 60.0,
+          "uid": 606583486
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            0.25,
+            1.0,
+            0.25
+          ],
+          "uid": 606583456
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 606583458
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 606583460
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 606583462
+        },
+        {
+          "identifier": "baseline",
+          "type": 0,
+          "value": 0.5,
+          "uid": 606583464
+        },
+        {
+          "identifier": "absolute",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583468
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 606583470
+        }
+      ]
+    }
+  ]
+}

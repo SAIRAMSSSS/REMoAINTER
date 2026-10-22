@@ -1,0 +1,9 @@
+{
+  "source_file": "generators/3d_linear_gradient.sbsar",
+  "label": "3D Linear Gradient",
+  "sp_category": "Generator",
+  "keywords": "gradient,grayscale",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

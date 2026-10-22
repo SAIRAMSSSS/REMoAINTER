@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/drop_shadow.sbsar",
+  "label": "Drop Shadow",
+  "sp_category": "Standard",
+  "keywords": "Effect,color",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

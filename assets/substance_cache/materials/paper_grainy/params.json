@@ -1,0 +1,637 @@
+{
+  "presets": [
+    {
+      "label": "Glossy White Paper",
+      "inputs": [
+        {
+          "identifier": "paper_color",
+          "type": 2,
+          "value": [
+            0.898039,
+            0.870588,
+            0.811765
+          ],
+          "uid": 2982106703
+        },
+        {
+          "identifier": "paper_roughness",
+          "type": 0,
+          "value": 0.09,
+          "uid": 2982110180
+        },
+        {
+          "identifier": "insert_color_intensity",
+          "type": 0,
+          "value": 0.72,
+          "uid": 2982125291
+        },
+        {
+          "identifier": "insert_color",
+          "type": 2,
+          "value": [
+            0.198895,
+            0.198895,
+            0.198895
+          ],
+          "uid": 2982125274
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 0.71,
+          "uid": 2982110192
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.3,
+          "uid": 2982106512
+        },
+        {
+          "identifier": "paper_thickness",
+          "type": 0,
+          "value": 0.57,
+          "uid": 2982121766
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815084
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944326
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944325
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815059
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815058
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944329
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944328
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018130841
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944334
+        },
+        {
+          "identifier": "channel_translucency",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842441631
+        },
+        {
+          "identifier": "channel_absorptioncolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961098225
+        },
+        {
+          "identifier": "channel_scatter",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961071332
+        },
+        {
+          "identifier": "channel_scatteringcolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961073170
+        },
+        {
+          "identifier": "channel_scatteringdistancescale",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3042621399
+        },
+        {
+          "identifier": "channel_redshift",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226934
+        },
+        {
+          "identifier": "channel_rayleigh",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226933
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599689
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2791427947
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3655599675
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599708
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655727400
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2714105097
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2714105208
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2961073506
+        },
+        {
+          "identifier": "redshift_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213136
+        },
+        {
+          "identifier": "rayleigh_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213142
+        }
+      ]
+    },
+    {
+      "label": "Satin Light Brown Paper",
+      "inputs": [
+        {
+          "identifier": "paper_color",
+          "type": 2,
+          "value": [
+            0.85098,
+            0.741176,
+            0.647059
+          ],
+          "uid": 2982106703
+        },
+        {
+          "identifier": "paper_roughness",
+          "type": 0,
+          "value": 0.54,
+          "uid": 2982110180
+        },
+        {
+          "identifier": "insert_color_intensity",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2982125291
+        },
+        {
+          "identifier": "insert_color",
+          "type": 2,
+          "value": [
+            0.5,
+            0.223404,
+            0.0
+          ],
+          "uid": 2982125274
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2982110192
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2982106512
+        },
+        {
+          "identifier": "paper_thickness",
+          "type": 0,
+          "value": 0.42,
+          "uid": 2982121766
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815084
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944326
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944325
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815059
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815058
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944329
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944328
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018130841
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944334
+        },
+        {
+          "identifier": "channel_translucency",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842441631
+        },
+        {
+          "identifier": "channel_absorptioncolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961098225
+        },
+        {
+          "identifier": "channel_scatter",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961071332
+        },
+        {
+          "identifier": "channel_scatteringcolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961073170
+        },
+        {
+          "identifier": "channel_scatteringdistancescale",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3042621399
+        },
+        {
+          "identifier": "channel_redshift",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226934
+        },
+        {
+          "identifier": "channel_rayleigh",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226933
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599689
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2791427947
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3655599675
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599708
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655727400
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2714105097
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2714105208
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2961073506
+        },
+        {
+          "identifier": "redshift_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213136
+        },
+        {
+          "identifier": "rayleigh_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213142
+        }
+      ]
+    },
+    {
+      "label": "Grainy Light Sand Paper",
+      "inputs": [
+        {
+          "identifier": "paper_color",
+          "type": 2,
+          "value": [
+            0.898039,
+            0.796078,
+            0.729412
+          ],
+          "uid": 2982106703
+        },
+        {
+          "identifier": "paper_roughness",
+          "type": 0,
+          "value": 0.73,
+          "uid": 2982110180
+        },
+        {
+          "identifier": "insert_color_intensity",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2982125291
+        },
+        {
+          "identifier": "insert_color",
+          "type": 2,
+          "value": [
+            0.707182,
+            0.707182,
+            0.707182
+          ],
+          "uid": 2982125274
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2982110192
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 2982106512
+        },
+        {
+          "identifier": "paper_thickness",
+          "type": 0,
+          "value": 0.93,
+          "uid": 2982121766
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815084
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944326
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944325
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815059
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2926815058
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944329
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944328
+        },
+        {
+          "identifier": "channel_specularlevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018130841
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2698944334
+        },
+        {
+          "identifier": "channel_translucency",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842441631
+        },
+        {
+          "identifier": "channel_absorptioncolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961098225
+        },
+        {
+          "identifier": "channel_scatter",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961071332
+        },
+        {
+          "identifier": "channel_scatteringcolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2961073170
+        },
+        {
+          "identifier": "channel_scatteringdistancescale",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3042621399
+        },
+        {
+          "identifier": "channel_redshift",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226934
+        },
+        {
+          "identifier": "channel_rayleigh",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3018226933
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599689
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2791427947
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3655599675
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655599708
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3655727400
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2714105097
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2714105208
+        },
+        {
+          "identifier": "scattering_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2961073506
+        },
+        {
+          "identifier": "redshift_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213136
+        },
+        {
+          "identifier": "rayleigh_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018213142
+        }
+      ]
+    }
+  ]
+}

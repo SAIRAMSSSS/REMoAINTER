@@ -1,0 +1,280 @@
+{
+  "presets": [
+    {
+      "label": "Blue Zipper",
+      "inputs": [
+        {
+          "identifier": "use_custom_logo",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3993711118
+        },
+        {
+          "identifier": "zipper_color",
+          "type": 3,
+          "value": [
+            0.0,
+            0.0,
+            0.5,
+            1.0
+          ],
+          "uid": 3994372371
+        },
+        {
+          "identifier": "zipper_roughness",
+          "type": 0,
+          "value": 0.125,
+          "uid": 3994375220
+        },
+        {
+          "identifier": "zipper_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3994375872
+        },
+        {
+          "identifier": "slider_color_finish_switch",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3994372468
+        },
+        {
+          "identifier": "slider_finish_color",
+          "type": 3,
+          "value": [
+            0.277154,
+            0.236222,
+            0.111379,
+            1.0
+          ],
+          "uid": 3994372395
+        },
+        {
+          "identifier": "slider_finish_opacity",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3994377955
+        },
+        {
+          "identifier": "slider_finish_position",
+          "type": 0,
+          "value": 0.77,
+          "uid": 3994374650
+        },
+        {
+          "identifier": "slider_finish_metallic",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3994375839
+        }
+      ]
+    },
+    {
+      "label": "Gunmetal Zipper",
+      "inputs": [
+        {
+          "identifier": "use_custom_logo",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3993711118
+        },
+        {
+          "identifier": "zipper_color",
+          "type": 3,
+          "value": [
+            0.4,
+            0.4,
+            0.4,
+            1.0
+          ],
+          "uid": 3994372371
+        },
+        {
+          "identifier": "zipper_roughness",
+          "type": 0,
+          "value": 0.2,
+          "uid": 3994375220
+        },
+        {
+          "identifier": "zipper_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375872
+        },
+        {
+          "identifier": "slider_color_finish_switch",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3994372468
+        },
+        {
+          "identifier": "slider_finish_color",
+          "type": 3,
+          "value": [
+            0.1,
+            0.1,
+            0.1,
+            1.0
+          ],
+          "uid": 3994372395
+        },
+        {
+          "identifier": "slider_finish_opacity",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3994377955
+        },
+        {
+          "identifier": "slider_finish_position",
+          "type": 0,
+          "value": 0.77,
+          "uid": 3994374650
+        },
+        {
+          "identifier": "slider_finish_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375839
+        }
+      ]
+    },
+    {
+      "label": "Antique Brasss Zipper",
+      "inputs": [
+        {
+          "identifier": "use_custom_logo",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3993711118
+        },
+        {
+          "identifier": "zipper_color",
+          "type": 3,
+          "value": [
+            0.956863,
+            0.894118,
+            0.678431,
+            1.0
+          ],
+          "uid": 3994372371
+        },
+        {
+          "identifier": "zipper_roughness",
+          "type": 0,
+          "value": 0.2,
+          "uid": 3994375220
+        },
+        {
+          "identifier": "zipper_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375872
+        },
+        {
+          "identifier": "slider_color_finish_switch",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3994372468
+        },
+        {
+          "identifier": "slider_finish_color",
+          "type": 3,
+          "value": [
+            0.1,
+            0.1,
+            0.1,
+            1.0
+          ],
+          "uid": 3994372395
+        },
+        {
+          "identifier": "slider_finish_opacity",
+          "type": 0,
+          "value": 0.125,
+          "uid": 3994377955
+        },
+        {
+          "identifier": "slider_finish_position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3994374650
+        },
+        {
+          "identifier": "slider_finish_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375839
+        }
+      ]
+    },
+    {
+      "label": "Rosegold Zipper",
+      "inputs": [
+        {
+          "identifier": "use_custom_logo",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3993711118
+        },
+        {
+          "identifier": "zipper_color",
+          "type": 3,
+          "value": [
+            0.890196,
+            0.764706,
+            0.72549,
+            1.0
+          ],
+          "uid": 3994372371
+        },
+        {
+          "identifier": "zipper_roughness",
+          "type": 0,
+          "value": 0.125,
+          "uid": 3994375220
+        },
+        {
+          "identifier": "zipper_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375872
+        },
+        {
+          "identifier": "slider_color_finish_switch",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3994372468
+        },
+        {
+          "identifier": "slider_finish_color",
+          "type": 3,
+          "value": [
+            0.1,
+            0.1,
+            0.1,
+            1.0
+          ],
+          "uid": 3994372395
+        },
+        {
+          "identifier": "slider_finish_opacity",
+          "type": 0,
+          "value": 0.125,
+          "uid": 3994377955
+        },
+        {
+          "identifier": "slider_finish_position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 3994374650
+        },
+        {
+          "identifier": "slider_finish_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3994375839
+        }
+      ]
+    }
+  ]
+}

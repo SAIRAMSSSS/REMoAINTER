@@ -1,0 +1,1684 @@
+{
+  "presets": [
+    {
+      "label": "Default",
+      "inputs": [
+        {
+          "identifier": "input_type",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1724612839
+        },
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 0.25,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            1.0,
+            0.3
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.25,
+            0.25
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 2.0,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 7.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 8.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.15,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.8,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 6.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.4,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 5.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.35,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 2.0,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    },
+    {
+      "label": "Stylized high detail",
+      "inputs": [
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.45,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.68,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1366563152
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            0.67,
+            0.39
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.25,
+            0.25
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.09,
+            0.08,
+            0.0,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 0.38,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.06,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 5.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.35,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.8,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 4.0,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    },
+    {
+      "label": "Stylized low details",
+      "inputs": [
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 0.69,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 0.13,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.45,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.68,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1366563152
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            1.0,
+            0.58
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.25,
+            0.25
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.09,
+            0.08,
+            0.0,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 0.38,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.06,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 5.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.35,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.8,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 4.0,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    },
+    {
+      "label": "Pointillism",
+      "inputs": [
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 2.61,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.45,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.74,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 1.98,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1366563152
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 0.63,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 0.49,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            0.25,
+            0.13
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.08,
+            0.06
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.25,
+            0.13,
+            0.0,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 7.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.15,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 4.0,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    },
+    {
+      "label": "Rounded brush",
+      "inputs": [
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 2.61,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.45,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.74,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 1.98,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1366563152
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.07,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 1.5,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            0.25,
+            0.2
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.08,
+            0.06
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.25,
+            0.13,
+            0.0,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.34,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.78,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.2,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.7,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 7.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.39,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.06,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.13,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    },
+    {
+      "label": "Abstract",
+      "inputs": [
+        {
+          "identifier": "effect_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1724130237
+        },
+        {
+          "identifier": "fine_details",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1724001437
+        },
+        {
+          "identifier": "output_sharpness",
+          "type": 0,
+          "value": 3.0,
+          "uid": 1717446493
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.3,
+          "uid": 1714087420
+        },
+        {
+          "identifier": "roughness_variation",
+          "type": 0,
+          "value": 0.25,
+          "uid": 1714087400
+        },
+        {
+          "identifier": "roughness_details",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1714087374
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 1716907821
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1366563152
+        },
+        {
+          "identifier": "normal_strokes_direction_influence",
+          "type": 0,
+          "value": 0.1,
+          "uid": 1714942858
+        },
+        {
+          "identifier": "input_image_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716139789
+        },
+        {
+          "identifier": "input_image_hue",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631597
+        },
+        {
+          "identifier": "input_image_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715631568
+        },
+        {
+          "identifier": "input_image_luminosity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715811745
+        },
+        {
+          "identifier": "strokes_global_scale_multipier",
+          "type": 0,
+          "value": 1.25,
+          "uid": 1714349210
+        },
+        {
+          "identifier": "strokes_scale_random",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715240750
+        },
+        {
+          "identifier": "strokes_size",
+          "type": 1,
+          "value": [
+            1.0,
+            0.4
+          ],
+          "uid": 1724220748
+        },
+        {
+          "identifier": "strokes_size_random",
+          "type": 1,
+          "value": [
+            0.25,
+            0.25
+          ],
+          "uid": 1724227125
+        },
+        {
+          "identifier": "strokes_random_color",
+          "type": 3,
+          "value": [
+            0.16,
+            0.13,
+            0.25,
+            0.0
+          ],
+          "uid": 1714339991
+        },
+        {
+          "identifier": "strokes_hardness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1715229158
+        },
+        {
+          "identifier": "strokes_automatic_orientation_mutliplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 1739717280
+        },
+        {
+          "identifier": "strokes_orientation_smoothness",
+          "type": 0,
+          "value": 2.0,
+          "uid": 1724282396
+        },
+        {
+          "identifier": "highlights_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891788
+        },
+        {
+          "identifier": "highlights_strokes_grid_subdivision",
+          "type": 4,
+          "value": 9.0,
+          "uid": 1712341887
+        },
+        {
+          "identifier": "highlights_strokes_size",
+          "type": 0,
+          "value": 0.03,
+          "uid": 1712929364
+        },
+        {
+          "identifier": "highlights_strokes_size_from_details",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1712929356
+        },
+        {
+          "identifier": "highlights_warp_intensity",
+          "type": 0,
+          "value": 0.082,
+          "uid": 1712918912
+        },
+        {
+          "identifier": "midtones_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891790
+        },
+        {
+          "identifier": "midtones_strokes_grid_subdivision",
+          "type": 4,
+          "value": 2.0,
+          "uid": 1712368256
+        },
+        {
+          "identifier": "midtones_strokes_size",
+          "type": 0,
+          "value": 0.25,
+          "uid": 1712933008
+        },
+        {
+          "identifier": "midtones_strokes_size_from_details",
+          "type": 0,
+          "value": 0.52,
+          "uid": 1712933003
+        },
+        {
+          "identifier": "midtones_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712919050
+        },
+        {
+          "identifier": "shadows_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1714891823
+        },
+        {
+          "identifier": "shadows_strokes_grid_subdivision",
+          "type": 4,
+          "value": 7.0,
+          "uid": 1712368270
+        },
+        {
+          "identifier": "shadows_strokes_size",
+          "type": 0,
+          "value": 0.04,
+          "uid": 1712842138
+        },
+        {
+          "identifier": "shadows_strokes_size_from_details",
+          "type": 0,
+          "value": 0.03,
+          "uid": 1712842104
+        },
+        {
+          "identifier": "shadows_warp_intensity",
+          "type": 0,
+          "value": 0.01,
+          "uid": 1712915593
+        },
+        {
+          "identifier": "background_enabled",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1715040803
+        },
+        {
+          "identifier": "background_grid_subdivision",
+          "type": 4,
+          "value": 7.0,
+          "uid": 1712565183
+        },
+        {
+          "identifier": "background_strokes_size",
+          "type": 0,
+          "value": 0.06,
+          "uid": 1712565162
+        },
+        {
+          "identifier": "background_warp_intensity",
+          "type": 0,
+          "value": 0.44,
+          "uid": 1712567122
+        },
+        {
+          "identifier": "contour_amount",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1715772155
+        },
+        {
+          "identifier": "contour_thickness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1716058465
+        },
+        {
+          "identifier": "canvas_texture_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 1714201649
+        },
+        {
+          "identifier": "canvas_fibers_count",
+          "type": 4,
+          "value": 1024.0,
+          "uid": 1712335973
+        }
+      ]
+    }
+  ]
+}

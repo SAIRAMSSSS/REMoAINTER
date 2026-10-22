@@ -1,0 +1,9 @@
+{
+  "source_file": "generators/inflate_shrinkwrap.sbsar",
+  "label": "Inflate Shrinkwrap",
+  "sp_category": "Generator",
+  "keywords": "shrinkwrap,inflate,generator,randomseed",
+  "graph_type": "mesh_based_generator",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

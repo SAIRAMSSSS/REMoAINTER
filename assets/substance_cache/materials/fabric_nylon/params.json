@@ -1,0 +1,577 @@
+{
+  "presets": [
+    {
+      "label": "Rough Nylon Webbing",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.917647,
+            0.360784,
+            0.415686
+          ],
+          "uid": 3067195851
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.56,
+          "uid": 3067195847
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018114737
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            1.0,
+            0.54,
+            0.0
+          ],
+          "uid": 3018108597
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.51,
+          "uid": 3018114753
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018114692
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.67,
+          "uid": 3078045060
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402200
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608178
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608177
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402215
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402214
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608189
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608188
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608186
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842161759
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277204
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277202
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3069558215
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3069506857
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671421
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2755390751
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3686671439
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671400
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686783836
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2745161597
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2745161484
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2848771062
+        },
+        {
+          "identifier": "anisotropy_level",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3018405484
+        }
+      ]
+    },
+    {
+      "label": "Stretch Nylon Webbing",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.937255,
+            0.831373,
+            0.501961
+          ],
+          "uid": 3067195851
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.76,
+          "uid": 3067195847
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018114737
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            0.3835,
+            0.44213,
+            0.65
+          ],
+          "uid": 3018108597
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.51,
+          "uid": 3018114753
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018114692
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3078045060
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402200
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608178
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608177
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402215
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402214
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608189
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608188
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608186
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842161759
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277204
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277202
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3069558215
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3069506857
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671421
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2755390751
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3686671439
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671400
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686783836
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2745161597
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2745161484
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2848771062
+        }
+      ]
+    },
+    {
+      "label": "Glossy Metallic Nylon Webbing",
+      "inputs": [
+        {
+          "identifier": "warp_color",
+          "type": 2,
+          "value": [
+            0.607843,
+            0.32549,
+            0.266667
+          ],
+          "uid": 3067195851
+        },
+        {
+          "identifier": "warp_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 3067195847
+        },
+        {
+          "identifier": "warp_metallic",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3018114737
+        },
+        {
+          "identifier": "weft_color",
+          "type": 2,
+          "value": [
+            0.84864,
+            0.85,
+            0.833
+          ],
+          "uid": 3018108597
+        },
+        {
+          "identifier": "weft_roughness",
+          "type": 0,
+          "value": 0.61,
+          "uid": 3018114753
+        },
+        {
+          "identifier": "weft_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3018114692
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.27,
+          "uid": 3078045060
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402200
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608178
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608177
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402215
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2888402214
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608189
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608188
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2726608186
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2842161759
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277204
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3056277202
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3069558215
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3069506857
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671421
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2755390751
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3686671439
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686671400
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3686783836
+        },
+        {
+          "identifier": "normal_format",
+          "type": 4,
+          "value": 0.0,
+          "uid": 1186040406
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2745161597
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2745161484
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2848771062
+        },
+        {
+          "identifier": "anisotropy_level",
+          "type": 0,
+          "value": 0.25,
+          "uid": 3018405484
+        }
+      ]
+    }
+  ]
+}

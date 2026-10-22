@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/embroidery.sbsar",
+  "label": "Embroidery",
+  "sp_category": "Soft Surfaces",
+  "keywords": "decals;soft;surface;fabric;textile;embroidery",
+  "graph_type": "decal_material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

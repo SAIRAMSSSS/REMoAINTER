@@ -13,7 +13,7 @@ use crate::ui::icons::{draw_icon, IconType};
 use crate::ui::theme::*;
 use egui::{pos2, vec2, Align2, Color32, Rect, RichText, Stroke, Ui};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -32,7 +32,7 @@ pub enum ToolMode {
 #[derive(Clone, Debug)]
 pub struct ShelfAsset {
     pub name: String,
-    pub category: usize, // 1: Smart Materials, 2: Materials, 3: Smart Masks, 4: Alphas
+    pub category: usize, // 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas, 5: Effects/Generators
     pub path: PathBuf,
     pub thumb_path: PathBuf,
     pub badge: &'static str,
@@ -40,6 +40,13 @@ pub struct ShelfAsset {
     pub pbr_color: [f32; 4],
     pub pbr_metallic: f32,
     pub pbr_roughness: f32,
+    /// substance_cache item dir applied with the SP fill-layer path (materials /
+    /// smart materials); `None` for legacy shelf files (plain previews/alphas).
+    pub item_dir: Option<PathBuf>,
+    /// Icon classification from SP: sphere renders are never paint content.
+    pub icon_kind: crate::painting::substance_library::IconKind,
+    /// Label + SP keywords + SP category, lowercased — the search haystack.
+    pub search_text: String,
 }
 
 /// An active texture channel in the Texture Set
@@ -127,7 +134,7 @@ pub struct RemoainterApp {
     pub paint_target_mask: bool,
 
     // Shelf & Asset Filter
-    pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas
+    pub shelf_category: usize, // 0: All, 1: Smart Mats, 2: Materials, 3: Smart Masks, 4: Alphas, 5: Effects/Generators
     pub search_query: String,
     pub shelf_assets: Vec<ShelfAsset>,
     pub shelf_textures: HashMap<PathBuf, egui::TextureHandle>,
@@ -383,96 +390,157 @@ fn find_shelf_dir() -> PathBuf {
     PathBuf::from("/mnt/shared/REMoAINTER/assets/shelf")
 }
 
-fn scan_shelf_assets() -> Vec<ShelfAsset> {
-    let shelf_dir = find_shelf_dir();
-    let mut assets = Vec::new();
-
-    let categories = [
-        (1, "smart_materials", "SM", SMART_MAT_ORANGE),
-        (2, "materials", "M", ACTIVE_BLUE),
-        (3, "smart_masks", "MSK", Color32::from_rgb(160, 60, 220)),
-        (4, "alphas", "A", Color32::from_rgb(46, 180, 110)),
-    ];
-
-    for (cat_id, sub_folder, badge, badge_color) in categories {
-        let folder = shelf_dir.join(sub_folder);
-        let thumb_sub = shelf_dir.join("thumbnails").join(sub_folder);
-
-        if let Ok(entries) = std::fs::read_dir(&folder) {
-            let mut list: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-            list.sort_by_key(|e| e.file_name());
-
-            for entry in list {
-                let p = entry.path();
-                if p.is_file() {
-                    let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
-                    if ext == "webp" || ext == "png" || ext == "sbsar" || ext == "spmsk" {
-                        let stem = p
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("")
-                            .to_string();
-                        let thumb_png = thumb_sub.join(format!("{}.png", stem));
-                        let real_mat_thumb = crate::painting::find_materials_dir()
-                            .join(&stem)
-                            .join("base_color.png");
-                        let thumb_p = if real_mat_thumb.exists() {
-                            real_mat_thumb
-                        } else if thumb_png.exists() {
-                            thumb_png
-                        } else {
-                            p.clone()
-                        };
-                        let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&stem);
-
-                        assets.push(ShelfAsset {
-                            name: stem,
-                            category: cat_id,
-                            path: p,
-                            thumb_path: thumb_p,
-                            badge,
-                            badge_color,
-                            pbr_color,
-                            pbr_metallic,
-                            pbr_roughness,
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    // Include real starter PBR materials from assets/materials
-    let mat_dir = crate::painting::find_materials_dir();
-    if let Ok(entries) = std::fs::read_dir(&mat_dir) {
-        for entry in entries.flatten() {
+/// Old shelf sources (legacy previews + alphas), kept with dedupe against the
+/// cache; group dir + shelf category for legacy scan.
+fn legacy_scan_category(
+    shelf_dir: &Path,
+    cat_id: usize,
+    sub_folder: &str,
+    badge: &'static str,
+    badge_color: Color32,
+    out: &mut Vec<ShelfAsset>,
+    seen: &mut std::collections::HashSet<(usize, String)>,
+) {
+    let folder = shelf_dir.join(sub_folder);
+    let mut stack: Vec<PathBuf> = vec![folder.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        let mut list: Vec<_> = entries.filter_map(|e| e.ok()).collect();
+        list.sort_by_key(|e| e.file_name());
+        for entry in list {
             let p = entry.path();
             if p.is_dir() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                if !name.starts_with('.')
-                    && !assets.iter().any(|a| a.name.eq_ignore_ascii_case(&name))
-                {
-                    let thumb_p = p.join("base_color.png");
-                    let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&name);
-                    assets.push(ShelfAsset {
-                        name: name.clone(),
-                        category: 2, // Material
-                        path: p,
-                        thumb_path: if thumb_p.exists() {
-                            thumb_p
-                        } else {
-                            PathBuf::new()
-                        },
-                        badge: "MAT",
-                        badge_color: ACTIVE_BLUE,
-                        pbr_color,
-                        pbr_metallic,
-                        pbr_roughness,
-                    });
-                }
+                // Include flat BMP alpha packs shipped directly on the shelf.
+                stack.push(p);
+                continue;
             }
+            let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
+            let ext = ext.to_lowercase();
+            if ext != "png" && ext != "webp" && ext != "sbsar" && ext != "spmsk" {
+                continue;
+            }
+            let stem = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            let name = stem.clone();
+            let key = (cat_id, name.to_lowercase());
+            if !seen.insert(key) {
+                continue; // cache asset with the same name already owns this slot
+            }
+            let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&stem);
+            out.push(ShelfAsset {
+                name,
+                category: cat_id,
+                path: p.clone(),
+                thumb_path: p,
+                badge,
+                badge_color,
+                pbr_color,
+                pbr_metallic,
+                pbr_roughness,
+                item_dir: None,
+                icon_kind: crate::painting::substance_library::IconKind::Flat,
+                search_text: stem.to_lowercase(),
+            });
         }
     }
+}
+
+fn scan_shelf_assets() -> Vec<ShelfAsset> {
+    let shelf_dir = find_shelf_dir();
+    let cache_base = crate::painting::substance_library::find_substance_cache_dir();
+    let cache_items = crate::painting::substance_library::scan_substance_cache(&cache_base);
+
+    let mut assets: Vec<ShelfAsset> = Vec::new();
+
+    // 1. Authentic Substance cache assets (the primary source of truth).
+    for item in &cache_items {
+        let (cat_id, badge, badge_color) = match item.group {
+            crate::painting::substance_library::SubstanceGroup::SmartMaterials => {
+                (1, "SMAT", SMART_MAT_ORANGE)
+            }
+            crate::painting::substance_library::SubstanceGroup::Materials => {
+                (2, "MAT", ACTIVE_BLUE)
+            }
+            crate::painting::substance_library::SubstanceGroup::Effects
+            | crate::painting::substance_library::SubstanceGroup::Generators => {
+                (5, "FX", Color32::from_rgb(200, 90, 40))
+            }
+            crate::painting::substance_library::SubstanceGroup::Procedurals
+            | crate::painting::substance_library::SubstanceGroup::Alphas => {
+                (4, "ALPHA", Color32::from_rgb(46, 180, 110))
+            }
+        };
+        let (pbr_color, pbr_metallic, pbr_roughness) = if cat_id == 2 || cat_id == 1 {
+            let params = crate::painting::substance_library::load_preset_params(&item.dir);
+            (
+                params
+                    .color
+                    .map(|c| [c[0], c[1], c[2], 1.0])
+                    .unwrap_or(infer_pbr(&item.label).0),
+                params.metallic.unwrap_or(0.0),
+                params.roughness.unwrap_or(0.5),
+            )
+        } else {
+            infer_pbr(&item.label)
+        };
+        assets.push(ShelfAsset {
+            name: item.label.clone(),
+            category: cat_id,
+            path: item.dir.clone(),
+            thumb_path: item.thumb_path.clone(),
+            badge,
+            badge_color,
+            pbr_color,
+            pbr_metallic,
+            pbr_roughness,
+            item_dir: Some(item.dir.clone()),
+            icon_kind: item.icon_kind,
+            search_text: item.search_text(),
+        });
+    }
+
+    let mut seen: std::collections::HashSet<(usize, String)> = assets
+        .iter()
+        .map(|a| (a.category, a.name.to_lowercase()))
+        .collect();
+
+    // Legacy shelf sources: kept for anything the cache does not already cover.
+    // `assets/materials` is deliberately OUT — those SP sphere-render previews are
+    // forbidden as content and must never be interpreted as flat maps.
+    legacy_scan_category(
+        &shelf_dir,
+        1,
+        "smart_materials",
+        "SM",
+        SMART_MAT_ORANGE,
+        &mut assets,
+        &mut seen,
+    );
+    legacy_scan_category(
+        &shelf_dir,
+        3,
+        "smart_masks",
+        "MSK",
+        Color32::from_rgb(160, 60, 220),
+        &mut assets,
+        &mut seen,
+    );
+    legacy_scan_category(
+        &shelf_dir,
+        4,
+        "alphas",
+        "A",
+        Color32::from_rgb(46, 180, 110),
+        &mut assets,
+        &mut seen,
+    );
+
+    // Materials now come exclusively from substance_cache/materials (fill maps).
 
     assets
 }
@@ -572,7 +640,7 @@ impl Default for RemoainterApp {
                 (
                     "09:00:03".into(),
                     "INFO".into(),
-                    "Loaded 360+ Allegorithmic PBR materials, Smart Masks & Alphas.".into(),
+                    "Loaded 991+ authentic Substance Painter starter assets (materials, smart mats, effects, generators, procedurals & alphas).".into(),
                 ),
                 (
                     "09:00:04".into(),
@@ -767,6 +835,236 @@ impl RemoainterApp {
             1 => EnvironmentPreset::GlazedPatio,
             2 => EnvironmentPreset::Panorama,
             _ => EnvironmentPreset::WarmCoolStudio,
+        }
+    }
+
+    fn log_line(&mut self, level: &str, text: &str) {
+        self.logs.push((
+            chrono::Local::now().format("%H:%M:%S").to_string(),
+            level.to_string(),
+            text.to_string(),
+        ));
+    }
+
+    /// Unified shelf click behavior for every asset category:
+    /// 1 Smart Mats / 2 Materials — cache-backed SP fill-layer instantiation
+    ///   (legacy shelf files keep their old paths);
+    /// 3 Smart Masks — legacy smart-mask apply on the active layer;
+    /// 4 Alphas / procedurals — brush custom alpha from a flat (non-sphere) icon;
+    /// 5 Effects/Generators — SP generator applied as a mask on the active layer.
+    pub fn handle_shelf_click(&mut self, asset: ShelfAsset) {
+        use crate::painting::substance_library as sl;
+        let name = asset.name.clone();
+        match asset.category {
+            // Cache-backed materials & smart materials: SP-style fill-layer instantiation.
+            1 | 2 => {
+                if let Some(dir) = asset.item_dir.clone() {
+                    let next_id = self
+                        .layer_stack
+                        .layers
+                        .iter()
+                        .map(|l| l.id)
+                        .max()
+                        .unwrap_or(0)
+                        + 1;
+                    match sl::build_fill_layer(
+                        &dir,
+                        next_id,
+                        self.layer_stack.width,
+                        self.layer_stack.height,
+                    ) {
+                        Ok((layer, kind)) => {
+                            if kind == sl::SubstanceContentKind::FlatParams
+                                && asset.icon_kind == sl::IconKind::Sphere
+                            {
+                                self.log_line(
+                                    "WARN",
+                                    &format!(
+                                        "'{}': sphere-render SP icon was NOT used as paint content; applied parameter-only fill",
+                                        name
+                                    ),
+                                );
+                            }
+                            self.brush.color = layer.fill_color;
+                            self.brush.metallic = layer.fill_metallic;
+                            self.brush.roughness = layer.fill_roughness;
+                            let layer_name = layer.name.clone();
+                            self.layer_stack.layers.push(layer);
+                            self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                            self.recompute_composite();
+                            let note = match kind {
+                                sl::SubstanceContentKind::FlatParams => "parameters-only fill",
+                                _ => "preview-derived content",
+                            };
+                            self.status_message =
+                                format!("Applied SP material: {} ({})", layer_name, note);
+                            self.history.push(format!(
+                                "{:02}  Apply SP Material ({}) [{}]",
+                                self.history.len() + 1,
+                                layer_name,
+                                note
+                            ));
+                        }
+                        Err(sl::SubstanceApplyError::ForbiddenSphereBitmap) => {
+                            self.status_message =
+                                format!("Refused sphere-render icon as paint content: {}", name);
+                            {
+                                let m = self.status_message.clone();
+                                self.log_line("WARN", &m);
+                            }
+                        }
+                        Err(sl::SubstanceApplyError::Io(e)) => {
+                            self.status_message =
+                                format!("Failed to apply SP material: {}: {}", name, e);
+                            {
+                                let m = self.status_message.clone();
+                                self.log_line("ERROR", &m);
+                            }
+                        }
+                    }
+                } else {
+                    // Legacy shelf previews (no cache entry) keep their old paths.
+                    self.brush.color = asset.pbr_color;
+                    self.brush.metallic = asset.pbr_metallic;
+                    self.brush.roughness = asset.pbr_roughness;
+                    if asset.category == 1 {
+                        apply_smart_material_hierarchy(
+                            &mut self.layer_stack,
+                            &name,
+                            asset.pbr_color,
+                            asset.pbr_metallic,
+                            asset.pbr_roughness,
+                            self.baked_maps.curvature.as_deref(),
+                            self.baked_maps.ambient_occlusion.as_deref(),
+                        );
+                        self.recompute_composite();
+                        self.status_message = format!("Applied Smart Material: {}", name);
+                        self.history.push(format!(
+                            "{:02}  Apply Smart Material ({})",
+                            self.history.len() + 1,
+                            name
+                        ));
+                    } else {
+                        let id = self.layer_stack.layers.len() + 1;
+                        let fill = load_real_pbr_material(
+                            id,
+                            &name,
+                            asset.pbr_color,
+                            asset.pbr_metallic,
+                            asset.pbr_roughness,
+                            self.layer_stack.width,
+                            self.layer_stack.height,
+                        );
+                        self.layer_stack.layers.push(fill);
+                        self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                        self.recompute_composite();
+                        self.status_message = format!("Applied Real PBR Material: {}", name);
+                        self.history.push(format!(
+                            "{:02}  Apply Real PBR Material ({})",
+                            self.history.len() + 1,
+                            name
+                        ));
+                    }
+                }
+            }
+            // Legacy shell smart masks (.spmsk / .webp previews).
+            3 => {
+                if let Some(active_layer) = self
+                    .layer_stack
+                    .layers
+                    .get_mut(self.layer_stack.active_layer_index)
+                {
+                    let path = asset.path.clone();
+                    active_layer.apply_smart_mask_file(
+                        &path,
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                    );
+                    self.status_message = format!(
+                        "Applied Smart Mask ({}) to Layer: {}",
+                        name, active_layer.name
+                    );
+                    self.history.push(format!(
+                        "{:02}  Apply Smart Mask ({})",
+                        self.history.len() + 1,
+                        name
+                    ));
+                }
+                self.recompute_composite();
+            }
+            // Alphas / procedurals: brush custom alpha from a flat SP thumbnail.
+            4 => {
+                let mut applied = false;
+                if let Some(dir) = asset.item_dir.clone() {
+                    match sl::build_alpha_mask(&dir) {
+                        Ok(alpha) => {
+                            self.brush.custom_alpha = Some(Arc::new(alpha));
+                            applied = true;
+                        }
+                        Err(sl::SubstanceApplyError::ForbiddenSphereBitmap) => {
+                            self.status_message =
+                                format!("'{}': sphere-render icon cannot be used as alpha", name);
+                            {
+                                let m = self.status_message.clone();
+                                self.log_line("WARN", &m);
+                            }
+                        }
+                        Err(sl::SubstanceApplyError::Io(e)) => {
+                            self.status_message = format!("Failed to load alpha '{}': {}", name, e);
+                            {
+                                let m = self.status_message.clone();
+                                self.log_line("WARN", &m);
+                            }
+                        }
+                    }
+                } else if let Ok(img) = image::open(&asset.thumb_path) {
+                    let gray = img.to_luma8();
+                    let (w, h) = gray.dimensions();
+                    self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
+                        width: w,
+                        height: h,
+                        data: gray.into_raw(),
+                    }));
+                    applied = true;
+                }
+                if applied {
+                    self.brush.alpha_name = name.clone();
+                    self.brush.alpha_shape = crate::painting::brush::AlphaShape::Custom;
+                    self.status_message = format!("Selected Alpha: {}", name);
+                    self.history.push(format!(
+                        "{:02}  Select Alpha ({})",
+                        self.history.len() + 1,
+                        name
+                    ));
+                }
+            }
+            // Effects / generators: SP generator behavior applied as a layer mask.
+            5 => {
+                if let Some(active_layer) = self
+                    .layer_stack
+                    .layers
+                    .get_mut(self.layer_stack.active_layer_index)
+                {
+                    let (w, h) = (self.layer_stack.width, self.layer_stack.height);
+                    let mask_name = asset.name.clone();
+                    active_layer.mask = Some(crate::painting::material_gen::generate_smart_mask(
+                        &mask_name,
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        w,
+                        h,
+                    ));
+                    self.status_message =
+                        format!("Applied SP Effect/Generator: {} (as layer generator)", name);
+                    self.history.push(format!(
+                        "{:02}  Apply SP Generator ({})",
+                        self.history.len() + 1,
+                        name
+                    ));
+                }
+                self.recompute_composite();
+            }
+            _ => {}
         }
     }
 
@@ -2885,6 +3183,7 @@ impl eframe::App for RemoainterApp {
                         (2, "Materials"),
                         (3, "Smart Masks"),
                         (4, "Alphas"),
+                        (5, "Effects/Generators"),
                     ];
                     for (i, c) in cats {
                         let active = self.shelf_category == i;
@@ -2901,7 +3200,7 @@ impl eframe::App for RemoainterApp {
 
                 ui.add(
                     egui::TextEdit::singleline(&mut self.search_query)
-                        .hint_text("Search 360+ materials, masks, alphas..."),
+                        .hint_text("Search Substance assets (label, category, keywords)..."),
                 );
                 ui.separator();
 
@@ -2916,22 +3215,14 @@ impl eframe::App for RemoainterApp {
                         if active_cat != 0 && asset.category != active_cat {
                             return None;
                         }
-                        if !query.is_empty() && !asset.name.to_lowercase().contains(&query) {
+                        if !query.is_empty() && !asset.search_text.contains(&query) {
                             return None;
                         }
                         Some(idx)
                     })
                     .collect();
 
-                let mut clicked_asset: Option<(
-                    usize,
-                    String,
-                    PathBuf,
-                    PathBuf,
-                    [f32; 4],
-                    f32,
-                    f32,
-                )> = None;
+                let mut clicked_asset: Option<ShelfAsset> = None;
 
                 // Materials & Alphas Grid
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -3029,111 +3320,14 @@ impl eframe::App for RemoainterApp {
                             }
 
                             if response.on_hover_text(&asset.name).clicked() {
-                                clicked_asset = Some((
-                                    asset.category,
-                                    asset.name.clone(),
-                                    asset.path.clone(),
-                                    asset.thumb_path.clone(),
-                                    asset.pbr_color,
-                                    asset.pbr_metallic,
-                                    asset.pbr_roughness,
-                                ));
+                                clicked_asset = Some(asset.clone());
                             }
                         }
                     });
                 });
 
-                if let Some((cat, name, _path, thumb, color, metallic, roughness)) = clicked_asset {
-                    match cat {
-                        1 => {
-                            self.brush.color = color;
-                            self.brush.metallic = metallic;
-                            self.brush.roughness = roughness;
-                            apply_smart_material_hierarchy(
-                                &mut self.layer_stack,
-                                &name,
-                                color,
-                                metallic,
-                                roughness,
-                                self.baked_maps.curvature.as_deref(),
-                                self.baked_maps.ambient_occlusion.as_deref(),
-                            );
-                            self.recompute_composite();
-                            self.status_message = format!("Applied Smart Material: {}", name);
-                            self.history.push(format!(
-                                "{:02}  Apply Smart Material ({})",
-                                self.history.len() + 1,
-                                name
-                            ));
-                        }
-                        2 => {
-                            self.brush.color = color;
-                            self.brush.metallic = metallic;
-                            self.brush.roughness = roughness;
-                            let id = self.layer_stack.layers.len() + 1;
-                            let fill = load_real_pbr_material(
-                                id,
-                                &name,
-                                color,
-                                metallic,
-                                roughness,
-                                self.layer_stack.width,
-                                self.layer_stack.height,
-                            );
-                            self.layer_stack.layers.push(fill);
-                            self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
-                            self.recompute_composite();
-                            self.status_message = format!("Applied Real PBR Material: {}", name);
-                            self.history.push(format!(
-                                "{:02}  Apply Real PBR Material ({})",
-                                self.history.len() + 1,
-                                name
-                            ));
-                        }
-                        3 => {
-                            if let Some(active_layer) = self
-                                .layer_stack
-                                .layers
-                                .get_mut(self.layer_stack.active_layer_index)
-                            {
-                                active_layer.apply_smart_mask_file(
-                                    &_path,
-                                    self.baked_maps.curvature.as_deref(),
-                                    self.baked_maps.ambient_occlusion.as_deref(),
-                                );
-                                self.status_message = format!(
-                                    "Applied Smart Mask ({}) to Layer: {}",
-                                    name, active_layer.name
-                                );
-                                self.history.push(format!(
-                                    "{:02}  Apply Smart Mask ({})",
-                                    self.history.len() + 1,
-                                    name
-                                ));
-                            }
-                            self.recompute_composite();
-                        }
-                        4 => {
-                            self.brush.alpha_name = name.clone();
-                            if let Ok(img) = image::open(&_path).or_else(|_| image::open(&thumb)) {
-                                let gray = img.to_luma8();
-                                let (w, h) = gray.dimensions();
-                                self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
-                                    width: w,
-                                    height: h,
-                                    data: gray.into_raw(),
-                                }));
-                                self.brush.alpha_shape = crate::painting::brush::AlphaShape::Custom;
-                            }
-                            self.status_message = format!("Selected Alpha: {}", name);
-                            self.history.push(format!(
-                                "{:02}  Select Alpha ({})",
-                                self.history.len() + 1,
-                                name
-                            ));
-                        }
-                        _ => {}
-                    }
+                if let Some(asset) = clicked_asset {
+                    self.handle_shelf_click(asset);
                 }
             });
 

@@ -139,7 +139,7 @@ Status Legend:
 | Layer Feature | Status | Implementation Details / File Location |
 | :--- | :--- | :--- |
 | **Paint Layer** | **Implemented** | Dynamic channel buffers (`color`, `metallic`, `roughness`, `normal`, `height`). |
-| **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). |
+| **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). Fill-layer materials can now be instantiated from the authentic Substance Painter starter library (see Event-Driven Import note below). |
 | **Folder / Group** | **Implemented** | `LayerType::Folder` with nested tree rendering, parent/child hierarchy, recursive opacity & visibility cascading, and Ctrl+G hotkey. |
 | **Blend Modes** | **Implemented** | All 18 Substance Painter blend modes: Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, Color, Luminosity. |
 | **Per-Channel Blend Modes** | **Implemented** | `channel_color_blend`, `channel_metallic_blend`, etc. with per-channel routing toggles and opacities in UI and compositor. |
@@ -221,6 +221,7 @@ Status Legend:
 
 ### Depth qualifications (v1 / simplified implementations)
 - **Visualisation (Render) — Implemented (honest scope)**: offline path-traced renderer ships as RGB (not spectral), analytic studio environment (no HDRI file parsing), no denoiser, env-only lighting; Substance's Iray is spectral/MDL GPU machinery — parity bar is preset-ladder + deterministic convergence, not byte-comparison against Iray output.
+- **Substance Library Import — Implemented (preview-derived content)**: 991 authentic items imported from the decompiled SP starter assets (`scripts/import_substance_library.py` → `assets/substance_cache/`): 96 materials (with 1024² flat fill-maps unwarped from sphere-preview icons — no more giant-disc content), 121 smart materials (flat bitmaps where SP embedded them), 62 effects, 21 generators, 275 procedurals, 416 alphas (sphere-renders rejected as paint content), 60 SP fonts, 5 flat alpha bitmaps. Parameter presets (roughness/metallic/color scalars) come from the authentic `.sbsar` XMLs; full procedural graph evaluation of `.sbsar` (embed Substance Engine) is intentionally out of scope.
 - **Skew Correction — Implemented**: sheared-ray-origin approximation of Substance's `USE_SKEW_MAP`; geometry-preserving skew-mesh painting pending.
 - **Smudge / Clone projection semantics**: 3D stamps honor tangent-space alpha shapes; per-stamp jitter/spacing dynamics on the 3D path are simplified relative to Substance's stamp-page pipeline.
 - **Grid & World Axes / Anchor routing**: implemented in earlier merged branches; rows were stale until this sync.

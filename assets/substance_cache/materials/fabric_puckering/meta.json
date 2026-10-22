@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/fabric_puckering.sbsar",
+  "label": "Fabric Puckering",
+  "sp_category": "Tool",
+  "keywords": "fabric,apparel,clothing,design,fashion,textile,seam,stitch,puckering,path,tool",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

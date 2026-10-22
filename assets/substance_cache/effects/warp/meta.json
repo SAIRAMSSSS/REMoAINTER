@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/warp.sbsar",
+  "label": "Warp",
+  "sp_category": "Standard",
+  "keywords": "grayscale",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

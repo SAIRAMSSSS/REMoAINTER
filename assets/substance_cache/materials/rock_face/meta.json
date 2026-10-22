@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Stone/rock_face.sbsar",
+  "label": "Rock Face",
+  "sp_category": "Stone",
+  "keywords": "painter;base;material;ceramic;earthenware;clay;sculpt;sculpture;modeling;character;look;dev;design;entertainment",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

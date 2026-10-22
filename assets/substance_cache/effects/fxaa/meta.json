@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/fxaa.sbsar",
+  "label": "FXAA (Anti-aliasing)",
+  "sp_category": "Standard",
+  "keywords": "antialiasing",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

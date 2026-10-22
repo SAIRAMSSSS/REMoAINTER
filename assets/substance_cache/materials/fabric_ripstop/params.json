@@ -1,0 +1,517 @@
+{
+  "presets": [
+    {
+      "label": "Mate Fabric Ripstop",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.376471,
+            0.615686,
+            0.482353
+          ],
+          "uid": 799073310
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.84,
+          "uid": 772190886
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.72,
+          "uid": 799073337
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 714121829
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 714516727
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971121
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917403
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917400
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971086
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971087
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917396
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917397
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917395
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 806771638
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476349
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476347
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 804519840
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 797270686
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898516
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1028277494
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1120898470
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898497
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120826037
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.015,
+          "uid": 988708500
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 988708581
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 817717791
+        },
+        {
+          "identifier": "anisotropy_level",
+          "type": 0,
+          "value": 0.25,
+          "uid": 715117757
+        }
+      ]
+    },
+    {
+      "label": "Brown Fabric Ripstop",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.568627,
+            0.403922,
+            0.317647
+          ],
+          "uid": 799073310
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.07,
+          "uid": 772190886
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.35,
+          "uid": 799073337
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 714121829
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 714516727
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971121
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917403
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917400
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971086
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971087
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917396
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917397
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917395
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 806771638
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476349
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476347
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 804519840
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 797270686
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898516
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1028277494
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1120898470
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898497
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120826037
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.015,
+          "uid": 988708500
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 988708581
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 817717791
+        },
+        {
+          "identifier": "anisotropy_level",
+          "type": 0,
+          "value": 0.25,
+          "uid": 715117757
+        }
+      ]
+    },
+    {
+      "label": "Metallic Fabric Ripstop",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.411765,
+            0.282353,
+            0.254902
+          ],
+          "uid": 799073310
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.16,
+          "uid": 772190886
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.31,
+          "uid": 799073337
+        },
+        {
+          "identifier": "fabric_metallic",
+          "type": 0,
+          "value": 0.82,
+          "uid": 714121829
+        },
+        {
+          "identifier": "tension_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 714516727
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971121
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917403
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917400
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971086
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 894971087
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917396
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917397
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 1005917395
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 806771638
+        },
+        {
+          "identifier": "channel_anisotropylevel",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476349
+        },
+        {
+          "identifier": "channel_anisotropyangle",
+          "type": 4,
+          "value": 1.0,
+          "uid": 794476347
+        },
+        {
+          "identifier": "channel_opacity",
+          "type": 4,
+          "value": 1.0,
+          "uid": 804519840
+        },
+        {
+          "identifier": "channel_mask",
+          "type": 4,
+          "value": 1.0,
+          "uid": 797270686
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898516
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1028277494
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 1120898470
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120898497
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 1120826037
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.015,
+          "uid": 988708500
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 988708581
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 817717791
+        },
+        {
+          "identifier": "anisotropy_level",
+          "type": 0,
+          "value": 0.25,
+          "uid": 715117757
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Damages/single_small_bullet_impact_on_concrete_wall.sbsar",
+  "label": "Small Bullet Impacts On Concrete Wall",
+  "sp_category": "Damages",
+  "keywords": "decals;wall;concrete;holes;impacts;bullet;army;weapon",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

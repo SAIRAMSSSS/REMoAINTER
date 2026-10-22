@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Concrete - Asphalt/concrete_asphalt.sbsar",
+  "label": "Concrete Asphalt",
+  "sp_category": "Concrete - Asphalt",
+  "keywords": "painter;base;material;asphalt;coarse;damaged;wall;floor;design;architecture;urban;street;road;bitumen",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

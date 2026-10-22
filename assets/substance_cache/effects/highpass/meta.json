@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Standard/highpass.sbsar",
+  "label": "Highpass",
+  "sp_category": "Standard",
+  "keywords": "blur,radius,detail",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

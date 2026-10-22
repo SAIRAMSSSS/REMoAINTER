@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Paint/paint_roll.sbsar",
+  "label": "Paint Roll",
+  "sp_category": "Paint",
+  "keywords": "painter;base;material;paint;graphic;design;roll;architecture",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

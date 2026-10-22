@@ -1,0 +1,9 @@
+{
+  "source_file": "generators/mg_world_space_normals.sbsar",
+  "label": "World Space Normals",
+  "sp_category": "generators",
+  "keywords": "mask,generator,grayscale,blend",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

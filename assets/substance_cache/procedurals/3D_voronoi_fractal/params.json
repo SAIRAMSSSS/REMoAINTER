@@ -1,0 +1,6674 @@
+{
+  "presets": [
+    {
+      "label": "Ash",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 2.14,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Bark",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            8.0,
+            2.0,
+            10.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.56,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Brain",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Breach",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.34,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.95,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.53,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Bubbles",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.43,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.6,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.23,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.141,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cellular Grungy",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.5,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.83,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.78,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Concrete",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.69,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.62,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cracks Concrete",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.39,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cracks Detailed",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.83,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.78,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cracks Long",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.17,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cracks Regular",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.86,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cracks Soft",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Cyber",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.03,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Debris",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.92,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 1.95,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.15,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.62,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 5.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.097,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Dirt",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.43,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.74,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Dry Mud",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.08,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.57,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.17,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.48,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.041,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Dust",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.5,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 2.14,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Fabric Weathered",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.68,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.5,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.98,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Fibers Hairy",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.028,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Fibers Thick",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.78,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Fur",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.25,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 64.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Grid Fancy",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.03,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.52,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.38,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Lasagna",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.69,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.62,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.25,
+            0.5
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Marshmallow",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.63,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Moss",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Nebulous",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.47,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 9.5,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.41,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.37,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.83,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.141,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Neural Depth",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.28,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 10.85,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.61,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.58,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Noise Chebyshev",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.85,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Noise Euclidean",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 15.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.85,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Noise Minkowski",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.04,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.5,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.85,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Noodles",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 3.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.48,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.45,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Paint",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.71,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 2.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.48,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.45,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Perturbation",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.13,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Petals",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.46,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.18,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 15.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.93,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.6,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Plaster",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 12.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.15,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.19,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Pollock",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            2.0,
+            0.5,
+            2.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 6.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.36,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.56,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.01,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.141,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Pyramids",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.05,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.62,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Reptilian",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.725,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 29.05,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 0.56,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 1.62,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.32,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.056,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Rocks",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.11,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 20.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Scraped Paint",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 6.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Spaghetti",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.46,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.65,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.086,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Splotchy",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.735,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            0.75,
+            1.5,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.5,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Spots",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.01,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 10.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 5.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 2.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.013,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Stains",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            0.5,
+            0.75
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.03,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 32.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 4.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.98,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 4.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Tiles",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 16.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.025,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 15.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 5.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.016,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    },
+    {
+      "label": "Veins Layered",
+      "inputs": [
+        {
+          "identifier": "invert",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2604330967
+        },
+        {
+          "identifier": "Position",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2604330983
+        },
+        {
+          "identifier": "Contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2604330975
+        },
+        {
+          "identifier": "scale",
+          "type": 0,
+          "value": 8.0,
+          "uid": 2158934077
+        },
+        {
+          "identifier": "size",
+          "type": 2,
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "uid": 2158934079
+        },
+        {
+          "identifier": "offset",
+          "type": 2,
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "uid": 2158934065
+        },
+        {
+          "identifier": "disorder",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934067
+        },
+        {
+          "identifier": "distortion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934069
+        },
+        {
+          "identifier": "distortion_scale_multiplier",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934071
+        },
+        {
+          "identifier": "min_level",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934057
+        },
+        {
+          "identifier": "max_level",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2158934059
+        },
+        {
+          "identifier": "roughness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2158934061
+        },
+        {
+          "identifier": "lacunarity",
+          "type": 0,
+          "value": 2.0,
+          "uid": 2158934063
+        },
+        {
+          "identifier": "global_opacity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934049
+        },
+        {
+          "identifier": "rounded_curve",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2158934051
+        },
+        {
+          "identifier": "distance_scale",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934053
+        },
+        {
+          "identifier": "distance_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934055
+        },
+        {
+          "identifier": "minkowski_number",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2158934041
+        },
+        {
+          "identifier": "blend_mode",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2158934043
+        },
+        {
+          "identifier": "style",
+          "type": 4,
+          "value": 5.0,
+          "uid": 2158934045
+        },
+        {
+          "identifier": "edge_thickness",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2158934047
+        },
+        {
+          "identifier": "enable_tiling",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2158934033
+        }
+      ]
+    }
+  ]
+}

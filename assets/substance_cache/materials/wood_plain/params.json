@@ -1,0 +1,561 @@
+{
+  "presets": [
+    {
+      "label": "Light Wood Type",
+      "inputs": [
+        {
+          "identifier": "global_distortion",
+          "type": 0,
+          "value": 0.26,
+          "uid": 2426635991
+        },
+        {
+          "identifier": "use_custom_wood_color",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2426556014
+        },
+        {
+          "identifier": "wood_color",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2432309709
+        },
+        {
+          "identifier": "custom_wood_color",
+          "type": 2,
+          "value": [
+            0.6,
+            0.480003,
+            0.300008
+          ],
+          "uid": 2426555814
+        },
+        {
+          "identifier": "wood_stain_saturation",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2427274810
+        },
+        {
+          "identifier": "wood_roughness",
+          "type": 0,
+          "value": 0.33,
+          "uid": 2427275672
+        },
+        {
+          "identifier": "veins_color_variation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2432309712
+        },
+        {
+          "identifier": "veins_density",
+          "type": 0,
+          "value": 0.24,
+          "uid": 2432309703
+        },
+        {
+          "identifier": "veins_color_fade",
+          "type": 0,
+          "value": 0.51,
+          "uid": 2427228064
+        },
+        {
+          "identifier": "veins_sharpness",
+          "type": 0,
+          "value": 0.9,
+          "uid": 2426226681
+        },
+        {
+          "identifier": "knots_intensity",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2427095364
+        },
+        {
+          "identifier": "fibers_spread",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2426640876
+        },
+        {
+          "identifier": "fibers_color_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2426640880
+        },
+        {
+          "identifier": "fibers_contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2427108908
+        },
+        {
+          "identifier": "fibers_volume_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2427286340
+        },
+        {
+          "identifier": "fibers_orientation_variation",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2432309565
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109491
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396761
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396762
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109452
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109453
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396758
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396759
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396753
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163926
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2269734644
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4174163876
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163907
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2163039382
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2163039463
+        }
+      ]
+    },
+    {
+      "label": "Dark Ribbed Wood Type",
+      "inputs": [
+        {
+          "identifier": "global_distortion",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2426635991
+        },
+        {
+          "identifier": "use_custom_wood_color",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2426556014
+        },
+        {
+          "identifier": "wood_color",
+          "type": 0,
+          "value": 0.83,
+          "uid": 2432309709
+        },
+        {
+          "identifier": "wood_stain_saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2427274810
+        },
+        {
+          "identifier": "wood_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 2427275672
+        },
+        {
+          "identifier": "veins_color_variation",
+          "type": 0,
+          "value": 0.75,
+          "uid": 2432309712
+        },
+        {
+          "identifier": "veins_density",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2432309703
+        },
+        {
+          "identifier": "veins_color_fade",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2427228064
+        },
+        {
+          "identifier": "veins_sharpness",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2426226681
+        },
+        {
+          "identifier": "knots_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2427095364
+        },
+        {
+          "identifier": "fibers_spread",
+          "type": 0,
+          "value": 0.57,
+          "uid": 2426640876
+        },
+        {
+          "identifier": "fibers_color_intensity",
+          "type": 0,
+          "value": 0.37,
+          "uid": 2426640880
+        },
+        {
+          "identifier": "fibers_contrast",
+          "type": 0,
+          "value": 0.16,
+          "uid": 2427108908
+        },
+        {
+          "identifier": "fibers_volume_intensity",
+          "type": 0,
+          "value": 0.26,
+          "uid": 2427286340
+        },
+        {
+          "identifier": "fibers_orientation_variation",
+          "type": 0,
+          "value": 0.82,
+          "uid": 2432309565
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109491
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396761
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396762
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109452
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109453
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396758
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396759
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396753
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163926
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2269734644
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4174163876
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163907
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2163039382
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2163039463
+        }
+      ]
+    },
+    {
+      "label": "Warm Wood Type",
+      "inputs": [
+        {
+          "identifier": "global_distortion",
+          "type": 0,
+          "value": 0.72,
+          "uid": 2426635991
+        },
+        {
+          "identifier": "use_custom_wood_color",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2426556014
+        },
+        {
+          "identifier": "wood_color",
+          "type": 0,
+          "value": 0.48,
+          "uid": 2432309709
+        },
+        {
+          "identifier": "custom_wood_color",
+          "type": 2,
+          "value": [
+            0.160221,
+            0.108429,
+            0.0955704
+          ],
+          "uid": 2426555814
+        },
+        {
+          "identifier": "wood_stain_saturation",
+          "type": 0,
+          "value": 0.79,
+          "uid": 2427274810
+        },
+        {
+          "identifier": "wood_roughness",
+          "type": 0,
+          "value": 0.16,
+          "uid": 2427275672
+        },
+        {
+          "identifier": "veins_color_variation",
+          "type": 0,
+          "value": 0.65,
+          "uid": 2432309712
+        },
+        {
+          "identifier": "veins_density",
+          "type": 0,
+          "value": 0.17,
+          "uid": 2432309703
+        },
+        {
+          "identifier": "veins_color_fade",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2427228064
+        },
+        {
+          "identifier": "veins_sharpness",
+          "type": 0,
+          "value": 0.95,
+          "uid": 2426226681
+        },
+        {
+          "identifier": "knots_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2427095364
+        },
+        {
+          "identifier": "fibers_spread",
+          "type": 0,
+          "value": 0.3,
+          "uid": 2426640876
+        },
+        {
+          "identifier": "fibers_color_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2426640880
+        },
+        {
+          "identifier": "fibers_contrast",
+          "type": 0,
+          "value": 0.28,
+          "uid": 2427108908
+        },
+        {
+          "identifier": "fibers_volume_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2427286340
+        },
+        {
+          "identifier": "fibers_orientation_variation",
+          "type": 0,
+          "value": 0.1,
+          "uid": 2432309565
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109491
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396761
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396762
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109452
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2405109453
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396758
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396759
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2180396753
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163926
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2269734644
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4174163876
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4174163907
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2163039382
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2163039463
+        }
+      ]
+    }
+  ]
+}

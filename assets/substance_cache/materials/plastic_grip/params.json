@@ -1,0 +1,157 @@
+{
+  "presets": [
+    {
+      "label": "Flat Plastic Grip",
+      "inputs": [
+        {
+          "identifier": "plastic_color",
+          "type": 2,
+          "value": [
+            0.737632,
+            0.74,
+            0.7104
+          ],
+          "uid": 3676955244
+        },
+        {
+          "identifier": "plastic_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 3676955248
+        },
+        {
+          "identifier": "plastic_roughness_variation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3638647563
+        },
+        {
+          "identifier": "plastic_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3676955211
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3238487520
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3238522250
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2841536608
+        }
+      ]
+    },
+    {
+      "label": "Soft Plastic Grip",
+      "inputs": [
+        {
+          "identifier": "plastic_color",
+          "type": 2,
+          "value": [
+            0.0588,
+            0.110208,
+            0.21
+          ],
+          "uid": 3676955244
+        },
+        {
+          "identifier": "plastic_roughness",
+          "type": 0,
+          "value": 0.4,
+          "uid": 3676955248
+        },
+        {
+          "identifier": "plastic_roughness_variation",
+          "type": 0,
+          "value": 0.85,
+          "uid": 3638647563
+        },
+        {
+          "identifier": "plastic_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3676955211
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3238487520
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3238522250
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2841536608
+        }
+      ]
+    },
+    {
+      "label": "High Grip Plastic Grip",
+      "inputs": [
+        {
+          "identifier": "plastic_color",
+          "type": 2,
+          "value": [
+            0.54,
+            0.1134,
+            0.1134
+          ],
+          "uid": 3676955244
+        },
+        {
+          "identifier": "plastic_roughness",
+          "type": 0,
+          "value": 0.47,
+          "uid": 3676955248
+        },
+        {
+          "identifier": "plastic_roughness_variation",
+          "type": 0,
+          "value": 0.85,
+          "uid": 3638647563
+        },
+        {
+          "identifier": "plastic_metallic",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3676955211
+        },
+        {
+          "identifier": "grain_density",
+          "type": 0,
+          "value": 0.58,
+          "uid": 3238487520
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.93,
+          "uid": 3238522250
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2841536608
+        }
+      ]
+    }
+  ]
+}

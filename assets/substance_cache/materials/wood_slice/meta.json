@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Wood/wood_slice.sbsar",
+  "label": "Wood Slice",
+  "sp_category": "Wood",
+  "keywords": "painter;base;material;wood;plank;slice;design;product;interior;architecture",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

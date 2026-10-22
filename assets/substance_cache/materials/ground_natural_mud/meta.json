@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Ground/ground_natural_mud.sbsar",
+  "label": "Ground Natural Mud",
+  "sp_category": "Ground",
+  "keywords": "painter;base;material;ground;natural;mud;outdoor;exterior;environment",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

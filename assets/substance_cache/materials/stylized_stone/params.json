@@ -1,0 +1,567 @@
+{
+  "presets": [
+    {
+      "label": "Rough Rocky Stone",
+      "inputs": [
+        {
+          "identifier": "stone_color",
+          "type": 2,
+          "value": [
+            0.368627,
+            0.24761,
+            0.209105
+          ],
+          "uid": 2620630536
+        },
+        {
+          "identifier": "stone_roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2620631479
+        },
+        {
+          "identifier": "stratum_color",
+          "type": 2,
+          "value": [
+            0.603922,
+            0.366057,
+            0.2896
+          ],
+          "uid": 2617689404
+        },
+        {
+          "identifier": "strattum_spread",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2618917142
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2620629807
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2617863846
+        },
+        {
+          "identifier": "grain_direction",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2617890432
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2618059987
+        },
+        {
+          "identifier": "highlight_color",
+          "type": 3,
+          "value": [
+            0.672414,
+            0.535844,
+            0.503327,
+            1.0
+          ],
+          "uid": 2618063854
+        },
+        {
+          "identifier": "highlight_color_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2618063750
+        },
+        {
+          "identifier": "shadow_color",
+          "type": 3,
+          "value": [
+            0.177455,
+            0.294275,
+            0.45977,
+            1.0
+          ],
+          "uid": 2618063798
+        },
+        {
+          "identifier": "shadow_color_intensity",
+          "type": 0,
+          "value": 0.15,
+          "uid": 2618063783
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208207
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295973
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295974
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208240
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208241
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295978
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295979
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295981
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2258933704
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849514
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2348320904
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4101849560
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849535
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101816011
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2354885354
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2354885275
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2249174625
+        }
+      ]
+    },
+    {
+      "label": "Damp Yellow Stone",
+      "inputs": [
+        {
+          "identifier": "stone_color",
+          "type": 2,
+          "value": [
+            0.494253,
+            0.357275,
+            0.179203
+          ],
+          "uid": 2620630536
+        },
+        {
+          "identifier": "stone_roughness",
+          "type": 0,
+          "value": 0.6,
+          "uid": 2620631479
+        },
+        {
+          "identifier": "stratum_color",
+          "type": 2,
+          "value": [
+            0.586207,
+            0.458724,
+            0.294818
+          ],
+          "uid": 2617689404
+        },
+        {
+          "identifier": "strattum_spread",
+          "type": 0,
+          "value": 0.66,
+          "uid": 2618917142
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2620629807
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2617863846
+        },
+        {
+          "identifier": "grain_direction",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2617890432
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2618059987
+        },
+        {
+          "identifier": "highlight_color",
+          "type": 3,
+          "value": [
+            1.0,
+            0.932749,
+            0.847953,
+            1.0
+          ],
+          "uid": 2618063854
+        },
+        {
+          "identifier": "highlight_color_intensity",
+          "type": 0,
+          "value": 0.13,
+          "uid": 2618063750
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208207
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295973
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295974
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208240
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208241
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295978
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295979
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295981
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2258933704
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849514
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2348320904
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4101849560
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849535
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101816011
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2354885354
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2354885275
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2249174625
+        }
+      ]
+    },
+    {
+      "label": "Dry Blue Stone",
+      "inputs": [
+        {
+          "identifier": "stone_color",
+          "type": 2,
+          "value": [
+            0.235262,
+            0.272904,
+            0.321839
+          ],
+          "uid": 2620630536
+        },
+        {
+          "identifier": "stone_roughness",
+          "type": 0,
+          "value": 0.8,
+          "uid": 2620631479
+        },
+        {
+          "identifier": "stratum_color",
+          "type": 2,
+          "value": [
+            0.144182,
+            0.256813,
+            0.316092
+          ],
+          "uid": 2617689404
+        },
+        {
+          "identifier": "strattum_spread",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2618917142
+        },
+        {
+          "identifier": "smoothness",
+          "type": 0,
+          "value": 0.87,
+          "uid": 2620629807
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.28,
+          "uid": 2617863846
+        },
+        {
+          "identifier": "grain_direction",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2617890432
+        },
+        {
+          "identifier": "fake_lighting",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2618059987
+        },
+        {
+          "identifier": "highlight_color",
+          "type": 3,
+          "value": [
+            0.727499,
+            0.845788,
+            0.908046,
+            1.0
+          ],
+          "uid": 2618063854
+        },
+        {
+          "identifier": "highlight_color_intensity",
+          "type": 0,
+          "value": 0.18,
+          "uid": 2618063750
+        },
+        {
+          "identifier": "shadow_color_intensity",
+          "type": 0,
+          "value": 0.62,
+          "uid": 2618063783
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208207
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295973
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295974
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208240
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2213208241
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295978
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295979
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2370295981
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2258933704
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849514
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2348320904
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4101849560
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101849535
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4101816011
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2354885354
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2354885275
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2249174625
+        }
+      ]
+    }
+  ]
+}

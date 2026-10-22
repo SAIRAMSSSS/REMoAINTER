@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Advanced/anisotropic_kuwahara.sbsar",
+  "label": "Anisotropic Kuwahara",
+  "sp_category": "Filter",
+  "keywords": "grayscale,kuwahara,anisotropic,stylized",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

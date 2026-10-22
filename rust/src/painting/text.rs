@@ -221,6 +221,12 @@ fn collect_font_files(
     }
 }
 
+/// App-bundled authentic Substance Painter font directory (TTF/OTF found via the
+/// same candidate-path pattern as `find_materials_dir` / `find_shelf_dir`).
+fn substance_fonts_dir() -> Option<PathBuf> {
+    crate::painting::substance_library::find_substance_fonts_dir()
+}
+
 fn font_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = Vec::new();
     if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
@@ -239,20 +245,35 @@ fn font_roots() -> Vec<PathBuf> {
     roots
 }
 
-/// All discoverable system fonts (`*.ttf|otf|ttc|otc`, case-insensitive) across standard
-/// Linux font directories, sorted alphabetically and capped. Cached for process lifetime.
+/// All discoverable fonts (`*.ttf|otf|ttc|otc`, case-insensitive): the app's own
+/// bundled Substance Painter fonts first (never truncated away by the cap), then
+/// standard Linux font directories. Sorted alphabetically within each tier and
+/// capped so the dropdown stays usable. Cached for process lifetime.
 pub fn system_fonts() -> &'static [String] {
     static FONTS: OnceLock<Vec<String>> = OnceLock::new();
     FONTS.get_or_init(|| {
-        let mut fonts: Vec<String> = Vec::new();
+        let mut sp_fonts: Vec<String> = Vec::new();
+        if let Some(app) = substance_fonts_dir() {
+            if app.is_dir() {
+                // Sharing `visited` across tiers is harmless: distinct roots.
+                let mut visited = HashSet::new();
+                collect_font_files(&app, &mut sp_fonts, 0, &mut visited);
+            }
+        }
+        let mut system: Vec<String> = Vec::new();
         let mut visited = HashSet::new();
         for root in font_roots() {
             if root.is_dir() {
-                collect_font_files(&root, &mut fonts, 0, &mut visited);
+                collect_font_files(&root, &mut system, 0, &mut visited);
             }
         }
+        system.sort();
+        // The cap still applies in total; app fonts are guaranteed their slots.
+        let room = MAX_SYSTEM_FONTS.saturating_sub(sp_fonts.len());
+        system.truncate(room);
+        let mut fonts = sp_fonts;
         fonts.sort();
-        fonts.truncate(MAX_SYSTEM_FONTS);
+        fonts.extend(system);
         fonts
     })
 }
@@ -533,6 +554,20 @@ mod tests {
             !fonts.is_empty(),
             "OS font discovery found no TTF/OTF files"
         );
+        // The bundled Substance Painter starter font set must be discovered too.
+        let sp_dir = crate::painting::substance_library::find_substance_fonts_dir();
+        if let Some(app) = sp_dir {
+            let sp_hits = fonts
+                .iter()
+                .filter(|f| f.starts_with(app.to_str().unwrap()))
+                .count();
+            assert!(sp_hits >= 60, "bundled SP fonts discovered: {sp_hits}");
+            // And they must come first (never truncated away by the cap).
+            assert!(fonts
+                .iter()
+                .take(sp_hits)
+                .all(|f| f.starts_with(app.to_str().unwrap())));
+        }
         let def = default_font_path();
         let def2 = default_font_path();
         assert_eq!(def, def2, "default font selection must be stable");

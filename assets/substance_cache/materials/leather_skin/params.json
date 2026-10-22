@@ -1,0 +1,525 @@
+{
+  "presets": [
+    {
+      "label": "Brown Grainy Leather",
+      "inputs": [
+        {
+          "identifier": "leather_color",
+          "type": 2,
+          "value": [
+            0.713726,
+            0.576471,
+            0.384314
+          ],
+          "uid": 3246244294
+        },
+        {
+          "identifier": "leather_color_variation",
+          "type": 0,
+          "value": 0.61,
+          "uid": 3246259768
+        },
+        {
+          "identifier": "leather_roughness",
+          "type": 0,
+          "value": 0.44,
+          "uid": 3246244232
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.92,
+          "uid": 3246247013
+        },
+        {
+          "identifier": "hand_tipped_intensity",
+          "type": 0,
+          "value": 0.42,
+          "uid": 3313704540
+        },
+        {
+          "identifier": "hand_tipped_color",
+          "type": 2,
+          "value": [
+            0.28,
+            0.214218,
+            0.1904
+          ],
+          "uid": 3313754434
+        },
+        {
+          "identifier": "hand_tipped_roughness",
+          "type": 0,
+          "value": 0.33,
+          "uid": 3317401139
+        },
+        {
+          "identifier": "patina_spread",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3320537971
+        },
+        {
+          "identifier": "patina_color",
+          "type": 2,
+          "value": [
+            0.86,
+            0.56956,
+            0.4644
+          ],
+          "uid": 3316728192
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364527
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844933
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844934
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364496
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364497
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844938
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844939
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844941
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3741665320
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916810
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3529070440
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2916916792
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916831
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916966699
+        },
+        {
+          "identifier": "specular_level",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3317424095
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3590155530
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3590155643
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3752751489
+        }
+      ]
+    },
+    {
+      "label": "Soft Yellowish Leather",
+      "inputs": [
+        {
+          "identifier": "leather_color",
+          "type": 2,
+          "value": [
+            0.980392,
+            0.854902,
+            0.705882
+          ],
+          "uid": 3246244294
+        },
+        {
+          "identifier": "leather_color_variation",
+          "type": 0,
+          "value": 0.8,
+          "uid": 3246259768
+        },
+        {
+          "identifier": "leather_roughness",
+          "type": 0,
+          "value": 0.7,
+          "uid": 3246244232
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.51,
+          "uid": 3246247013
+        },
+        {
+          "identifier": "hand_tipped_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 3313704540
+        },
+        {
+          "identifier": "hand_tipped_color",
+          "type": 2,
+          "value": [
+            0.91,
+            0.79352,
+            0.6552
+          ],
+          "uid": 3313754434
+        },
+        {
+          "identifier": "hand_tipped_roughness",
+          "type": 0,
+          "value": 0.33,
+          "uid": 3317401139
+        },
+        {
+          "identifier": "patina_spread",
+          "type": 0,
+          "value": 1.0,
+          "uid": 3320537971
+        },
+        {
+          "identifier": "patina_color",
+          "type": 2,
+          "value": [
+            0.86,
+            0.56956,
+            0.4644
+          ],
+          "uid": 3316728192
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364527
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844933
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844934
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364496
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364497
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844938
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844939
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844941
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3741665320
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916810
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3529070440
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2916916792
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916831
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916966699
+        },
+        {
+          "identifier": "specular_level",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3317424095
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3590155530
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3590155643
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3752751489
+        }
+      ]
+    },
+    {
+      "label": "Dark Shiny Leather",
+      "inputs": [
+        {
+          "identifier": "leather_color",
+          "type": 2,
+          "value": [
+            0.419608,
+            0.321569,
+            0.309804
+          ],
+          "uid": 3246244294
+        },
+        {
+          "identifier": "leather_color_variation",
+          "type": 0,
+          "value": 0.41,
+          "uid": 3246259768
+        },
+        {
+          "identifier": "leather_roughness",
+          "type": 0,
+          "value": 0.22,
+          "uid": 3246244232
+        },
+        {
+          "identifier": "grain_intensity",
+          "type": 0,
+          "value": 0.29,
+          "uid": 3246247013
+        },
+        {
+          "identifier": "hand_tipped_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3313704540
+        },
+        {
+          "identifier": "hand_tipped_color",
+          "type": 2,
+          "value": [
+            0.91,
+            0.79352,
+            0.6552
+          ],
+          "uid": 3313754434
+        },
+        {
+          "identifier": "patina_spread",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3320537971
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364527
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844933
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844934
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364496
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 3662364497
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844938
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844939
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3571844941
+        },
+        {
+          "identifier": "channel_ambientocclusion",
+          "type": 4,
+          "value": 1.0,
+          "uid": 3741665320
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916810
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 3529070440
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2916916792
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916916831
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2916966699
+        },
+        {
+          "identifier": "specular_level",
+          "type": 0,
+          "value": 0.35,
+          "uid": 3317424095
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 0.05,
+          "uid": 3590155530
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3590155643
+        },
+        {
+          "identifier": "ambientocclusion_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 3752751489
+        }
+      ]
+    }
+  ]
+}

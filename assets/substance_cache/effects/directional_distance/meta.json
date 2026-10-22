@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Advanced/directional_distance.sbsar",
+  "label": "Directional Distance",
+  "sp_category": "Filter",
+  "keywords": "color,distance,directional,leak,rain",
+  "graph_type": "filter",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

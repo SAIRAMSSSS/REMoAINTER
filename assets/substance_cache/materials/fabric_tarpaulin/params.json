@@ -1,0 +1,427 @@
+{
+  "presets": [
+    {
+      "label": "Rough White Tarp",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.773481,
+            0.773481,
+            0.773481
+          ],
+          "uid": 2564687254
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2562835507
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.12,
+          "uid": 2564605324
+        },
+        {
+          "identifier": "fibers_intensity",
+          "type": 0,
+          "value": 0.2,
+          "uid": 2533977653
+        },
+        {
+          "identifier": "folds_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2564605384
+        },
+        {
+          "identifier": "folds_amount",
+          "type": 4,
+          "value": 6.0,
+          "uid": 2563442358
+        },
+        {
+          "identifier": "wrinkles_intensity",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2564605421
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089482
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860832
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860835
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089525
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089524
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860847
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860846
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860840
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340591
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2399379469
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4035340637
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340602
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035417678
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2292685423
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2292685342
+        }
+      ]
+    },
+    {
+      "label": "Clean Blue Tarp",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.262576,
+            0.385593,
+            0.712707
+          ],
+          "uid": 2564687254
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2562835507
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.12,
+          "uid": 2564605324
+        },
+        {
+          "identifier": "fibers_intensity",
+          "type": 0,
+          "value": 0.3,
+          "uid": 2533977653
+        },
+        {
+          "identifier": "folds_intensity",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2564605384
+        },
+        {
+          "identifier": "folds_amount",
+          "type": 4,
+          "value": 3.0,
+          "uid": 2563442358
+        },
+        {
+          "identifier": "wrinkles_intensity",
+          "type": 0,
+          "value": 0.08,
+          "uid": 2564605421
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089482
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860832
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860835
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089525
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089524
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860847
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860846
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860840
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340591
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2399379469
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4035340637
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340602
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035417678
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2292685423
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2292685342
+        }
+      ]
+    },
+    {
+      "label": "Used Khaki Tarp",
+      "inputs": [
+        {
+          "identifier": "fabric_color",
+          "type": 2,
+          "value": [
+            0.380392,
+            0.403922,
+            0.305882
+          ],
+          "uid": 2564687254
+        },
+        {
+          "identifier": "fabric_color_variation",
+          "type": 0,
+          "value": 0.3,
+          "uid": 2562835507
+        },
+        {
+          "identifier": "fabric_roughness",
+          "type": 0,
+          "value": 0.25,
+          "uid": 2564605324
+        },
+        {
+          "identifier": "fibers_intensity",
+          "type": 0,
+          "value": 0.38,
+          "uid": 2533977653
+        },
+        {
+          "identifier": "folds_intensity",
+          "type": 0,
+          "value": 0.44,
+          "uid": 2564605384
+        },
+        {
+          "identifier": "folds_amount",
+          "type": 4,
+          "value": 7.0,
+          "uid": 2563442358
+        },
+        {
+          "identifier": "wrinkles_intensity",
+          "type": 0,
+          "value": 0.45,
+          "uid": 2564605421
+        },
+        {
+          "identifier": "channel_diffuse",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089482
+        },
+        {
+          "identifier": "channel_basecolor",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860832
+        },
+        {
+          "identifier": "channel_normal",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860835
+        },
+        {
+          "identifier": "channel_specular",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089525
+        },
+        {
+          "identifier": "channel_glossiness",
+          "type": 4,
+          "value": 0.0,
+          "uid": 2266089524
+        },
+        {
+          "identifier": "channel_roughness",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860847
+        },
+        {
+          "identifier": "channel_metallic",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860846
+        },
+        {
+          "identifier": "channel_height",
+          "type": 4,
+          "value": 1.0,
+          "uid": 2310860840
+        },
+        {
+          "identifier": "luminosity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340591
+        },
+        {
+          "identifier": "contrast",
+          "type": 0,
+          "value": 0.0,
+          "uid": 2399379469
+        },
+        {
+          "identifier": "hue_shift",
+          "type": 0,
+          "value": 0.0,
+          "uid": 4035340637
+        },
+        {
+          "identifier": "saturation",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035340602
+        },
+        {
+          "identifier": "normal_intensity",
+          "type": 0,
+          "value": 0.5,
+          "uid": 4035417678
+        },
+        {
+          "identifier": "height_range",
+          "type": 0,
+          "value": 1.0,
+          "uid": 2292685423
+        },
+        {
+          "identifier": "height_position",
+          "type": 0,
+          "value": 0.5,
+          "uid": 2292685342
+        }
+      ]
+    }
+  ]
+}

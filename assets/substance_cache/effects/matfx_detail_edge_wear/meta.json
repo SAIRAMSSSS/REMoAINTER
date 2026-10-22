@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/MatFX/matfx_detail_edge_wear.sbsar",
+  "label": "MatFx Detail Edge Wear",
+  "sp_category": "MatFX",
+  "keywords": "edge,wear,matfx,scratch",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

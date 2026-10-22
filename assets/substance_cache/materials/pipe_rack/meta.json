@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/pipe_rack.sbsar",
+  "label": "Pipe Rack",
+  "sp_category": "Tool",
+  "keywords": "curve;scifi;futuristic;space;spaceship;shuttle;interior;pipe;station;pipeline;product;design;construction",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "sphere"
+}

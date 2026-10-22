@@ -1,0 +1,9 @@
+{
+  "source_file": "effects/Lighting/baked_lighting_environment.sbsar",
+  "label": "Baked Lighting Environment",
+  "sp_category": "Filter",
+  "keywords": "Lighting,Bake,Environment,PBR",
+  "graph_type": "",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}

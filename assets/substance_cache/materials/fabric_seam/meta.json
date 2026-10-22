@@ -1,0 +1,9 @@
+{
+  "source_file": "materials/Tool/fabric_seam.sbsar",
+  "label": "Fabric Seam",
+  "sp_category": "Tool",
+  "keywords": "path,tool,seam,fabric,textile,clothing,apparel,design,fashion",
+  "graph_type": "material",
+  "author": "Adobe",
+  "icon_kind": "flat"
+}
