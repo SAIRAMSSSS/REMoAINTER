@@ -196,6 +196,16 @@ pub struct RemoainterApp {
     pub export_status: String,
     pub baker_tab_idx: usize,
 
+    // Procedural (Graph) Material dialog — engine-backed parametric materials
+    pub show_graph_dialog: bool,
+    pub graph_template_idx: usize,
+    pub graph_seed: u32,
+    pub graph_scale: f32,
+    pub graph_contrast: f32,
+    pub graph_engine: Option<crate::painting::graph::GraphEngine>,
+    pub graph_preview_tex: Option<egui::TextureHandle>,
+    pub graph_status: String,
+
     // New Project Dialog (File > New..., Substance Painter Parity)
     pub show_new_project_dialog: bool,
     pub new_proj_mesh_path: String,
@@ -711,6 +721,15 @@ impl Default for RemoainterApp {
             export_file_format: 0,
             export_padding: 16,
             export_padding_algorithm: 0,
+
+            show_graph_dialog: false,
+            graph_template_idx: 0,
+            graph_seed: 7,
+            graph_scale: 8.0,
+            graph_contrast: 0.5,
+            graph_engine: None,
+            graph_preview_tex: None,
+            graph_status: String::new(),
             export_status: String::new(),
             baker_tab_idx: 0,
 
@@ -1944,6 +1963,311 @@ impl RemoainterApp {
             }
         }
     }
+
+    // ── Procedural (Graph) Material — engine-backed parametric materials ──
+
+    pub const GRAPH_TEMPLATES: [&str; 6] = [
+        "Clouds / FBM Noise",
+        "Grain",
+        "Blotches (Soft Spots)",
+        "Marble",
+        "Brick",
+        "Crystal (Voronoi)",
+    ];
+
+    fn build_graph_template(&self, kind: usize) -> crate::painting::graph::Graph {
+        use crate::painting::graph::{Graph, GraphNodeBody};
+        let seed = self.graph_seed;
+        let scale = self.graph_scale.max(1.0);
+        let contrast = self.graph_contrast;
+        let mut graph = Graph::new();
+        let out = graph.add_node(GraphNodeBody::output()).expect("output node");
+        let link = |graph: &mut Graph, from: crate::painting::graph::GraphNodeId| {
+            let _ = graph.connect(from, out, 0);
+        };
+        match kind {
+            0 => {
+                let n = graph.add_node(GraphNodeBody::FbmNoise {
+                        seed,
+                        octaves: 6,
+                        scale,
+                        gain: 0.55,
+                        contrast,
+                        color_a: [0.16, 0.28, 0.56, 1.0],
+                        color_b: [0.66, 0.78, 0.92, 1.0],
+                    }).expect("fbm");
+                link(&mut graph, n);
+            }
+            1 => {
+                let n = graph.add_node(GraphNodeBody::WhiteNoise {
+                        seed,
+                        cells: (scale * 2.0).max(2.0) as u32,
+                        color_a: [0.12, 0.12, 0.13, 1.0],
+                        color_b: [0.92, 0.92, 0.90, 1.0],
+                    }).expect("grain");
+                link(&mut graph, n);
+            }
+            2 => {
+                // Blotches: jittered spots, then soften with gaussian blur.
+                let n = graph.add_node(GraphNodeBody::BnWSpots {
+                        seed,
+                        cells: scale.max(2.0) as u32,
+                        radius: 0.9,
+                        falloff: 1.8,
+                        invert: false,
+                    }).expect("spots");
+                let blur = graph.add_node(GraphNodeBody::GaussianBlur {
+                        radius: (scale * 0.25).clamp(1.0, 6.0),
+                    }).expect("blur");
+                let _ = graph.connect(n, blur, 0);
+                let _ = graph.connect(blur, out, 0);
+            }
+            3 => {
+                let n = graph.add_node(GraphNodeBody::Marble {
+                        seed,
+                        veins: scale * 0.5 + 2.0,
+                        turbulence: 2.0 + contrast * 6.0,
+                        octaves: 5,
+                        color_a: [0.06, 0.06, 0.07, 1.0],
+                        color_b: [0.93, 0.93, 0.90, 1.0],
+                    }).expect("marble");
+                link(&mut graph, n);
+            }
+            4 => {
+                let n = graph.add_node(GraphNodeBody::Brick {
+                        seed,
+                        cols: scale as u32,
+                        rows: (scale / 2.0).ceil() as u32,
+                        mortar: 0.06,
+                        bevel: 0.10,
+                        brick_color: [0.47, 0.19, 0.11, 1.0],
+                        mortar_color: [0.26, 0.24, 0.22, 1.0],
+                    }).expect("brick");
+                link(&mut graph, n);
+            }
+            _ => {
+                let n = graph.add_node(GraphNodeBody::Crystal {
+                        seed,
+                        cells: scale.max(2.0) as u32,
+                        edge_width: 0.16,
+                        edge_darkness: 0.9,
+                        color_a: [0.38, 0.52, 0.62, 1.0],
+                        color_b: [0.10, 0.14, 0.18, 1.0],
+                    }).expect("crystal");
+                link(&mut graph, n);
+            }
+        }
+        let _ = graph.set_output(out);
+        graph
+    }
+
+    /// (Re)builds the graph engine from the current template + parameter state.
+    fn graph_reset_engine(&mut self) {
+        let ctx = crate::painting::graph::GraphContext::new(128, 128, self.graph_seed);
+        let graph = self.build_graph_template(self.graph_template_idx);
+        self.graph_engine = Some(crate::painting::graph::GraphEngine::new(graph, ctx));
+        self.graph_preview_tex = None;
+    }
+
+    /// Applies the graph output to a brand-new paint layer's base color.
+    fn graph_apply_to_document(&mut self) {
+        if self.graph_engine.is_none() {
+            self.graph_reset_engine();
+        }
+        let (w, h) = (self.layer_stack.width, self.layer_stack.height);
+        let Some(engine) = self.graph_engine.as_mut() else { return };
+        engine.context.width = w;
+        engine.context.height = h;
+        match engine.render() {
+            Ok(buf) => {
+                if buf.len() != (w * h) as usize {
+                    self.status_message =
+                        "Graph buffer size mismatch — resolution change mid-render".into();
+                    return;
+                }
+                let id = self.layer_stack.layers.len() + 1;
+                let name = format!(
+                    "Graph: {}",
+                    Self::GRAPH_TEMPLATES
+                        .get(self.graph_template_idx)
+                        .copied()
+                        .unwrap_or("Material")
+                );
+                let mut layer = crate::painting::Layer::new_paint(id, name.clone(), w, h);
+                layer.color_buffer.copy_from_slice(&buf);
+                self.layer_stack.layers.push(layer);
+                self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                self.recompute_composite();
+                self.texture_needs_update = true;
+                self.status_message =
+                    "Procedural material applied to a new paint layer".into();
+                self.history.push(format!(
+                    "{:02}  Apply Graph Material ({})",
+                    self.history.len() + 1,
+                    name
+                ));
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    format!("Applied procedural '{}' at {}x{}", name, w, h),
+                ));
+            }
+            Err(e) => {
+                self.status_message = format!("Graph render failed: {e}");
+            }
+        }
+        self.graph_preview_tex = None;
+    }
+
+    pub fn ui_graph_dialog(&mut self, ctx: &egui::Context) {
+        let mut open = true;
+        egui::Window::new("⚗ Procedural (Graph) Material — REMoAINTER")
+            .open(&mut open)
+            .resizable(true)
+            .default_width(340.0)
+            .show(ctx, |ui| {
+                if self.graph_engine.is_none() {
+                    self.graph_reset_engine();
+                }
+
+                // Template selector
+                let templates = Self::GRAPH_TEMPLATES;
+                egui::ComboBox::from_id_salt("graph_template_combo")
+                    .selected_text(templates.get(self.graph_template_idx).copied().unwrap_or(""))
+                    .width(200.0)
+                    .show_ui(ui, |ui| {
+                        for (i, name) in templates.iter().enumerate() {
+                            if ui.selectable_label(i == self.graph_template_idx, *name).clicked() {
+                                self.graph_template_idx = i;
+                                self.graph_reset_engine();
+                            }
+                        }
+                    });
+
+                // Parameters (each change rebuilds + re-renders)
+                let mut changed = false;
+                ui.add_space(4.0);
+                egui::Grid::new("graph_params").num_columns(2).show(ui, |ui| {
+                    ui.label("Seed:");
+                    if ui
+                        .add(
+                            egui::DragValue::new(&mut self.graph_seed)
+                                .range(1..=9_999)
+                                .speed(1.0),
+                        )
+                        .changed()
+                    {
+                        changed = true;
+                    }
+                    ui.end_row();
+
+                    ui.label("Scale:");
+                    if ui
+                        .add(
+                            egui::Slider::new(&mut self.graph_scale, 1.0..=64.0)
+                                .integer()
+                                .show_value(true),
+                        )
+                        .changed()
+                    {
+                        changed = true;
+                    }
+                    ui.end_row();
+
+                    ui.label("Contrast:");
+                    if ui
+                        .add(egui::Slider::new(&mut self.graph_contrast, 0.0..=1.0))
+                        .changed()
+                    {
+                        changed = true;
+                    }
+                    ui.end_row();
+                });
+
+                if changed {
+                    self.graph_reset_engine();
+                }
+
+                ui.add_space(6.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Live preview (re-rendered when invalidated; engine memoizes).
+                let want_preview = self.graph_preview_tex.is_none();
+                if want_preview || changed {
+                    if let Some(engine) = self.graph_engine.as_mut() {
+                        engine.context.width = 128;
+                        engine.context.height = 128;
+                        match engine.render() {
+                            Ok(buf) => {
+                                let side = 128usize;
+                                let mut rgba = Vec::with_capacity(side * side * 4);
+                                for px in buf.iter() {
+                                    rgba.push((px[0].clamp(0.0, 1.0) * 255.0) as u8);
+                                    rgba.push((px[1].clamp(0.0, 1.0) * 255.0) as u8);
+                                    rgba.push((px[2].clamp(0.0, 1.0) * 255.0) as u8);
+                                    rgba.push((px[3].clamp(0.0, 1.0) * 255.0) as u8);
+                                }
+                                let img = egui::ColorImage::from_rgba_unmultiplied(
+                                    [side, side],
+                                    &rgba,
+                                );
+                                let existing = self.graph_preview_tex.take();
+                                if let Some(mut h) = existing {
+                                    h.set(img, egui::TextureOptions::default());
+                                    self.graph_preview_tex = Some(h);
+                                } else {
+                                    self.graph_preview_tex = Some(ctx.load_texture(
+                                        "graph_material_preview",
+                                        img,
+                                        egui::TextureOptions::default(),
+                                    ));
+                                }
+                            }
+                            Err(e) => {
+                                self.graph_status = format!("Preview error: {e}");
+                            }
+                        }
+                    }
+                }
+                if let Some(tex) = self.graph_preview_tex.as_ref() {
+                    let side = 160.0;
+                    ui.vertical_centered(|ui| {
+                        ui.image(egui::load::SizedTexture::new(
+                            tex.id(),
+                            egui::vec2(side, side),
+                        ));
+                    });
+                }
+                if !self.graph_status.is_empty() {
+                    ui.colored_label(SUN_FLOWER, egui::RichText::new(&self.graph_status));
+                }
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(egui::Button::new(egui::RichText::new("⚡ Apply to New Paint Layer").strong())
+                        )
+                        .clicked()
+                    {
+                        self.graph_apply_to_document();
+                    }
+                    if ui.button("Close").clicked() {
+                        self.show_graph_dialog = false;
+                        ui.close_menu();
+                    }
+                });
+                ui.add_space(2.0);
+                ui.label(
+                    egui::RichText::new(
+                        "Preview renders at 128²; Apply renders at the current texture-set resolution.",
+                    ).weak().small()
+                );
+            });
+        if !open {
+            self.show_graph_dialog = false;
+        }
+    }
+
 }
 
 impl eframe::App for RemoainterApp {
@@ -2302,6 +2626,9 @@ impl eframe::App for RemoainterApp {
             if self.show_export_dialog {
                 self.ui_export_modal(ctx);
             }
+            if self.show_graph_dialog {
+                self.ui_graph_dialog(ctx);
+            }
             if self.show_preferences_dialog {
                 self.ui_preferences_modal(ctx);
             }
@@ -2507,6 +2834,14 @@ impl eframe::App for RemoainterApp {
                         }
 
                         ui.separator();
+                        if ui
+                            .button("Procedural (Graph) Material...")
+                            .clicked()
+                        {
+                            self.show_graph_dialog = true;
+                            self.graph_reset_engine();
+                            ui.close_menu();
+                        }
                         if ui.button("Preferences...").clicked() {
                             self.show_preferences_dialog = true;
                             ui.close_menu();
@@ -8505,7 +8840,27 @@ Res: {}×{}",
                             ui.label("High poly mesh suffix");
                             ui.text_edit_singleline(&mut self.baker_high_suffix);
                             ui.end_row();
+
+                            // Substance parity: nearest-shell fallback when the
+                            // name suffixes cannot pair a low/high shell pair.
+                            let _ = ui.checkbox(&mut self.baker_options.match_by_shell, "Match by Shell (name miss fallback)");
+                            ui.end_row();
                         }
+
+                        ui.label("Output Depth");
+                        egui::ComboBox::from_id_salt("baker_depth_combo")
+                            .selected_text(match self.baker_options.map_format {
+                                crate::baker::engine::BakedMapFormat::U8 => "8-bit Unorm",
+                                crate::baker::engine::BakedMapFormat::F16 => "16-bit Float (Half)",
+                                crate::baker::engine::BakedMapFormat::F32 => "32-bit Float",
+                            })
+                            .show_ui(ui, |ui| {
+                                use crate::baker::engine::BakedMapFormat;
+                                let _ = ui.selectable_value(&mut self.baker_options.map_format, BakedMapFormat::F32, "32-bit Float");
+                                let _ = ui.selectable_value(&mut self.baker_options.map_format, BakedMapFormat::F16, "16-bit Float (Half)");
+                                let _ = ui.selectable_value(&mut self.baker_options.map_format, BakedMapFormat::U8, "8-bit Unorm");
+                            });
+                        ui.end_row();
                     });
                 } else {
                     // MAP-SPECIFIC PARAMETERS

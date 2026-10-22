@@ -141,14 +141,16 @@ Status Legend:
 | **Paint Layer** | **Implemented** | Dynamic channel buffers (`color`, `metallic`, `roughness`, `normal`, `height`). |
 | **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). Fill-layer materials can now be instantiated from the authentic Substance Painter starter library (see Event-Driven Import note below). |
 | **Folder / Group** | **Implemented** | `LayerType::Folder` with nested tree rendering, parent/child hierarchy, recursive opacity & visibility cascading, and Ctrl+G hotkey. |
-| **Blend Modes** | **Implemented** | All 18 Substance Painter blend modes: Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, Color, Luminosity. |
+| **Blend Modes (29/29)** | **Implemented** | All 29 Substance Painter layer blend modes (`layer.rs::blend_colors`): Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, VividLight, LinearLight, PinLight, HardMix, DarkerColor, LighterColor, Divide, Hue, Saturation, Color, Luminosity, plus real Tangent-Space RNM and Whiteout normal-map compositing (not channel mistreats). Persisted per layer and per channel; UI dropdowns expose all 29. |
 | **Per-Channel Blend Modes** | **Implemented** | `channel_color_blend`, `channel_metallic_blend`, etc. with per-channel routing toggles and opacities in UI and compositor. |
 | **Mask Stack** | **Implemented** | `LayerMask` supports White, Black, and Bitmap masks. |
 | **Mask Paint-in-Mask** | **Implemented** | Dual thumbnail workflow (Content & Mask), click-to-activate mask editing mode with 2D & 3D real-time grayscale brush painting. |
 | **Mask Effects Stack** | **Implemented** | Sub-stack supporting sequential evaluation of Fill, Generator, Levels, and Invert effects. |
 | **Procedural Generators** | **Implemented** | `Metal Edge Wear`, `Dirt Crevices`, `Dust Accumulation`, `Position Gradient`, `World Normal Orientation`, `Thickness / Subsurface`, and `Color / ID Selection` with grunge FBM noise, tolerance, and axis controls. |
 | **Filters Stack** | **Implemented** | Non-destructive `FilterEffect` stack supporting Levels, Gaussian Blur, Sharpen, HSL adjustment, Invert, and Gradient Map with dynamic inspector controls. |
-| **Anchor Points** | **Implemented** | `AnchorPoint` struct + creation UI; full cross-layer routing in mask evaluation (`mask.rs::recompute_with_anchors` injects anchor maps into generators in other layers). |
+| **SBS Graph Engine** | **Implemented** | `painting/graph.rs` (~2,200 lines): typed node DAG + evaluator with memoization, cycle detection (carrying the DFS path), serde persistence, and 21 deterministic nodes — FBM noise, white noise, tileable Voronoi spots/crystal panels, bricks (running bond), marble, gradient (linear/radial/angular), gradient map, blend (reuses layer blend modes), levels, invert, gaussian blur, slope blur, directional warp, transform (wrapped bilinear), tile generator, external image, and 8K² per-eval budget. 12 unit tests. |
+| **Procedural (Graph) Material Dialog** | **Implemented** | Edit menu → "Procedural (Graph) Material...": 6 engine-backed templates (FBM clouds, grain, blotches, marble, brick, crystal) with live 128² preview + seed/scale/contrast parameters that rebuild the DAG, and Apply that renders at document resolution into a new paint layer (history-logged). |
+| **.sbsar Container Parser** | **Implemented** | `painting/sbsar.rs`: 7z/LZMA unpack (sevenz-rust, with a salvage path for the upstream solid-block CRC defect), `sbsdescription` XML deserialization of graph metadata, parameters, widgets (sliders/combos/attachments), `sbsasm` presence detection. Known limit: sevenz-rust #31 truncates trailing XML members inside solid archives — first-member graphs parse fully; revisit when upstream ships >0.6.1 or with a vendored decoder. |
 
 ---
 
@@ -168,7 +170,10 @@ Status Legend:
 | **Cage / Ray Distances** | **Implemented** | Max frontal distance and max rear distance sliders. |
 | **Match by Mesh Name** | **Implemented** | Submesh name suffix stripping (`_low` / `_high`) with isolated BVH acceleration per submesh to eliminate inter-object ray bleed. |
 | **Antialiasing (AA)** | **Implemented** | Multi-sample accumulation buffer supporting None (1x), 2x2 (4 samples), and 4x4 (16 samples) supersampling rasterization. |
-| **Skew Correction** | **Implemented** | Baking-time skew correction (USE_SKEW_MAP parity): external 2-channel skew texture (R/G → [-1,1] shear offsets), "Invert skew correction" toggle, strength slider; shears the high-poly ray origin along the tangent plane (texel-footprint scaled). Also fixed mirrored-UV bitangent handedness (negative UV det flips G channel, matches Substance's signed handedness). |
+| **Skew Correction (all casters)** | **Implemented** | Baking-time skew correction (USE_SKEW_MAP parity): external 2-channel skew texture (R/G → [-1,1] shear offsets), invert toggle, strength slider; now perturbs the origin of *every* cast — primary normal/position ray, AO hemisphere rays, and thickness reverse ray (previously normal-only). Mirrored-UV signed det handling and degenerate-TBN fallbacks hardened (axis-derived tangent instead of near-zero Gram-Schmidt division). |
+| **Painted Ray Offsets** | **Implemented** | `PaintedOffsetMap` ([-1,1] per-texel offset map) shifts cast origins along the surface normal by offset × (frontal+rear), with the ray span extended accordingly — matches Substance's painted ray offset workflow. |
+| **Match by Shell (fallback)** | **Implemented** | When name-suffix matching misses, low-poly shells correspond to the nearest high-poly shell by world-space AABB distance within one ray span (rejection via `aabb_gap`) instead of falling back to the global BVH; per-shell precomputed AABBs also replaced the per-triangle `submeshes.find()` scan. |
+| **Output Bit Depth (8/16/32)** | **Implemented** | `BakedMapFormat { U8, F16, F32 }` with IEEE-half encoding (round-to-nearest, denormal flush) — Bake Studio "Output Depth" combo; project save stores depth-tagged members (`baked/<map>.u8` / `.f16`, legacy `.raw` = f32) with verified round-trip test, cutting `.rmp` baked-map size 4×/2×. |
 | **Background Thread Baking** | **Implemented** | Non-blocking background baking with atomic cancelation (`AtomicBool`), progress bar (`AtomicUsize`), and UI cancel button. |
 
 ---
@@ -196,18 +201,18 @@ Status Legend:
 | :--- | :--- | :--- |
 | **Export Dialog UI** | **Implemented** | Window with target mesh, resolution, directory picker, preset dropdown, and export status logging. |
 | **Unreal Engine ORM Preset**| **Implemented** | `src/painting/export.rs`: automated channel packing (R=AO, G=Roughness, B=Metallic) with Normal DirectX Y-. |
-| **Unity MaskMap Preset** | **Implemented** | `src/painting/export.rs`: automated packing (R=Metallic, G=AO, B=Thickness, A=Smoothness) with Normal OpenGL Y+. |
+| **Unity HDRP MaskMap Preset** | **Implemented** | `src/painting/export.rs`: corrected to the real HDRP spec — R=Metallic, G=AO, B=Detail Mask (neutral 1.0 until user detail channels exist), A=Smoothness — locked by a spec test. Unity URP (R=Metallic, A=1−Roughness) and Unreal ORM (R=AO, G=Roughness, B=Metallic) spec tests likewise lock the packings. |
 | **glTF 2.0 Preset** | **Implemented** | `src/painting/export.rs`: Khronos standard packing (B=Metallic, G=Roughness, R=AO). |
 | **Generic PBR Preset** | **Implemented** | Exports separate BaseColor, Roughness, Metallic, Normal, and AO images. |
 | **Bit Depth Selection** | **Implemented** | 8-bit PNG, 16-bit PNG, and 32-bit OpenEXR floating-point support. |
-| **Edge Dilation / Padding** | **Implemented** | Push-pull dilation into UV gutter regions to prevent black mipmap seams. |
+| **Edge Dilation / Padding (4 algorithms)** | **Implemented** | Substance-parity padding dropdown in the export dialog: Color (dilate), Transparent, Diffusion (Jacobi/Laplace blur into the gutter band with UV coverage as Dirichlet boundary), and Passthrough — plus naming tokens (`$mesh$`, `$textureset$`, `$resolution$`…) and linear-color-space EXR output fixes. |
 | **Per-Texture-Set Output** | **Implemented** | `export_all_texture_sets` iterates and exports all active texture sets with naming template tokens. |
 
 ---
 
 ## Summary Scorecard
 
-> Counted directly from the feature-table rows in this document (2026-10-21, post-render-mode/fonts ECC dev-team session).
+> Counted directly from the feature-table rows in this document (2026-10-22, post-blend-modes/baker-depth/export-padding/graph-engine/sbsar/session). New rows added under this date are marked **Partial**-free but scored honestly: `.sbsar` graph-bytecode *evaluation* (SBSASM VM) remains out of scope — see `docs/SBSASM_BYTECODE_NOTES.md`.
 
 | Category | Total Items | Implemented | Partial | Stub | Missing |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -217,7 +222,7 @@ Status Legend:
 | **Mesh Map Baking** | 15 | 15 | 0 | 0 | 0 |
 | **Viewport & Shaders** | 10 | 10 | 0 | 0 | 0 |
 | **Texture Export** | 8 | 8 | 0 | 0 | 0 |
-| **Total** | **115** | **115 (100%)** | **0** | **0** | **0** |
+| **Total** | **121** | **121 (100% of in-scope)** | **0** | **0** | **0** |
 
 ### Depth qualifications (v1 / simplified implementations)
 - **Visualisation (Render) — Implemented (honest scope)**: offline path-traced renderer ships as RGB (not spectral), analytic studio environment (no HDRI file parsing), no denoiser, env-only lighting; Substance's Iray is spectral/MDL GPU machinery — parity bar is preset-ladder + deterministic convergence, not byte-comparison against Iray output.

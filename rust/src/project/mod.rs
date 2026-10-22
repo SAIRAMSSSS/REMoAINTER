@@ -6,7 +6,10 @@ use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::{ZipArchive, ZipWriter};
 
-use crate::baker::engine::{BakedMaps, BakerOptions};
+use crate::baker::engine::{
+    decode_scalar_plane, decode_vec3_plane, decode_vec4_plane, encode_scalar_plane,
+    encode_vec3_plane, encode_vec4_plane, BakedMapFormat, BakedMaps, BakerOptions,
+};
 use crate::graphics::mesh::Mesh;
 use crate::painting::anchor::AnchorPoint;
 use crate::painting::filter::FilterEffect;
@@ -109,10 +112,32 @@ pub struct BakerOptionsManifest {
     pub skew_invert: bool,
     #[serde(default = "default_skew_strength")]
     pub skew_strength: f32,
+    /// Output depth used when baking + the encoding of the baked planes stored
+    /// in this archive (`baked/<map>.u8` / `.f16`, plain `.raw` = f32).
+    #[serde(default)]
+    pub map_format: BakedMapFormat,
+    /// Nearest-shell fallback when mesh-name matching fails to pair a shell.
+    #[serde(default)]
+    pub match_by_shell: bool,
 }
 
 pub fn default_skew_strength() -> f32 {
     0.6
+}
+
+pub fn default_map_format() -> BakedMapFormat {
+    BakedMapFormat::F32
+}
+
+/// Archive member name for a baked map at the project's bake output depth.
+/// Legacy f32 planes keep the original `baked/<map>.raw` name so older app
+/// versions and older projects stay load-compatible.
+fn baked_plane_file(base: &str, fmt: BakedMapFormat) -> String {
+    match fmt {
+        BakedMapFormat::F32 => format!("baked/{}.raw", base),
+        BakedMapFormat::U8 => format!("baked/{}.u8", base),
+        BakedMapFormat::F16 => format!("baked/{}.f16", base),
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -281,6 +306,8 @@ impl ProjectManager {
                 use_skew_correction: baker_options.use_skew_correction,
                 skew_invert: baker_options.skew_invert,
                 skew_strength: baker_options.skew_strength,
+                map_format: baker_options.map_format,
+                match_by_shell: baker_options.match_by_shell,
             },
             camera_yaw: camera.0,
             camera_pitch: camera.1,
@@ -361,48 +388,67 @@ impl ProjectManager {
             }
         }
 
-        // 4. Write Baked Mesh Maps
+        // 4. Write Baked Mesh Maps — encoded at the project's bake output depth
+        // (`baked/<map>.raw` = f32 legacy, `.u8` = 8-bit, `.f16` = half float).
+        let baked_fmt = baker_options.map_format;
+        let write_plane = |zip: &mut zip::ZipWriter<std::fs::File>,
+                           name: &str,
+                           bytes: &[u8]|
+         -> Result<(), String> {
+            if bytes.is_empty() {
+                return Ok(());
+            }
+            zip.start_file(name, options).map_err(|e| e.to_string())?;
+            zip.write_all(bytes).map_err(|e| e.to_string())
+        };
         if let Some(ref ao) = baked_maps.ambient_occlusion {
-            zip.start_file("baked/ao.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(ao);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("ao", baked_fmt),
+                &encode_scalar_plane(ao, baked_fmt),
+            )?;
         }
         if let Some(ref curv) = baked_maps.curvature {
-            zip.start_file("baked/curvature.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(curv);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("curvature", baked_fmt),
+                &encode_scalar_plane(curv, baked_fmt),
+            )?;
         }
         if let Some(ref norm) = baked_maps.normal {
-            zip.start_file("baked/normal.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(norm);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("normal", baked_fmt),
+                &encode_vec3_plane(norm, baked_fmt),
+            )?;
         }
         if let Some(ref wsn) = baked_maps.world_space_normal {
-            zip.start_file("baked/world_space_normal.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(wsn);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("world_space_normal", baked_fmt),
+                &encode_vec3_plane(wsn, baked_fmt),
+            )?;
         }
         if let Some(ref pos) = baked_maps.position {
-            zip.start_file("baked/position.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(pos);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("position", baked_fmt),
+                &encode_vec3_plane(pos, baked_fmt),
+            )?;
         }
         if let Some(ref thick) = baked_maps.thickness {
-            zip.start_file("baked/thickness.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(thick);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("thickness", baked_fmt),
+                &encode_scalar_plane(thick, baked_fmt),
+            )?;
         }
         if let Some(ref id_map) = baked_maps.id {
-            zip.start_file("baked/id.raw", options)
-                .map_err(|e| e.to_string())?;
-            let slice: &[u8] = bytemuck::cast_slice(id_map);
-            zip.write_all(slice).map_err(|e| e.to_string())?;
+            write_plane(
+                &mut zip,
+                &baked_plane_file("id", baked_fmt),
+                &encode_vec4_plane(id_map, baked_fmt),
+            )?;
         }
 
         zip.finish()
@@ -641,47 +687,64 @@ impl ProjectManager {
             is_cancelled: false,
         };
 
-        if let Ok(mut zf) = zip.by_name("baked/ao.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[f32] = bytemuck::cast_slice(&bytes);
-            baked_maps.ambient_occlusion = Some(slice.to_vec());
+        // Read Baked Mesh Maps — decode from the depth the project was saved
+        // with; legacy archives (plain `.raw`, pre-depth-bake) decode as f32.
+        let baked_fmt = manifest.baker_options.map_format;
+        let read_plane = |zip: &mut zip::ZipArchive<std::fs::File>, base: &str| -> Vec<u8> {
+            // Depth-tagged name first, then the legacy `.raw` name.
+            for name in [
+                baked_plane_file(base, baked_fmt),
+                format!("baked/{}.raw", base),
+            ] {
+                if let Ok(mut zf) = zip.by_name(&name) {
+                    let mut bytes = Vec::new();
+                    let _ = zf.read_to_end(&mut bytes);
+                    return bytes;
+                }
+            }
+            Vec::new()
+        };
+        {
+            let bytes = read_plane(&mut zip, "ao");
+            if !bytes.is_empty() {
+                baked_maps.ambient_occlusion = Some(decode_scalar_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/curvature.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[f32] = bytemuck::cast_slice(&bytes);
-            baked_maps.curvature = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "curvature");
+            if !bytes.is_empty() {
+                baked_maps.curvature = Some(decode_scalar_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/normal.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[[f32; 3]] = bytemuck::cast_slice(&bytes);
-            baked_maps.normal = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "normal");
+            if !bytes.is_empty() {
+                baked_maps.normal = Some(decode_vec3_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/world_space_normal.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[[f32; 3]] = bytemuck::cast_slice(&bytes);
-            baked_maps.world_space_normal = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "world_space_normal");
+            if !bytes.is_empty() {
+                baked_maps.world_space_normal = Some(decode_vec3_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/position.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[[f32; 3]] = bytemuck::cast_slice(&bytes);
-            baked_maps.position = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "position");
+            if !bytes.is_empty() {
+                baked_maps.position = Some(decode_vec3_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/thickness.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[f32] = bytemuck::cast_slice(&bytes);
-            baked_maps.thickness = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "thickness");
+            if !bytes.is_empty() {
+                baked_maps.thickness = Some(decode_scalar_plane(&bytes, baked_fmt));
+            }
         }
-        if let Ok(mut zf) = zip.by_name("baked/id.raw") {
-            let mut bytes = Vec::new();
-            let _ = zf.read_to_end(&mut bytes);
-            let slice: &[[f32; 4]] = bytemuck::cast_slice(&bytes);
-            baked_maps.id = Some(slice.to_vec());
+        {
+            let bytes = read_plane(&mut zip, "id");
+            if !bytes.is_empty() {
+                baked_maps.id = Some(decode_vec4_plane(&bytes, baked_fmt));
+            }
         }
 
         let baker_options = BakerOptions {
@@ -710,6 +773,8 @@ impl ProjectManager {
             use_skew_correction: manifest.baker_options.use_skew_correction,
             skew_invert: manifest.baker_options.skew_invert,
             skew_strength: manifest.baker_options.skew_strength,
+            map_format: manifest.baker_options.map_format,
+            match_by_shell: manifest.baker_options.match_by_shell,
             skew_map: None,
         };
 
@@ -782,6 +847,8 @@ mod tests {
                 use_skew_correction: false,
                 skew_invert: false,
                 skew_strength: 0.6,
+                map_format: BakedMapFormat::F32,
+                match_by_shell: false,
             },
             camera_yaw: 45.0,
             camera_pitch: 15.0,
@@ -853,6 +920,71 @@ mod tests {
         assert_eq!(loaded_mesh.vertices.len(), mesh.vertices.len());
 
         // Cleanup
+        let _ = fs::remove_file(project_path);
+        let _ = fs::remove_dir(temp_dir);
+    }
+
+    /// Bake output depth: planes saved at 16-bit half round-trip back to f32
+    /// within half precision, and land in depth-tagged archive members.
+    #[test]
+    fn test_project_baked_plane_f16_roundtrip() {
+        use crate::baker::engine::BakedMapFormat;
+
+        let temp_dir = std::env::temp_dir().join("remoainter_test_save_load");
+        let _ = fs::create_dir_all(&temp_dir);
+        let project_path = temp_dir.join("test_roundtrip_f16.rmp");
+
+        let mesh = Mesh::create_material_sphere(16, 16);
+        let mut layer_stack = LayerStack::new(64, 64);
+        layer_stack.layers.clear();
+        layer_stack.recompute_composite();
+
+        // Two known f32 AO samples that stress half precision (banded tail).
+        let baked_maps = BakedMaps {
+            resolution: 64,
+            ambient_occlusion: Some(vec![0.5, 0.002_003]),
+            curvature: None,
+            normal: None,
+            world_space_normal: None,
+            position: None,
+            thickness: Some(vec![0.75]),
+            id: None,
+            is_cancelled: false,
+        };
+        let mut baker_options = BakerOptions::default();
+        baker_options.map_format = BakedMapFormat::F16;
+
+        let save_res = ProjectManager::save_project(
+            &project_path,
+            "F16Roundtrip",
+            &mesh,
+            None,
+            &layer_stack,
+            &baked_maps,
+            &baker_options,
+            (45.0, 15.0, 2.5),
+            (0.0, 1.0, 0.0, 0),
+        );
+        assert!(save_res.is_ok(), "save failed: {:?}", save_res.err());
+
+        // The archive must carry depth-tagged members (legacy `.raw` absent).
+        let mut zf = zip::ZipArchive::new(std::fs::File::open(&project_path).unwrap()).unwrap();
+        assert!(zf.by_name("baked/ao.f16").is_ok(), "missing ao.f16 member");
+        assert!(zf.by_name("baked/thickness.f16").is_ok(), "missing thickness.f16 member");
+        assert!(zf.by_name("baked/ao.raw").is_err(), "legacy .raw should not exist for F16 projects");
+        drop(zf);
+
+        let load_res = ProjectManager::load_project(&project_path);
+        assert!(load_res.is_ok(), "load failed: {:?}", load_res.err());
+        let (manifest, _, _, loaded_maps, _) = load_res.unwrap();
+        assert_eq!(manifest.baker_options.map_format, BakedMapFormat::F16);
+
+        let ao = loaded_maps.ambient_occlusion.expect("ao decoded");
+        let half = crate::baker::engine::half_bits_to_f32(
+            crate::baker::engine::f32_to_half_bits(0.5),
+        );
+        assert_eq!(ao[0], half, "0.5 must survive the f16 round-trip exactly");
+
         let _ = fs::remove_file(project_path);
         let _ = fs::remove_dir(temp_dir);
     }

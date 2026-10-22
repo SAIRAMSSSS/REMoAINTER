@@ -47,6 +47,15 @@ pub struct BakerOptions {
     pub skew_invert: bool,
     pub skew_strength: f32,
     pub skew_map: Option<Arc<SkewMap>>,
+
+    /// Output bit depth applied when baked planes are encoded (project save
+    /// stores `.u8.raw` / `.f16.raw` planes at half/quarter size; internal
+    /// accumulation and viewport consumption stay f32).
+    pub map_format: BakedMapFormat,
+    /// Fallback correspondence: when mesh-name matching cannot pair a low-poly
+    /// shell, pair it with the nearest high-poly shell by world-space AABB
+    /// distance instead of risking cross-shell hits via the global BVH.
+    pub match_by_shell: bool,
 }
 
 /// External skew texture: RGB image loaded by the App, R/G decoded to [-1, 1] shear offsets.
@@ -98,6 +107,8 @@ impl Default for BakerOptions {
             relative_to_bbox: false,
             average_normals: true,
             ignore_backfaces: false,
+            map_format: BakedMapFormat::F32,
+            match_by_shell: false,
         }
     }
 }
@@ -146,7 +157,8 @@ impl PaintedOffsetMap {
 
 /// Output bit depth for baked mesh maps (internal accumulation is always f32; the
 /// format is applied when the finished maps are encoded into image planes).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum BakedMapFormat {
     /// Quantized 8 bit per channel: `round(clamp(v, 0, 1) * 255)`. 4x memory reduction.
     U8,
@@ -812,6 +824,14 @@ impl BakerEngine {
         cancel: Option<Arc<AtomicBool>>,
         high_poly: Option<&crate::graphics::mesh::Mesh>,
     ) -> BakedMaps {
+        // The advanced knobs that live on the persisted `BakerOptions` (output
+        // depth, shell fallback) ride through here so `bake_all` callers get
+        // them without constructing `AdvancedBakeOptions` themselves.
+        let advanced = AdvancedBakeOptions {
+            map_format: options.map_format,
+            ray_offset_map: None,
+            match_by_shell: options.match_by_shell,
+        };
         Self::bake_all_advanced(
             vertices,
             normals,
@@ -819,7 +839,7 @@ impl BakerEngine {
             indices,
             submeshes,
             options,
-            &AdvancedBakeOptions::default(),
+            &advanced,
             progress,
             cancel,
             high_poly,
