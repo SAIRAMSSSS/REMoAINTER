@@ -198,6 +198,10 @@ pub struct RemoainterApp {
 
     // Procedural (Graph) Material dialog — engine-backed parametric materials
     pub show_graph_dialog: bool,
+    pub show_sbsar_import_dialog: bool,
+    pub imported_sbsar: Option<crate::painting::sbsar::SbsarPackage>,
+    pub sbsar_param_values: std::collections::BTreeMap<String, f32>,
+    pub sbsar_status: String,
     pub graph_template_idx: usize,
     pub graph_seed: u32,
     pub graph_scale: f32,
@@ -723,6 +727,10 @@ impl Default for RemoainterApp {
             export_padding_algorithm: 0,
 
             show_graph_dialog: false,
+            show_sbsar_import_dialog: false,
+            imported_sbsar: None,
+            sbsar_param_values: std::collections::BTreeMap::new(),
+            sbsar_status: String::new(),
             graph_template_idx: 0,
             graph_seed: 7,
             graph_scale: 8.0,
@@ -2119,6 +2127,171 @@ impl RemoainterApp {
         self.graph_preview_tex = None;
     }
 
+    /// Parses a `.sbsar` file and opens the parameter import dialog.
+    pub fn import_sbsar_file(&mut self, path: &Path) {
+        match std::fs::read(path) {
+            Ok(bytes) => match crate::painting::sbsar::parse_sbsar(&bytes) {
+                Ok(package) => {
+                    let graph_count = package.graphs.len();
+                    if let Some(graph) = package.primary() {
+                        // Seed parameter values with widget defaults.
+                        let mut values = std::collections::BTreeMap::new();
+                        for input in &graph.inputs {
+                            let default = match &input.widget {
+                                crate::painting::sbsar::SbsarWidget::Slider {
+                                    default,
+                                    ..
+                                } => *default,
+                                crate::painting::sbsar::SbsarWidget::Toggle {
+                                    default,
+                                } => {
+                                    if *default {
+                                        1.0
+                                    } else {
+                                        0.0
+                                    }
+                                }
+                                _ => 0.0,
+                            };
+                            values.insert(input.identifier.clone(), default);
+                        }
+                        self.sbsar_param_values = values;
+                        self.imported_sbsar = Some(package);
+                        self.sbsar_status = String::new();
+                        self.show_sbsar_import_dialog = true;
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "INFO".into(),
+                            format!("Imported '{}': {} graphs", path.display(), graph_count),
+                        ));
+                    } else {
+                        self.status_message =
+                            format!("Imported '{}': archive contains no graphs", path.display());
+                    }
+                }
+                Err(e) => {
+                    self.status_message = format!(".sbsar import failed: {e}");
+                }
+            },
+            Err(e) => self.status_message = format!("Could not read '{}': {e}", path.display()),
+        }
+    }
+
+    pub fn ui_sbsar_import_dialog(&mut self, ctx: &egui::Context) {
+        let mut open = true;
+        egui::Window::new("🧩 Substance Archive (.sbsar) Import")
+            .open(&mut open)
+            .resizable(true)
+            .default_width(420.0)
+            .show(ctx, |ui| {
+                let Some(package) = self.imported_sbsar.as_ref() else {
+                    ui.label("No archive imported.");
+                    return;
+                };
+                // Graph metadata.
+                for (gi, graph) in package.graphs.iter().enumerate() {
+                    ui.heading(&graph.label);
+                    ui.label(
+                        egui::RichText::new(format!("{} · {} input(s) / {} output(s)",
+                            graph.pkgurl, graph.inputs.len(), graph.outputs.len()))
+                            .weak().small(),
+                    );
+                    ui.horizontal(|ui| {
+                        for out in &graph.outputs {
+                            ui.label(format!("▸ {} ({}x{})", out.identifier, out.width, out.height));
+                        }
+                    });
+                    if gi + 1 < package.graphs.len() {
+                        ui.separator();
+                    }
+                }
+
+                ui.add_space(4.0);
+                ui.separator();
+
+                // Editable parameter surface (scalar params only, honest about limits).
+                let Some(graph) = package.primary() else { return };
+                let mut any_changed = false;
+                egui::ScrollArea::vertical()
+                    .max_height(220.0)
+                    .show(ui, |ui| {
+                        egui::Grid::new("sbsar_params_grid").num_columns(2)
+                            .spacing([10.0, 6.0]).show(ui, |ui| {
+                            for input in &graph.inputs {
+                                if input.input_type == crate::painting::sbsar::SbsarInputType::Image {
+                                    continue;
+                                }
+                                let current = self
+                                    .sbsar_param_values
+                                    .entry(input.identifier.clone())
+                                    .or_insert(0.0);
+                                match &input.widget {
+                                    crate::painting::sbsar::SbsarWidget::Slider {
+                                        min, max, step, ..
+                                    } => {
+                                        ui.label(&input.label);
+                                        if ui
+                                            .add(
+                                                egui::Slider::new(current, *min..=*max)
+                                                    .step_by(((*step).min(0.001)) as f64),
+                                            )
+                                            .changed()
+                                        {
+                                            any_changed = true;
+                                        }
+                                        ui.end_row();
+                                    }
+                                    crate::painting::sbsar::SbsarWidget::Toggle {
+                                        default: _,
+                                    } => {
+                                        ui.label(&input.label);
+                                        let mut on = *current > 0.5;
+                                        if ui.checkbox(&mut on, "").changed() {
+                                            *current = if on { 1.0 } else { 0.0 };
+                                            any_changed = true;
+                                        }
+                                        ui.end_row();
+                                    }
+                                    _ => {
+                                        ui.label(&input.label);
+                                        ui.label(
+                                            egui::RichText::new("procedural pending").weak(),
+                                        );
+                                        ui.end_row();
+                                    }
+                                }
+                            }
+                        });
+                    });
+
+                if any_changed {
+                    self.sbsar_status =
+                        "Parameters bound to the archive session.".to_string();
+                }
+
+                ui.add_space(6.0);
+                if !self.sbsar_status.is_empty() {
+                    ui.colored_label(SUN_FLOWER, &self.sbsar_status);
+                }
+                ui.label(
+                    egui::RichText::new(
+                        "Rendered .sbsar output (SBAM bytecode VM) is being built —                          parameters are imported and editable now; CPU/GPU graph                          evaluation binds automatically when the VM lands.",
+                    )
+                    .weak()
+                    .small(),
+                );
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Close").clicked() {
+                        self.show_sbsar_import_dialog = false;
+                    }
+                });
+            });
+        if !open {
+            self.show_sbsar_import_dialog = false;
+        }
+    }
+
     pub fn ui_graph_dialog(&mut self, ctx: &egui::Context) {
         let mut open = true;
         egui::Window::new("⚗ Procedural (Graph) Material — REMoAINTER")
@@ -2629,6 +2802,9 @@ impl eframe::App for RemoainterApp {
             if self.show_graph_dialog {
                 self.ui_graph_dialog(ctx);
             }
+            if self.show_sbsar_import_dialog {
+                self.ui_sbsar_import_dialog(ctx);
+            }
             if self.show_preferences_dialog {
                 self.ui_preferences_modal(ctx);
             }
@@ -2770,6 +2946,18 @@ impl eframe::App for RemoainterApp {
                         }
                         if ui.button("⚙ Texture Set Importer Dialog...").clicked() {
                             self.show_texture_importer_dialog = true;
+                            ui.close_menu();
+                        }
+                        if ui
+                            .button("🧩 Import .sbsar (Substance Archive)...")
+                            .clicked()
+                        {
+                            let picked = rfd::FileDialog::new()
+                                .add_filter("Substance Archive", &["sbsar"])
+                                .pick_file();
+                            if let Some(path) = picked {
+                                self.import_sbsar_file(&path);
+                            }
                             ui.close_menu();
                         }
                         ui.separator();
