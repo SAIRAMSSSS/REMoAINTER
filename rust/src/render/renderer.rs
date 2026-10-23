@@ -36,7 +36,7 @@ use crate::graphics::Mesh;
 // Options & presets
 // ---------------------------------------------------------------------------
 
-/// Substance-style quality presets. `Custom` keeps `RenderOptions::spp`.
+/// reference-style quality presets. `Custom` keeps `RenderOptions::spp`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QualityPreset {
     Draft,

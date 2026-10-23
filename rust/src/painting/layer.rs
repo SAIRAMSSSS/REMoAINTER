@@ -464,7 +464,7 @@ pub struct Layer {
     pub parent_folder_id: Option<usize>,
     pub effects: Vec<FilterEffect>,
 
-    // Per-Layer Channel Overrides & Blends (Substance Painter Parity)
+    // Per-Layer Channel Overrides & Blends (reference PBR suite Parity)
     pub channel_color_enabled: bool,
     pub channel_metallic_enabled: bool,
     pub channel_roughness_enabled: bool,
@@ -959,7 +959,7 @@ impl Layer {
         layer
     }
 
-    /// Applies an authentic Substance Smart Mask (.spmsk / .webp) with baked curvature & AO wear
+    /// Applies an authentic reference Smart Mask (.spmsk / .webp) with baked curvature & AO wear
     pub fn apply_smart_mask_file(
         &mut self,
         mask_path: &Path,
@@ -2319,7 +2319,7 @@ impl LayerStack {
     // ───────────────────── Projection tool (screen-space projection stamping) ─────────────────────
 
     /// Screen-space projection painting: `screen_alpha` maps a 3D surface point to stamp alpha
-    /// (screen-space brush shape × depth window), like Substance's projection paint with a
+    /// (screen-space brush shape × depth window), like reference's projection paint with a
     /// constrained `udepthscale` window.
     pub fn paint_3d_projection_at(
         &mut self,

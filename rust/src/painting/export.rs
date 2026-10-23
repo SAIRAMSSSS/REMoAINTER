@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// REMoAINTER — Texture Export & Channel Packing Engine (Substance Painter Parity)
+// REMoAINTER — Texture Export & Channel Packing Engine (reference PBR suite Parity)
 // Presets: Unreal Engine ORM, Unity URP/HDRP MaskMap, glTF 2.0, Generic PBR, EXR
 // Bit depths: 8-bit, 16-bit, 32-bit Float
 // Features: Declarative channel packing, UV island dilation/padding, format conversion
@@ -82,7 +82,7 @@ pub enum ColorSpace {
     Linear,
 }
 
-/// UV gutter fill / edge-dilation algorithm (Substance 3D Painter parity).
+/// UV gutter fill / edge-dilation algorithm (reference PBR suite parity).
 ///
 /// Painter's export engine (`exportpresethelpers.cpp`) validates four padding
 /// algorithms per export map: `passthrough`, `transparent`, `color` and
@@ -94,22 +94,22 @@ pub enum ColorSpace {
 /// versions. The other three modes are opt-in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PaddingAlgorithm {
-    /// Substance `color`: extend edge colors into the gutter, dilating all
+    /// reference `color`: extend edge colors into the gutter, dilating all
     /// four channels (RGB + alpha). This is the exporter's original and
     /// default behavior (averaged push-pull sweep over `dilation_radius`).
     #[default]
     Color,
-    /// Substance `transparent`: extend edge RGB into the gutter but keep the
+    /// reference `transparent`: extend edge RGB into the gutter but keep the
     /// gutter pixels fully transparent (alpha = 0) so the biome-linear
     /// sampler bleed does not alter opacity. Coverage alpha is preserved.
     Transparent,
-    /// Substance `diffusion`: seed the gutter with the push-pull sweep, then
+    /// reference `diffusion`: seed the gutter with the push-pull sweep, then
     /// iteratively diffuse (blur / Jacobi relaxation of the Laplace equation)
     /// the edge values into the remaining unfilled gutter, with the UV
     /// coverage acting as a Dirichlet boundary. Produces the smoothest,
     /// most artifact-free biome mipmap down-chains.
     Diffusion,
-    /// Substance `passthrough`: leave the gutter completely untouched.
+    /// reference `passthrough`: leave the gutter completely untouched.
     Passthrough,
 }
 
@@ -132,7 +132,7 @@ pub struct ExportPreset {
     /// Falls back to the mesh name when absent.
     #[serde(default)]
     pub texture_set_name: Option<String>,
-    /// UV gutter fill / edge-dilation algorithm (Substance parity).
+    /// UV gutter fill / edge-dilation algorithm (reference parity).
     /// Defaults to [`PaddingAlgorithm::Color`] — the legacy push-pull
     /// dilation — so presets serialized before this field existed keep
     /// their exact previous behavior.
@@ -141,7 +141,7 @@ pub struct ExportPreset {
 }
 
 impl ExportPreset {
-    /// Builder-style override of the gutter padding algorithm (Substance's
+    /// Builder-style override of the gutter padding algorithm (reference's
     /// "padding algorithm" dropdown: passthrough / transparent / color /
     /// diffusion).
     // NOTE: wired by the export dialog UI in a later integration step.
@@ -650,12 +650,12 @@ enum GutterAlphaMode {
     DilateAll,
     /// Dilate RGB only; after dilation the gutter alpha becomes 0 (fully
     /// transparent), while the UV-coverage alpha is preserved untouched
-    /// (Substance "transparent" padding).
+    /// (reference "transparent" padding).
     TransparentGutter,
 }
 
 /// Legacy averaged push-pull dilation into gutter regions by `radius` pixels
-/// (all four channels — Substance "color" padding). Kept as the public
+/// (all four channels — reference "color" padding). Kept as the public
 /// entry point for compatibility; equivalent to
 /// `dilate_rgba_mode(.., PaddingAlgorithm::Color)`.
 pub fn dilate_rgba(
@@ -675,7 +675,7 @@ pub fn dilate_rgba(
     );
 }
 
-/// Applies one of the four Substance padding algorithms to the gutter outside
+/// Applies one of the four reference padding algorithms to the gutter outside
 /// `valid_mask`.
 pub fn dilate_rgba_mode(
     buffer: &mut [[f32; 4]],
@@ -738,7 +738,7 @@ fn dilate_binary_mask(mask: &[bool], width: usize, height: usize, radius: usize)
     current
 }
 
-/// Substance's "diffusion" padding.
+/// reference's "diffusion" padding.
 ///
 /// Phase 1 seeds the gutter band with the conventional push-pull sweep up to
 /// `radius` pixels; phase 2 runs Jacobi relaxation of the Laplace equation
@@ -831,7 +831,7 @@ fn diffusion_dilate(
 
 /// Averaged push-pull dilation implementation. Iteratively floods gutter
 /// pixels with the averaged values of their valid (UV-coverage) neighbors,
-/// `radius` pixels at a time — Substance's "color" padding algorithm.
+/// `radius` pixels at a time — reference's "color" padding algorithm.
 /// `alpha_mode` selects whether alpha participates in the dilation or the
 /// gutter is made transparent afterwards.
 fn push_pull_dilate(
@@ -962,7 +962,7 @@ fn push_pull_dilate(
         frontier = next_frontier;
     }
 
-    // Substance "transparent" padding: gutter alpha is fully transparent while
+    // reference "transparent" padding: gutter alpha is fully transparent while
     // the coverage keeps its authored alpha untouched.
     if alpha_mode == GutterAlphaMode::TransparentGutter {
         for (idx, pixel) in buffer.iter_mut().enumerate() {
@@ -987,7 +987,7 @@ fn uses_naming_tokens(template: &str) -> bool {
         || template.contains("{lod}")
 }
 
-/// Resolves Substance-Painter-style naming tokens in a filename template
+/// Resolves reference-Painter-style naming tokens in a filename template
 /// (parity with `.spexp` `DataExportMap` file templates and the common Blender
 /// / Painter token set):
 ///
@@ -1328,7 +1328,7 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
         }
 
         // Apply UV Island Edge Dilation / Seam Padding (per-preset
-        // Substance padding algorithm; dilation happens in the export's
+        // reference padding algorithm; dilation happens in the export's
         // working space, after the linearization above). The default route
         // goes through the legacy `dilate_rgba` entry point so the default
         // behavior stays bit-identical to previous versions.

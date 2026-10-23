@@ -6,14 +6,14 @@
 
 <h3 align="center">Next-Generation Open-Source 3D PBR Texture Painting Suite</h3>
 <p align="center">
-  <b>Version 2.0.0 (Rust High-Performance Core)</b> • 1-to-1 Substance Painter Workflow • Raytraced Baking • Black Masks • Anchor Points
+  <b>Version 2.0.0 (Rust High-Performance Core)</b> • Industry-Standard PBR Painting Workflow • Raytraced Baking • Black Masks • Anchor Points
 </p>
 
 ---
 
 ## What is REMoAINTER?
 
-**REMoAINTER** is an open-source, industry-aligned 3D physically based rendering (PBR) texture painting application engineered to deliver the feel, workflow, and capabilities of Adobe Substance 3D Painter. 
+**REMoAINTER** is an open-source, industry-aligned 3D physically based rendering (PBR) texture painting application engineered to deliver the feel, workflow, and capabilities of a from-scratch industry-standard PBR painting studio. 
 
 Version `v2.0.0` introduces a high-performance **Rust Engine** designed from the ground up for safe parallel execution, multi-core raytraced mesh map baking, non-destructive layer sub-stacks, black masks, anchor points, and seamless UV seam boundary painting.
 
@@ -21,7 +21,7 @@ Version `v2.0.0` introduces a high-performance **Rust Engine** designed from the
 
 ## Key Features in v2.0.0
 
-### 1. Substance 3D Painter Parity UI
+### 1. 3D PBR Painting UI
 - **Authentic Allegorithmic Dark Theme**: Built with identical color palettes (`#212121`, `#242424`, `#1A4B75`, `#1A8DFF`, `#EF7E22`).
 - **Complete Panel Architecture**:
   - **Left Tool Strip**: Paint (`1`), Eraser (`2`), Projection (`3`), Polygon Fill (`4`), Smudge (`5`), Clone (`6`), Eyedropper (`I`).
@@ -77,11 +77,11 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 
 ### 8. Real Material Pipeline & Texture Set Importer
 - **SBSAR & SPSM Batch Exporter (`tools/export_sbsar.py`)**:
-  - Utilizes Adobe's `sbsrender` CLI (Substance Automation Toolkit) to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
+  - Utilizes Adobe's `sbsrender` CLI (sbsrender CLI) to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
   - Graceful fallback with clear instructions when `sbsrender` is not installed; extracts bundled textures from `.spsm` smart materials.
 - **In-App PBR Texture Set Importer & Drag-and-Drop**:
   - Drag and drop any texture pack folder or multiple files onto the window to automatically match channels.
-  - Suffix detection for ambientCG, Poly Haven, and Substance conventions (`_albedo`, `_nor_gl`, `_nor_dx`, `_roughness`, `_metallic`, `_ao`, `_height`).
+  - Suffix detection for ambientCG, Poly Haven, and reference conventions (`_albedo`, `_nor_gl`, `_nor_dx`, `_roughness`, `_metallic`, `_ao`, `_height`).
   - Automatic DirectX to OpenGL normal map Y-inversion.
   - Dedicated interactive modal dialog for manual channel assignments and unmatched fallback maps.
 
@@ -125,7 +125,7 @@ REMoAINTER/
 │       │   ├── material_gen.rs
 │       │   ├── texture_importer.rs
 │       │   └── mod.rs
-│       ├── ui/             # egui / glow Substance Painter UI
+│       ├── ui/             # egui / glow PBR painting UI
 │       │   ├── app.rs
 │       │   ├── theme.rs
 │       │   └── mod.rs
@@ -176,7 +176,7 @@ cargo build --release
 ### Batch SBSAR & Smart Material Exporter
 To render Adobe `.sbsar` procedural graphs into 2048x2048 PNG PBR texture sets with `material.json` manifests:
 ```bash
-# Using Adobe Substance Automation Toolkit (sbsrender)
+# Using Adobe sbsrender CLI (sbsrender)
 python3 tools/export_sbsar.py --resolution 2048
 
 # Or with custom directories

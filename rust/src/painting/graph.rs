@@ -1,6 +1,6 @@
 //! SBS-style parametric graph engine — the authored value-stream analog of
-//! Substance Painter's `DataGraph_` (see `MULTI_MATERIAL_SUBSTACK_HEIGHT_BLENDING.md`
-//! and the Substance Composer model).
+//! reference PBR suite's `DataGraph_` (see `MULTI_MATERIAL_SUBSTACK_HEIGHT_BLENDING.md`
+//! and the reference Composer model).
 //!
 //! A [`Graph`] is a small DAG of typed nodes. Generator nodes synthesize RGBA
 //! buffers from parameters; filter nodes consume upstream buffers through
@@ -123,7 +123,7 @@ impl GraphContext {
 // Slots, nodes, node bodies
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// One ordered input slot of a node. `Substance` distinguishes connections
+/// One ordered input slot of a node. `reference` distinguishes connections
 /// from constant instance values; we mirror that exactly.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum GraphSlot {
@@ -1480,7 +1480,7 @@ fn eval_tile_generator(
 }
 
 /// Blur that follows the local gradient of the height input: smears the base
-/// image along the slope, sharpening creases like Substance's Slope Blur Gray.
+/// image along the slope, sharpening creases like reference's Slope Blur Gray.
 fn eval_slope_blur(
     radius: f32,
     taps: u32,

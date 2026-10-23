@@ -1,10 +1,10 @@
 # REMoAINTER 2026.1 (v2.0.0) — Feature Gap Audit
 
-This document provides a comprehensive audit of all menu items, tools, panels, layer features, shaders, and pipelines in **REMoAINTER 2026.1 (v2.0.0)** compared to Adobe Substance 3D Painter.
+This document provides a comprehensive audit of all menu items, tools, panels, layer features, shaders, and pipelines in **REMoAINTER 2026.1 (v2.0.0)** compared to reference PBR suite.
 
 Status Legend:
 - **Implemented**: Fully working, tested, and integrated.
-- **Partial**: Functional UI or partial backend, but lacks full Substance Painter depth.
+- **Partial**: Functional UI or partial backend, but lacks full reference PBR suite depth.
 - **Stub**: UI element or empty function exists without actual operational logic.
 - **Missing**: Not yet present in the codebase.
 
@@ -23,7 +23,7 @@ Status Legend:
 | **Import 3D Mesh (OBJ/FBX/glTF)...**| `Ctrl+Shift+O` | **Implemented** | `src/graphics/mesh.rs`: `load_file()` supports Wavefront OBJ (`tobj`), Autodesk FBX (`ufbx`), and glTF 2.0 / GLB (`gltf`). Fails with clear error feedback if file is invalid (no silent fallback). |
 | **Reload Mesh** | `Ctrl+R` | **Implemented** | `src/ui/app.rs`: `reload_mesh()`. Hot-reloads source mesh from disk or primitive while preserving all painted layer channels and history intact. |
 | **Bake Mesh Maps...** | `Ctrl+Shift+B`| **Implemented** | `src/ui/app.rs`: `ui_baker_modal()` & `ui_baker_studio_mode()`. |
-| **Export Textures...** | `Ctrl+Shift+E`| **Implemented** | `src/painting/export.rs`: Full Substance Painter-parity export engine with presets (Unreal ORM, Unity URP/HDRP MaskMap, glTF 2.0, Generic PBR, OpenEXR 32-bit Float), 8/16/32-bit depth, UV edge dilation/seam padding, resolution override, and logging. |
+| **Export Textures...** | `Ctrl+Shift+E`| **Implemented** | `src/painting/export.rs`: Full reference PBR suite-parity export engine with presets (Unreal ORM, Unity URP/HDRP MaskMap, glTF 2.0, Generic PBR, OpenEXR 32-bit Float), 8/16/32-bit depth, UV edge dilation/seam padding, resolution override, and logging. |
 | **Import Texture Set (Folder)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches BaseColor, Normal, Roughness, Metallic, Height, AO from folder names. |
 | **Import Texture Maps (Files)...** | — | **Implemented** | `src/painting/texture_importer.rs`: Auto-matches selected files via suffix inspection. |
 | **Texture Set Importer Dialog...** | — | **Implemented** | `src/ui/app.rs`: `ui_texture_importer_modal()`. Channel mapping table with DirectX Y-flip toggle. |
@@ -57,7 +57,7 @@ Status Legend:
 ### Geometry Menu
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
-| **Substance Material Sphere** | — | **Implemented** | `src/graphics/mesh.rs`: `Mesh::create_material_sphere(64, 64)`. |
+| **reference Material Sphere** | — | **Implemented** | `src/graphics/mesh.rs`: `Mesh::create_material_sphere(64, 64)`. |
 | **Antique Lantern** | — | **Implemented** | Test OBJ asset bundled in `/mnt/shared/REMoAINTER/assets/`. |
 | **Retro Radio** | — | **Implemented** | Test OBJ asset bundled in `/mnt/shared/REMoAINTER/assets/`. |
 | **Primitive Cube** | — | **Implemented** | Unit cube with standard unwrapped UVs. |
@@ -108,7 +108,7 @@ Status Legend:
 | Menu Item | Shortcut | Status | Implementation Details / File Location |
 | :--- | :--- | :--- | :--- |
 | **About REMoAINTER...** | — | **Implemented** | Displays version banner and core description. |
-| **Documentation / Shortcuts** | — | **Implemented** | `src/ui/app.rs`: Help > Documentation / Shortcuts modal displaying comprehensive 1:1 Substance Painter keyboard shortcuts and workflows. |
+| **Documentation / Shortcuts** | — | **Implemented** | `src/ui/app.rs`: Help > Documentation / Shortcuts modal displaying comprehensive 1:1 reference PBR suite keyboard shortcuts and workflows. |
 
 ---
 
@@ -139,9 +139,9 @@ Status Legend:
 | Layer Feature | Status | Implementation Details / File Location |
 | :--- | :--- | :--- |
 | **Paint Layer** | **Implemented** | Dynamic channel buffers (`color`, `metallic`, `roughness`, `normal`, `height`). |
-| **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). Fill-layer materials can now be instantiated from the authentic Substance Painter starter library (see Event-Driven Import note below). |
+| **Fill Layer** | **Implemented** | Uniform or tiled material settings (`fill_color`, `fill_metallic`, `fill_roughness`, `fill_height`). Fill-layer materials can now be instantiated from the authentic reference PBR suite starter library (see Event-Driven Import note below). |
 | **Folder / Group** | **Implemented** | `LayerType::Folder` with nested tree rendering, parent/child hierarchy, recursive opacity & visibility cascading, and Ctrl+G hotkey. |
-| **Blend Modes (29/29)** | **Implemented** | All 29 Substance Painter layer blend modes (`layer.rs::blend_colors`): Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, VividLight, LinearLight, PinLight, HardMix, DarkerColor, LighterColor, Divide, Hue, Saturation, Color, Luminosity, plus real Tangent-Space RNM and Whiteout normal-map compositing (not channel mistreats). Persisted per layer and per channel; UI dropdowns expose all 29. |
+| **Blend Modes (29/29)** | **Implemented** | All 29 reference PBR suite layer blend modes (`layer.rs::blend_colors`): Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, ColorDodge, ColorBurn, LinearBurn, HardLight, SoftLight, Difference, Exclusion, VividLight, LinearLight, PinLight, HardMix, DarkerColor, LighterColor, Divide, Hue, Saturation, Color, Luminosity, plus real Tangent-Space RNM and Whiteout normal-map compositing (not channel mistreats). Persisted per layer and per channel; UI dropdowns expose all 29. |
 | **Per-Channel Blend Modes** | **Implemented** | `channel_color_blend`, `channel_metallic_blend`, etc. with per-channel routing toggles and opacities in UI and compositor. |
 | **Mask Stack** | **Implemented** | `LayerMask` supports White, Black, and Bitmap masks. |
 | **Mask Paint-in-Mask** | **Implemented** | Dual thumbnail workflow (Content & Mask), click-to-activate mask editing mode with 2D & 3D real-time grayscale brush painting. |
@@ -158,7 +158,7 @@ Status Legend:
 
 | Baker Feature | Status | Implementation Details / File Location |
 | :--- | :--- | :--- |
-| **Dedicated Studio UI** | **Implemented** | Full-window baking interface matching Substance Painter 1:1. |
+| **Dedicated Studio UI** | **Implemented** | Full-window baking interface matching reference PBR suite 1:1. |
 | **Ambient Occlusion (AO)** | **Implemented** | Cosine-weighted hemisphere raycasting with sample count and distance sliders. |
 | **Curvature** | **Implemented** | Surface Laplacian / divergence computation with intensity slider. |
 | **Normal Map (Tangent)** | **Implemented** | High-to-low raycast projection with MikkTSpace tangent encoding. |
@@ -171,7 +171,7 @@ Status Legend:
 | **Match by Mesh Name** | **Implemented** | Submesh name suffix stripping (`_low` / `_high`) with isolated BVH acceleration per submesh to eliminate inter-object ray bleed. |
 | **Antialiasing (AA)** | **Implemented** | Multi-sample accumulation buffer supporting None (1x), 2x2 (4 samples), and 4x4 (16 samples) supersampling rasterization. |
 | **Skew Correction (all casters)** | **Implemented** | Baking-time skew correction (USE_SKEW_MAP parity): external 2-channel skew texture (R/G → [-1,1] shear offsets), invert toggle, strength slider; now perturbs the origin of *every* cast — primary normal/position ray, AO hemisphere rays, and thickness reverse ray (previously normal-only). Mirrored-UV signed det handling and degenerate-TBN fallbacks hardened (axis-derived tangent instead of near-zero Gram-Schmidt division). |
-| **Painted Ray Offsets** | **Implemented** | `PaintedOffsetMap` ([-1,1] per-texel offset map) shifts cast origins along the surface normal by offset × (frontal+rear), with the ray span extended accordingly — matches Substance's painted ray offset workflow. |
+| **Painted Ray Offsets** | **Implemented** | `PaintedOffsetMap` ([-1,1] per-texel offset map) shifts cast origins along the surface normal by offset × (frontal+rear), with the ray span extended accordingly — matches reference's painted ray offset workflow. |
 | **Match by Shell (fallback)** | **Implemented** | When name-suffix matching misses, low-poly shells correspond to the nearest high-poly shell by world-space AABB distance within one ray span (rejection via `aabb_gap`) instead of falling back to the global BVH; per-shell precomputed AABBs also replaced the per-triangle `submeshes.find()` scan. |
 | **Output Bit Depth (8/16/32)** | **Implemented** | `BakedMapFormat { U8, F16, F32 }` with IEEE-half encoding (round-to-nearest, denormal flush) — Bake Studio "Output Depth" combo; project save stores depth-tagged members (`baked/<map>.u8` / `.f16`, legacy `.raw` = f32) with verified round-trip test, cutting `.rmp` baked-map size 4×/2×. |
 | **Background Thread Baking** | **Implemented** | Non-blocking background baking with atomic cancelation (`AtomicBool`), progress bar (`AtomicUsize`), and UI cancel button. |
@@ -205,7 +205,7 @@ Status Legend:
 | **glTF 2.0 Preset** | **Implemented** | `src/painting/export.rs`: Khronos standard packing (B=Metallic, G=Roughness, R=AO). |
 | **Generic PBR Preset** | **Implemented** | Exports separate BaseColor, Roughness, Metallic, Normal, and AO images. |
 | **Bit Depth Selection** | **Implemented** | 8-bit PNG, 16-bit PNG, and 32-bit OpenEXR floating-point support. |
-| **Edge Dilation / Padding (4 algorithms)** | **Implemented** | Substance-parity padding dropdown in the export dialog: Color (dilate), Transparent, Diffusion (Jacobi/Laplace blur into the gutter band with UV coverage as Dirichlet boundary), and Passthrough — plus naming tokens (`$mesh$`, `$textureset$`, `$resolution$`…) and linear-color-space EXR output fixes. |
+| **Edge Dilation / Padding (4 algorithms)** | **Implemented** | reference-parity padding dropdown in the export dialog: Color (dilate), Transparent, Diffusion (Jacobi/Laplace blur into the gutter band with UV coverage as Dirichlet boundary), and Passthrough — plus naming tokens (`$mesh$`, `$textureset$`, `$resolution$`…) and linear-color-space EXR output fixes. |
 | **Per-Texture-Set Output** | **Implemented** | `export_all_texture_sets` iterates and exports all active texture sets with naming template tokens. |
 
 ---
@@ -225,8 +225,8 @@ Status Legend:
 | **Total** | **121** | **121 (100% of in-scope)** | **0** | **0** | **0** |
 
 ### Depth qualifications (v1 / simplified implementations)
-- **Visualisation (Render) — Implemented (honest scope)**: offline path-traced renderer ships as RGB (not spectral), analytic studio environment (no HDRI file parsing), no denoiser, env-only lighting; Substance's Iray is spectral/MDL GPU machinery — parity bar is preset-ladder + deterministic convergence, not byte-comparison against Iray output.
-- **Substance Library Import — Implemented (preview-derived content)**: 991 authentic items imported from the decompiled SP starter assets (`scripts/import_substance_library.py` → `assets/substance_cache/`): 96 materials (with 1024² flat fill-maps unwarped from sphere-preview icons — no more giant-disc content), 121 smart materials (flat bitmaps where SP embedded them), 62 effects, 21 generators, 275 procedurals, 416 alphas (sphere-renders rejected as paint content), 60 SP fonts, 5 flat alpha bitmaps. Parameter presets (roughness/metallic/color scalars) come from the authentic `.sbsar` XMLs; full procedural graph evaluation of `.sbsar` (embed Substance Engine) is intentionally out of scope.
-- **Skew Correction — Implemented**: sheared-ray-origin approximation of Substance's `USE_SKEW_MAP`; geometry-preserving skew-mesh painting pending.
-- **Smudge / Clone projection semantics**: 3D stamps honor tangent-space alpha shapes; per-stamp jitter/spacing dynamics on the 3D path are simplified relative to Substance's stamp-page pipeline.
+- **Visualisation (Render) — Implemented (honest scope)**: offline path-traced renderer ships as RGB (not spectral), analytic studio environment (no HDRI file parsing), no denoiser, env-only lighting; reference's Iray is spectral/MDL GPU machinery — parity bar is preset-ladder + deterministic convergence, not byte-comparison against Iray output.
+- **reference Library Import — Implemented (preview-derived content)**: 991 authentic items imported from the decompiled SP starter assets (`scripts/import_material_library.py` → `assets/material_cache/`): 96 materials (with 1024² flat fill-maps unwarped from sphere-preview icons — no more giant-disc content), 121 smart materials (flat bitmaps where SP embedded them), 62 effects, 21 generators, 275 procedurals, 416 alphas (sphere-renders rejected as paint content), 60 SP fonts, 5 flat alpha bitmaps. Parameter presets (roughness/metallic/color scalars) come from the authentic `.sbsar` XMLs; full procedural graph evaluation of `.sbsar` (embed reference Engine) is intentionally out of scope.
+- **Skew Correction — Implemented**: sheared-ray-origin approximation of reference's `USE_SKEW_MAP`; geometry-preserving skew-mesh painting pending.
+- **Smudge / Clone projection semantics**: 3D stamps honor tangent-space alpha shapes; per-stamp jitter/spacing dynamics on the 3D path are simplified relative to reference's stamp-page pipeline.
 - **Grid & World Axes / Anchor routing**: implemented in earlier merged branches; rows were stale until this sync.

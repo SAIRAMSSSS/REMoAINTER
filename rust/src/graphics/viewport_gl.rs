@@ -1194,7 +1194,7 @@ impl ViewportGl {
 
         // Attempt to load Studio Tomoco by default
         let default_env_paths = [
-            "/mnt/shared/SubstancePainter11/App/resources/starter_assets/environments/Studio/Studio Tomoco.exr",
+            "/mnt/shared/referencePainter11/App/resources/starter_assets/environments/Studio/Studio Tomoco.exr",
             "/mnt/shared/REMoAINTER/assets/environments/studio_tomoco.png",
             "assets/environments/studio_tomoco.png",
         ];
@@ -1521,7 +1521,7 @@ impl ViewportGl {
                 gl.draw_arrays(glow::LINES, 4, 2);
             }
 
-            // 4. Render 3D Wireframe Overlay if enabled (Substance Painter F4)
+            // 4. Render 3D Wireframe Overlay if enabled (reference PBR suite F4)
             if self.show_wireframe {
                 gl.enable(glow::POLYGON_OFFSET_LINE);
                 gl.polygon_offset(-1.0, -1.0);
@@ -1538,7 +1538,7 @@ impl ViewportGl {
                     0.75,
                     1.0,
                     0.85,
-                ); // Substance Cyan
+                ); // reference Cyan
                 self.mesh.draw(gl);
                 gl.polygon_mode(glow::FRONT_AND_BACK, glow::FILL);
                 gl.disable(glow::POLYGON_OFFSET_LINE);
@@ -1575,7 +1575,7 @@ impl ViewportGl {
 
 pub fn list_available_environments() -> Vec<(String, PathBuf)> {
     let dirs = [
-        "/mnt/shared/SubstancePainter11/App/resources/starter_assets/environments/Studio",
+        "/mnt/shared/referencePainter11/App/resources/starter_assets/environments/Studio",
         "/mnt/shared/REMoAINTER/assets/environments",
         "assets/environments",
     ];

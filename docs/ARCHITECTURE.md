@@ -128,7 +128,7 @@ During `recompute()`, each effect is evaluated sequentially and blended into `ma
 
 ### C. Texture Sets & UDIM Tiles
 - Currently, the active mesh is stored in `RemoainterApp::mesh` with channels defined in `texture_channels: Vec<TextureChannel>`.
-- **Target Substance Painter Architecture**:
+- **Target reference PBR suite Architecture**:
   - `TextureSet` represents an individual material index or UV tile.
   - Multi-set meshes maintain an array of `TextureSet` instances, each owning an isolated `LayerStack`, `BakedMaps`, and GPU texture handles.
   - UDIM tiles correspond to UV coordinates $[u, v]$ mapped to tile IDs $1000 + \lfloor u \rfloor + 1 + 10 \times \lfloor v \rfloor$.
@@ -214,7 +214,7 @@ flowchart TD
 ### Current Implementation (Stub)
 Currently, `RemoainterApp::history` is a `Vec<String>` that logs human-readable descriptions of operations (e.g. `"Stroke applied"`, `"Added Fill Layer"`). `Ctrl+Z` and `Ctrl+Y` only update the status bar text.
 
-### Target Architecture (Substance Painter Parity)
+### Target Architecture (reference PBR suite Parity)
 To deliver non-destructive undo/redo without excessive RAM consumption:
 
 ```mermaid

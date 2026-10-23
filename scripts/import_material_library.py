@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import Adobe Substance 3D Painter's starter-asset library into REMoAINTER's asset store.
+"""Import reference PBR suite's starter-asset library into REMoAINTER's asset store.
 
 Pipeline:
   - For every authentic .sbsar (materials / effects / generators / procedurals / alphas):
@@ -8,10 +8,10 @@ Pipeline:
       thumbnail.png, and for the *materials* group precompute fill_map.png (1024x1024
       RGB) by unprojecting the sphere-render icon onto the mesh UV layout.
   - Carve WebP thumbnails out of .spsm (HDF5) smart materials (binary carving only).
-  - Copy fonts flat to assets/fonts/substance/ and flat alpha PNGs to
-    assets/shelf/alphas/Substance/.
+  - Copy fonts flat to assets/fonts/bundled/ and flat alpha PNGs to
+    assets/shelf/alphas/reference/.
 
-Write target: assets/substance_cache/ (plus those two copy dirs). Nothing else is
+Write target: assets/material_cache/ (plus those two copy dirs). Nothing else is
 touched; no git operations. Idempotent (re-run overwrites).
 """
 
@@ -31,11 +31,11 @@ from pathlib import Path
 
 from PIL import Image
 
-SRC = Path("/mnt/shared/SubstancePainter11/App/resources/starter_assets")
+SRC = Path("/mnt/shared/referencePainter11/App/resources/starter_assets")
 ROOT = Path("/mnt/shared/REMoAINTER")
-DST = ROOT / "assets" / "substance_cache"
-FONTS_DST = ROOT / "assets" / "fonts" / "substance"
-ALPHAS_SHELF_DST = ROOT / "assets" / "shelf" / "alphas" / "Substance"
+DST = ROOT / "assets" / "material_cache"
+FONTS_DST = ROOT / "assets" / "FONTS_DST = ROOT / "assets" / "fonts" / "bundled"
+ALPHAS_SHELF_DST = ROOT / "assets" / "shelf" / "alphas" / "reference"
 
 THREADS = 8
 SBS_SIZE = 1024

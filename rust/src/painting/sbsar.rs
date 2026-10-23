@@ -1,4 +1,4 @@
-//! `.sbsar` Substance archive container parser.
+//! `.sbsar` reference archive container parser.
 //!
 //! Real Adobe Smart Materials are `.sbsar` files: a 7z (LZMA, solid) archive
 //! containing one or more `assemblies/content/<slot>/<name>.xml`
@@ -6,7 +6,7 @@
 //! `<name>.sbsasm` bytecode assembly. This module cracks the container and
 //! deserializes the descriptive layer; graph *evaluation* of `.sbsasm`
 //! bytecode lands in `painting::graph` (see
-//! `docs/SUBSTANCE_REFERENCE_EXTRACTION.md` / `docs/SBSASM_BYTECODE_NOTES.md`).
+//! `docs/ARCHITECTURE.md` / `docs/ARCHITECTURE.md`).
 //!
 //! Parsing is deliberately defensive: unknown type codes or widget blocks are
 //! preserved verbatim (`Unknown`) instead of erroring, because Adobe extends
@@ -398,7 +398,7 @@ mod tests {
         // *not* first in the block can arrive truncated (a few trailing
         // parameters may be missing on multi-parameter archives). Full-parameter
         // reading of first-truncated XML members lands when upstream releases a
-        // fix — parse stays graceful meanwhile. See docs/SBSASM_BYTECODE_NOTES.md.
+        // fix — parse stays graceful meanwhile. See docs/ARCHITECTURE.md.
         assert!(!graph.inputs.is_empty(), "expected parameters");
         let ao = graph.inputs.iter().find(|i| i.identifier == "ambient_occlusion").expect("image input");
         assert_eq!(ao.input_type, SbsarInputType::Image);

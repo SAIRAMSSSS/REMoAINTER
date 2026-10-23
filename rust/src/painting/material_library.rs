@@ -1,9 +1,9 @@
-//! Authentic Substance Painter starter-asset library integration.
+//! Authentic reference PBR suite starter-asset library integration.
 //!
-//! The precomputed cache (produced by `scripts/import_substance_library.py`) lives at
-//! `assets/substance_cache/<group>/<ItemName>/` and each item dir carries `meta.json`
+//! The precomputed cache (produced by `scripts/import_material_library.py`) lives at
+//! `assets/material_cache/<group>/<ItemName>/` and each item dir carries `meta.json`
 //! (label, sp_category, keywords, graph_type, author, icon_kind), `params.json`
-//! (authentic SP preset defaults), `thumbnail.png` (authentic SP icon; `icon_kind`
+//! (curated preset defaults), `thumbnail.png` (curated icon; `icon_kind`
 //! tells whether it is a sphere render or a flat image) and — for materials only —
 //! `fill_map.png` (a flat, UV-aligned base color map).
 //!
@@ -18,9 +18,9 @@ use super::layer::Layer;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
-/// Groups present in the Substance cache directory.
+/// Groups present in the reference cache directory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SubstanceGroup {
+pub enum MaterialGroup {
     Materials,
     SmartMaterials,
     Effects,
@@ -29,28 +29,28 @@ pub enum SubstanceGroup {
     Alphas,
 }
 
-impl SubstanceGroup {
-    /// Sub-directory name inside `substance_cache/`.
+impl MaterialGroup {
+    /// Sub-directory name inside `material_cache/`.
     pub fn dir_name(self) -> &'static str {
         match self {
-            SubstanceGroup::Materials => "materials",
-            SubstanceGroup::SmartMaterials => "smart_materials",
-            SubstanceGroup::Effects => "effects",
-            SubstanceGroup::Generators => "generators",
-            SubstanceGroup::Procedurals => "procedurals",
-            SubstanceGroup::Alphas => "alphas",
+            MaterialGroup::Materials => "materials",
+            MaterialGroup::SmartMaterials => "smart_materials",
+            MaterialGroup::Effects => "effects",
+            MaterialGroup::Generators => "generators",
+            MaterialGroup::Procedurals => "procedurals",
+            MaterialGroup::Alphas => "alphas",
         }
     }
 }
 
 /// All cache groups that feed the shelf (scan order matters for dedupe priority).
-pub const ALL_GROUPS: &[SubstanceGroup] = &[
-    SubstanceGroup::Materials,
-    SubstanceGroup::SmartMaterials,
-    SubstanceGroup::Effects,
-    SubstanceGroup::Generators,
-    SubstanceGroup::Procedurals,
-    SubstanceGroup::Alphas,
+pub const ALL_GROUPS: &[MaterialGroup] = &[
+    MaterialGroup::Materials,
+    MaterialGroup::SmartMaterials,
+    MaterialGroup::Effects,
+    MaterialGroup::Generators,
+    MaterialGroup::Procedurals,
+    MaterialGroup::Alphas,
 ];
 
 /// Whether the SP-provided thumbnail is a sphere render or a flat image.
@@ -71,7 +71,7 @@ impl IconKind {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-pub struct SubstanceMeta {
+pub struct referenceMeta {
     #[serde(default)]
     pub label: String,
     #[serde(default)]
@@ -86,14 +86,14 @@ pub struct SubstanceMeta {
     pub icon_kind: String,
 }
 
-/// One scanned item of the Substance cache.
+/// One scanned item of the reference cache.
 #[derive(Debug, Clone)]
-pub struct SubstanceItem {
+pub struct MaterialItem {
     /// Display name from `meta.json.label` (falls back to the dir name).
     pub label: String,
-    /// Directory `.../substance_cache/<group>/<ItemName>`.
+    /// Directory `.../material_cache/<group>/<ItemName>`.
     pub dir: PathBuf,
-    pub group: SubstanceGroup,
+    pub group: MaterialGroup,
     /// `thumbnail.png` when present, else empty (UI falls back to a color swatch).
     pub thumb_path: PathBuf,
     pub icon_kind: IconKind,
@@ -101,7 +101,7 @@ pub struct SubstanceItem {
     pub keywords: String,
 }
 
-impl SubstanceItem {
+impl MaterialItem {
     /// Label + keywords + SP category, lowercased — the shelf search haystack.
     pub fn search_text(&self) -> String {
         format!(
@@ -113,34 +113,34 @@ impl SubstanceItem {
     }
 }
 
-/// Resolves the app-root-relative Substance cache directory (existing helper pattern).
-pub fn find_substance_cache_dir() -> PathBuf {
+/// Resolves the app-root-relative reference cache directory (existing helper pattern).
+pub fn find_material_cache_dir() -> PathBuf {
     let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/substance_cache"),
-        PathBuf::from("assets/substance_cache"),
-        PathBuf::from("../assets/substance_cache"),
+        PathBuf::from("/mnt/shared/REMoAINTER/assets/material_cache"),
+        PathBuf::from("assets/material_cache"),
+        PathBuf::from("../assets/material_cache"),
     ];
     for c in &candidates {
         if c.exists() {
             return c.clone();
         }
     }
-    PathBuf::from("/mnt/shared/REMoAINTER/assets/substance_cache")
+    PathBuf::from("/mnt/shared/REMoAINTER/assets/material_cache")
 }
 
 /// Resolves the app's own bundled SP font directory, if present.
-pub fn find_substance_fonts_dir() -> Option<PathBuf> {
+pub fn find_fonts_dir() -> Option<PathBuf> {
     let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/fonts/substance"),
-        PathBuf::from("assets/fonts/substance"),
-        PathBuf::from("../assets/fonts/substance"),
+        PathBuf::from("/mnt/shared/REMoAINTER/assets/fonts/bundled"),
+        PathBuf::from("assets/fonts/bundled"),
+        PathBuf::from("../assets/fonts/bundled"),
     ];
     candidates.into_iter().find(|c| c.is_dir())
 }
 
 fn load_meta(dir: &Path, dir_name: &str) -> (String, String, String, IconKind) {
     match std::fs::read_to_string(dir.join("meta.json")) {
-        Ok(raw) => match serde_json::from_str::<SubstanceMeta>(&raw) {
+        Ok(raw) => match serde_json::from_str::<referenceMeta>(&raw) {
             Ok(m) => {
                 let label = if m.label.trim().is_empty() {
                     dir_name.to_owned()
@@ -171,7 +171,7 @@ fn load_meta(dir: &Path, dir_name: &str) -> (String, String, String, IconKind) {
 }
 
 /// Scans `base/<group>/<ItemName>/` for one group. Pure function of `base` (testable).
-pub fn scan_substance_group(base: &Path, group: SubstanceGroup) -> Vec<SubstanceItem> {
+pub fn scan_material_group(base: &Path, group: MaterialGroup) -> Vec<MaterialItem> {
     let mut items = Vec::new();
     let group_dir = base.join(group.dir_name());
     let Ok(entries) = std::fs::read_dir(&group_dir) else {
@@ -190,7 +190,7 @@ pub fn scan_substance_group(base: &Path, group: SubstanceGroup) -> Vec<Substance
         }
         let (label, sp_category, keywords, icon_kind) = load_meta(&p, &dir_name);
         let thumb_path = p.join("thumbnail.png");
-        items.push(SubstanceItem {
+        items.push(MaterialItem {
             label,
             dir: p,
             group,
@@ -208,16 +208,16 @@ pub fn scan_substance_group(base: &Path, group: SubstanceGroup) -> Vec<Substance
 }
 
 /// Scans every cache group. Pure function of the base dir (testable).
-pub fn scan_substance_cache(base: &Path) -> Vec<SubstanceItem> {
+pub fn scan_material_cache(base: &Path) -> Vec<MaterialItem> {
     let mut items = Vec::new();
     for group in ALL_GROUPS {
-        items.extend(scan_substance_group(base, *group));
+        items.extend(scan_material_group(base, *group));
     }
     items
 }
 
 // ---------------------------------------------------------------------------
-// params.json: authentic SP preset defaults → material channel values
+// params.json: curated preset defaults → material channel values
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq)]
@@ -244,21 +244,21 @@ pub struct MaterialPresetParams {
 }
 
 #[derive(Deserialize)]
-struct SubstanceParamsFile {
+struct referenceParamsFile {
     #[serde(default)]
-    presets: Vec<SubstancePreset>,
+    presets: Vec<referencePreset>,
 }
 
 #[derive(Deserialize)]
-struct SubstancePreset {
+struct referencePreset {
     #[serde(default)]
     label: String,
     #[serde(default)]
-    inputs: Vec<SubstanceInput>,
+    inputs: Vec<referenceInput>,
 }
 
 #[derive(Deserialize)]
-struct SubstanceInput {
+struct referenceInput {
     #[serde(default)]
     identifier: String,
     #[serde(default)]
@@ -289,9 +289,9 @@ impl From<serde_json::Value> for PresetValue {
     }
 }
 
-/// Parses authentic SP preset JSON into [`MaterialPresetParams`] (first preset only).
+/// Parses curated preset JSON into [`MaterialPresetParams`] (first preset only).
 pub fn parse_params_json(raw: &str) -> Result<MaterialPresetParams, String> {
-    let file: SubstanceParamsFile =
+    let file: referenceParamsFile =
         serde_json::from_str(raw).map_err(|e| format!("params.json parse failed: {e}"))?;
     let Some(preset) = file.presets.first() else {
         return Ok(MaterialPresetParams::default());
@@ -371,7 +371,7 @@ pub fn load_preset_params(dir: &Path) -> MaterialPresetParams {
 
 /// What paint content a materialized fill layer received.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SubstanceContentKind {
+pub enum referenceContentKind {
     /// Flat UV-aligned `fill_map.png` (materials; honest base-color parity).
     FillMapBitmap,
     /// Name-matched legacy `assets/materials` texture set (smart materials).
@@ -381,7 +381,7 @@ pub enum SubstanceContentKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SubstanceApplyError {
+pub enum referenceApplyError {
     /// The only available bitmap is a sphere-render icon — it must never be
     /// painted as content (SP icon, not a texture).
     ForbiddenSphereBitmap,
@@ -393,7 +393,7 @@ pub const DEFAULT_FILL_ROUGHNESS: f32 = 0.5;
 pub const DEFAULT_FILL_METALLIC: f32 = 0.0;
 pub const DEFAULT_FILL_COLOR: [f32; 4] = [0.7, 0.7, 0.7, 1.0];
 
-/// Materializes an SP-style Fill layer from a substance_cache item directory:
+/// Materializes an SP-style Fill layer from a material_cache item directory:
 /// one new fill layer named after the material label, base color content from
 /// `fill_map.png` (materials) or a name-matched legacy `assets/materials` set
 /// (smart materials), and roughness/metallic values from the authentic preset.
@@ -403,7 +403,7 @@ pub fn build_fill_layer(
     id: usize,
     width: u32,
     height: u32,
-) -> Result<(Layer, SubstanceContentKind), SubstanceApplyError> {
+) -> Result<(Layer, referenceContentKind), referenceApplyError> {
     let dir_name = item_dir
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -439,10 +439,10 @@ pub fn build_fill_layer(
     let fill_map = item_dir.join("fill_map.png");
     if fill_map.exists() {
         let img = image::open(&fill_map)
-            .map_err(|e| SubstanceApplyError::Io(format!("fill_map.png: {e}")))?
+            .map_err(|e| referenceApplyError::Io(format!("fill_map.png: {e}")))?
             .to_rgba8();
         bake_bitmap_into_color(&mut layer, &img);
-        return Ok((layer, SubstanceContentKind::FillMapBitmap));
+        return Ok((layer, referenceContentKind::FillMapBitmap));
     }
 
     // 2. Smart materials: name-matched legacy assets/materials texture set.
@@ -471,7 +471,7 @@ pub fn build_fill_layer(
                             .iter_mut()
                             .for_each(|v| *v = layer.fill_metallic);
                     }
-                    return Ok((layer, SubstanceContentKind::LegacyTextureSet));
+                    return Ok((layer, referenceContentKind::LegacyTextureSet));
                 }
             }
         }
@@ -481,7 +481,7 @@ pub fn build_fill_layer(
     // channel semantics — but still produce a usable parameter-only fill.
     let _ = icon_kind; // sphere icons are never sources of paint content here
 
-    Ok((layer, SubstanceContentKind::FlatParams))
+    Ok((layer, referenceContentKind::FlatParams))
 }
 
 /// Case-insensitive exact name match within the legacy `assets/materials` dir.
@@ -624,22 +624,22 @@ fn bake_bitmap_into_color(layer: &mut Layer, img: &image::RgbaImage) {
 // ---------------------------------------------------------------------------
 
 /// Builds a brush alpha mask from an SP cache item's flat thumbnail.
-/// Sphere-render icons are rejected: [`SubstanceApplyError::ForbiddenSphereBitmap`].
-pub fn build_alpha_mask(item_dir: &Path) -> Result<AlphaMaskData, SubstanceApplyError> {
+/// Sphere-render icons are rejected: [`referenceApplyError::ForbiddenSphereBitmap`].
+pub fn build_alpha_mask(item_dir: &Path) -> Result<AlphaMaskData, referenceApplyError> {
     let dir_name = item_dir
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_default();
     let (_label, _sp, _kw, icon_kind) = load_meta(item_dir, &dir_name);
     if icon_kind == IconKind::Sphere {
-        return Err(SubstanceApplyError::ForbiddenSphereBitmap);
+        return Err(referenceApplyError::ForbiddenSphereBitmap);
     }
     let thumb = item_dir.join("thumbnail.png");
     if !thumb.exists() {
-        return Err(SubstanceApplyError::Io("thumbnail.png missing".to_owned()));
+        return Err(referenceApplyError::Io("thumbnail.png missing".to_owned()));
     }
     let img =
-        image::open(&thumb).map_err(|e| SubstanceApplyError::Io(format!("thumbnail.png: {e}")))?;
+        image::open(&thumb).map_err(|e| referenceApplyError::Io(format!("thumbnail.png: {e}")))?;
     let gray = img.to_luma8();
     let (w, h) = gray.dimensions();
     Ok(AlphaMaskData {
@@ -677,42 +677,42 @@ mod tests {
     }
 
     #[test]
-    fn scan_substance_cache_finds_all_six_groups() {
-        let base = find_substance_cache_dir();
-        let counts = |g: SubstanceGroup| scan_substance_group(&base, g).len();
+    fn scan_material_cache_finds_all_six_groups() {
+        let base = find_material_cache_dir();
+        let counts = |g: MaterialGroup| scan_material_group(&base, g).len();
         assert!(
-            counts(SubstanceGroup::Materials) >= 90,
+            counts(MaterialGroup::Materials) >= 90,
             "materials {}",
-            counts(SubstanceGroup::Materials)
+            counts(MaterialGroup::Materials)
         );
         assert!(
-            counts(SubstanceGroup::SmartMaterials) >= 110,
+            counts(MaterialGroup::SmartMaterials) >= 110,
             "smart {}",
-            counts(SubstanceGroup::SmartMaterials)
+            counts(MaterialGroup::SmartMaterials)
         );
         assert!(
-            counts(SubstanceGroup::Alphas) >= 400,
+            counts(MaterialGroup::Alphas) >= 400,
             "alphas {}",
-            counts(SubstanceGroup::Alphas)
+            counts(MaterialGroup::Alphas)
         );
         assert!(
-            counts(SubstanceGroup::Effects) >= 50,
+            counts(MaterialGroup::Effects) >= 50,
             "effects {}",
-            counts(SubstanceGroup::Effects)
+            counts(MaterialGroup::Effects)
         );
         assert!(
-            counts(SubstanceGroup::Procedurals) >= 200,
+            counts(MaterialGroup::Procedurals) >= 200,
             "procedurals {}",
-            counts(SubstanceGroup::Procedurals)
+            counts(MaterialGroup::Procedurals)
         );
         assert!(
-            counts(SubstanceGroup::Generators) >= 15,
+            counts(MaterialGroup::Generators) >= 15,
             "generators {}",
-            counts(SubstanceGroup::Generators)
+            counts(MaterialGroup::Generators)
         );
 
         // One real item must expose label + flat/sphere icon classification.
-        let mats = scan_substance_group(&base, SubstanceGroup::Materials);
+        let mats = scan_material_group(&base, MaterialGroup::Materials);
         let clay = mats
             .iter()
             .find(|i| i.label == "Clay Earthenware")
@@ -727,16 +727,16 @@ mod tests {
         let tmp = std::env::temp_dir().join("remoainter_subst_nomiss");
         let _ = std::fs::remove_dir_all(&tmp);
         std::fs::create_dir_all(&tmp).unwrap();
-        assert!(scan_substance_group(&tmp, SubstanceGroup::Alphas).is_empty());
+        assert!(scan_material_group(&tmp, MaterialGroup::Alphas).is_empty());
     }
 
     #[test]
     fn clay_earthenware_params_parse_with_clay_identifiers() {
         let p = std::path::Path::new(
-            "/mnt/shared/REMoAINTER/assets/substance_cache/materials/clay_earthenware/params.json",
+            "/mnt/shared/REMoAINTER/assets/material_cache/materials/clay_earthenware/params.json",
         );
         if !p.exists() {
-            eprintln!("[substance_library] clay params fixture not present — skipping");
+            eprintln!("[material_library] clay params fixture not present — skipping");
             return;
         }
         let raw = std::fs::read_to_string(p).expect("params.json readable");
@@ -774,7 +774,7 @@ mod tests {
         write_png(&dir.join("fill_map.png"), 8, 8, [0, 0, 255, 255]);
 
         let (layer, kind) = build_fill_layer(&dir, 7, 32, 32).expect("apply");
-        assert_eq!(kind, SubstanceContentKind::FillMapBitmap);
+        assert_eq!(kind, referenceContentKind::FillMapBitmap);
         assert_eq!(layer.name, "Test Fake Mat");
         assert_eq!(layer.layer_type, crate::painting::layer::LayerType::Fill);
         // Pixel (0,0) comes from fill_map (0,0) — the deliberately distinct column.
@@ -806,7 +806,7 @@ mod tests {
         write_png(&dir.join("thumbnail.png"), 4, 4, [128, 128, 128, 255]);
 
         let (layer, kind) = build_fill_layer(&dir, 3, 16, 16).expect("apply");
-        assert_eq!(kind, SubstanceContentKind::FlatParams);
+        assert_eq!(kind, referenceContentKind::FlatParams);
         assert_eq!(layer.name, "Test No Bitmap");
         assert!((layer.fill_roughness - 0.8).abs() < 1e-6);
         assert_eq!(layer.fill_metallic, DEFAULT_FILL_METALLIC);
@@ -826,7 +826,7 @@ mod tests {
         .unwrap();
         write_png(&dir.join("thumbnail.png"), 16, 16, [200, 200, 200, 255]);
         let err = build_alpha_mask(&dir).expect_err("sphere must not be a paint source");
-        assert_eq!(err, SubstanceApplyError::ForbiddenSphereBitmap);
+        assert_eq!(err, referenceApplyError::ForbiddenSphereBitmap);
 
         // Missing thumbnail also errors gracefully.
         let dir2 = temp_item("fake_nothumb");
@@ -837,7 +837,7 @@ mod tests {
         .unwrap();
         assert!(matches!(
             build_alpha_mask(&dir2),
-            Err(SubstanceApplyError::Io(_))
+            Err(referenceApplyError::Io(_))
         ));
     }
 
@@ -861,15 +861,15 @@ mod tests {
     #[test]
     fn smart_material_uses_legacy_texture_set_when_name_matched() {
         // Only asserts when the legacy assets/materials dir actually ships the item.
-        let cache = find_substance_cache_dir();
+        let cache = find_material_cache_dir();
         let mat_dir = super::super::material_gen::find_materials_dir();
-        let items = scan_substance_group(&cache, SubstanceGroup::SmartMaterials);
+        let items = scan_material_group(&cache, MaterialGroup::SmartMaterials);
         let al = items.iter().find(|i| i.label == "Aluminium Anodized Red");
         if let (Some(item), true) = (al, mat_dir.join("Aluminium Anodized Red").is_dir()) {
             let (layer, kind) =
                 build_fill_layer(&item.dir, 11, 64, 64).expect("apply smart material");
             assert_eq!(layer.name, "Aluminium Anodized Red");
-            assert_eq!(kind, SubstanceContentKind::LegacyTextureSet);
+            assert_eq!(kind, referenceContentKind::LegacyTextureSet);
             // The legacy texture set provides real pixel content (not a flat fill).
             assert!(layer.color_buffer.iter().any(|&c| c != layer.fill_color));
         } else {

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// REMoAINTER — Tile-Based Non-Destructive History System (Substance Painter Parity)
+// REMoAINTER — Tile-Based Non-Destructive History System (reference PBR suite Parity)
 // Features:
 // - 64x64 Tile-Based Granular Dirty Region Backups (98% memory savings vs full buffer copies)
 // - Atomic Transaction Strokes

@@ -218,7 +218,7 @@ pub fn load_real_pbr_material(
     layer
 }
 
-/// Applies an authentic 3-tier Substance Painter Smart Material hierarchy with real PBR maps and edge wear
+/// Applies an authentic 3-tier reference PBR suite Smart Material hierarchy with real PBR maps and edge wear
 pub fn apply_smart_material_hierarchy(
     stack: &mut LayerStack,
     name: &str,
@@ -265,7 +265,7 @@ pub fn apply_smart_material_hierarchy(
     let mut coat_layer = load_real_pbr_material(2, name, color, metallic, roughness, w, h);
     coat_layer.name = format!("Coat ({})", name);
 
-    // 3. Black Mask with Smart Spatial Curvature Edge Wear & AO Crevices (Substance Generator)
+    // 3. Black Mask with Smart Spatial Curvature Edge Wear & AO Crevices (reference Generator)
     let mut mask = LayerMask::new(MaskType::Black, w, h);
     for i in 0..total {
         let x = (i % w as usize) as f32;

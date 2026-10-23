@@ -40,11 +40,11 @@ pub struct ShelfAsset {
     pub pbr_color: [f32; 4],
     pub pbr_metallic: f32,
     pub pbr_roughness: f32,
-    /// substance_cache item dir applied with the SP fill-layer path (materials /
+    /// material_cache item dir applied with the SP fill-layer path (materials /
     /// smart materials); `None` for legacy shelf files (plain previews/alphas).
     pub item_dir: Option<PathBuf>,
     /// Icon classification from SP: sphere renders are never paint content.
-    pub icon_kind: crate::painting::substance_library::IconKind,
+    pub icon_kind: crate::painting::material_library::IconKind,
     /// Label + SP keywords + SP category, lowercased — the search haystack.
     pub search_text: String,
 }
@@ -58,7 +58,7 @@ pub struct TextureChannel {
     pub enabled: bool,
 }
 
-/// A saved 3D camera bookmark (Substance Painter standard slots 1..9)
+/// A saved 3D camera bookmark (reference PBR suite standard slots 1..9)
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CameraBookmark {
     pub name: String,
@@ -157,7 +157,7 @@ pub struct RemoainterApp {
     pub checker_handle: Option<egui::TextureHandle>,
     pub texture_needs_update: bool,
     pub viewport_view_mode: usize, // 0: 3D View, 1: 2D Texture View, 2: Split 2D | 3D
-    // 2D UV View camera (Substance Painter parity: wheel zoom + middle-drag pan)
+    // 2D UV View camera (reference PBR suite parity: wheel zoom + middle-drag pan)
     pub uv_zoom: f32,
     pub uv_pan: [f32; 2], // screen-space offset of the texture square around its pane center
     pub show_wireframe: bool,
@@ -184,7 +184,7 @@ pub struct RemoainterApp {
     pub texture_channels: Vec<TextureChannel>,
     pub texture_set_manager: crate::painting::TextureSetManager,
 
-    // Export Textures Dialog (File > Export Textures, Substance Painter Parity)
+    // Export Textures Dialog (File > Export Textures, reference PBR suite Parity)
     pub show_export_dialog: bool,
     pub export_output_dir: PathBuf,
     pub export_preset_idx: usize,
@@ -210,7 +210,7 @@ pub struct RemoainterApp {
     pub graph_preview_tex: Option<egui::TextureHandle>,
     pub graph_status: String,
 
-    // New Project Dialog (File > New..., Substance Painter Parity)
+    // New Project Dialog (File > New..., reference PBR suite Parity)
     pub show_new_project_dialog: bool,
     pub new_proj_mesh_path: String,
     pub new_proj_template_idx: usize,
@@ -459,7 +459,7 @@ fn legacy_scan_category(
                 pbr_metallic,
                 pbr_roughness,
                 item_dir: None,
-                icon_kind: crate::painting::substance_library::IconKind::Flat,
+                icon_kind: crate::painting::material_library::IconKind::Flat,
                 search_text: stem.to_lowercase(),
             });
         }
@@ -468,31 +468,31 @@ fn legacy_scan_category(
 
 fn scan_shelf_assets() -> Vec<ShelfAsset> {
     let shelf_dir = find_shelf_dir();
-    let cache_base = crate::painting::substance_library::find_substance_cache_dir();
-    let cache_items = crate::painting::substance_library::scan_substance_cache(&cache_base);
+    let cache_base = crate::painting::material_library::find_material_cache_dir();
+    let cache_items = crate::painting::material_library::scan_material_cache(&cache_base);
 
     let mut assets: Vec<ShelfAsset> = Vec::new();
 
-    // 1. Authentic Substance cache assets (the primary source of truth).
+    // 1. Reference cache assets (the primary source of truth).
     for item in &cache_items {
         let (cat_id, badge, badge_color) = match item.group {
-            crate::painting::substance_library::SubstanceGroup::SmartMaterials => {
+            crate::painting::material_library::MaterialGroup::SmartMaterials => {
                 (1, "SMAT", SMART_MAT_ORANGE)
             }
-            crate::painting::substance_library::SubstanceGroup::Materials => {
+            crate::painting::material_library::MaterialGroup::Materials => {
                 (2, "MAT", ACTIVE_BLUE)
             }
-            crate::painting::substance_library::SubstanceGroup::Effects
-            | crate::painting::substance_library::SubstanceGroup::Generators => {
+            crate::painting::material_library::MaterialGroup::Effects
+            | crate::painting::material_library::MaterialGroup::Generators => {
                 (5, "FX", Color32::from_rgb(200, 90, 40))
             }
-            crate::painting::substance_library::SubstanceGroup::Procedurals
-            | crate::painting::substance_library::SubstanceGroup::Alphas => {
+            crate::painting::material_library::MaterialGroup::Procedurals
+            | crate::painting::material_library::MaterialGroup::Alphas => {
                 (4, "ALPHA", Color32::from_rgb(46, 180, 110))
             }
         };
         let (pbr_color, pbr_metallic, pbr_roughness) = if cat_id == 2 || cat_id == 1 {
-            let params = crate::painting::substance_library::load_preset_params(&item.dir);
+            let params = crate::painting::material_library::load_preset_params(&item.dir);
             (
                 params
                     .color
@@ -556,7 +556,7 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
         &mut seen,
     );
 
-    // Materials now come exclusively from substance_cache/materials (fill maps).
+    // Materials now come exclusively from material_cache/materials (fill maps).
 
     assets
 }
@@ -651,12 +651,12 @@ impl Default for RemoainterApp {
                 (
                     "09:00:02".into(),
                     "INFO".into(),
-                    "Substance 3D Painter 1-to-1 Architecture & UI Active.".into(),
+                    "reference PBR suite 1-to-1 Architecture & UI Active.".into(),
                 ),
                 (
                     "09:00:03".into(),
                     "INFO".into(),
-                    "Loaded 991+ authentic Substance Painter starter assets (materials, smart mats, effects, generators, procedurals & alphas).".into(),
+                    "Loaded 991+ authentic reference PBR suite starter assets (materials, smart mats, effects, generators, procedurals & alphas).".into(),
                 ),
                 (
                     "09:00:04".into(),
@@ -670,7 +670,7 @@ impl Default for RemoainterApp {
             texture_handle: None,
             texture_needs_update: true,
             checker_handle: None,
-            viewport_view_mode: 2, // 3D | 2D Split View as default on startup (Substance Painter parity)
+            viewport_view_mode: 2, // 3D | 2D Split View as default on startup (reference PBR suite parity)
             show_wireframe: false,
             show_uv_wireframe: true,
             show_grid: true,
@@ -820,7 +820,7 @@ impl Default for RemoainterApp {
             };
         }
 
-        // Load clean base PBR material and user paint detail layer on startup (Substance standard)
+        // Load clean base PBR material and user paint detail layer on startup (reference standard)
         let w = app.layer_stack.width;
         let h = app.layer_stack.height;
         let base_mat = load_real_pbr_material(
@@ -883,7 +883,7 @@ impl RemoainterApp {
     /// 4 Alphas / procedurals — brush custom alpha from a flat (non-sphere) icon;
     /// 5 Effects/Generators — SP generator applied as a mask on the active layer.
     pub fn handle_shelf_click(&mut self, asset: ShelfAsset) {
-        use crate::painting::substance_library as sl;
+        use crate::painting::material_library as sl;
         let name = asset.name.clone();
         match asset.category {
             // Cache-backed materials & smart materials: SP-style fill-layer instantiation.
@@ -904,7 +904,7 @@ impl RemoainterApp {
                         self.layer_stack.height,
                     ) {
                         Ok((layer, kind)) => {
-                            if kind == sl::SubstanceContentKind::FlatParams
+                            if kind == sl::referenceContentKind::FlatParams
                                 && asset.icon_kind == sl::IconKind::Sphere
                             {
                                 self.log_line(
@@ -923,7 +923,7 @@ impl RemoainterApp {
                             self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
                             self.recompute_composite();
                             let note = match kind {
-                                sl::SubstanceContentKind::FlatParams => "parameters-only fill",
+                                sl::referenceContentKind::FlatParams => "parameters-only fill",
                                 _ => "preview-derived content",
                             };
                             self.status_message =
@@ -935,7 +935,7 @@ impl RemoainterApp {
                                 note
                             ));
                         }
-                        Err(sl::SubstanceApplyError::ForbiddenSphereBitmap) => {
+                        Err(sl::referenceApplyError::ForbiddenSphereBitmap) => {
                             self.status_message =
                                 format!("Refused sphere-render icon as paint content: {}", name);
                             {
@@ -943,7 +943,7 @@ impl RemoainterApp {
                                 self.log_line("WARN", &m);
                             }
                         }
-                        Err(sl::SubstanceApplyError::Io(e)) => {
+                        Err(sl::referenceApplyError::Io(e)) => {
                             self.status_message =
                                 format!("Failed to apply SP material: {}: {}", name, e);
                             {
@@ -1031,7 +1031,7 @@ impl RemoainterApp {
                             self.brush.custom_alpha = Some(Arc::new(alpha));
                             applied = true;
                         }
-                        Err(sl::SubstanceApplyError::ForbiddenSphereBitmap) => {
+                        Err(sl::referenceApplyError::ForbiddenSphereBitmap) => {
                             self.status_message =
                                 format!("'{}': sphere-render icon cannot be used as alpha", name);
                             {
@@ -1039,7 +1039,7 @@ impl RemoainterApp {
                                 self.log_line("WARN", &m);
                             }
                         }
-                        Err(sl::SubstanceApplyError::Io(e)) => {
+                        Err(sl::referenceApplyError::Io(e)) => {
                             self.status_message = format!("Failed to load alpha '{}': {}", name, e);
                             {
                                 let m = self.status_message.clone();
@@ -1893,7 +1893,7 @@ impl RemoainterApp {
         self.logs.push((time_str, "INFO".into(), log_msg));
     }
 
-    /// Full Substance Painter-grade texture export (Unreal ORM, Unity URP/HDRP, glTF, Generic PBR, OpenEXR)
+    /// Full reference PBR suite-grade texture export (Unreal ORM, Unity URP/HDRP, glTF, Generic PBR, OpenEXR)
     pub fn export_textures(&mut self) {
         let mut preset = match self.export_preset_idx {
             0 => ExportPreset::unreal_engine(),
@@ -2179,7 +2179,7 @@ impl RemoainterApp {
 
     pub fn ui_sbsar_import_dialog(&mut self, ctx: &egui::Context) {
         let mut open = true;
-        egui::Window::new("🧩 Substance Archive (.sbsar) Import")
+        egui::Window::new("🧩 reference Archive (.sbsar) Import")
             .open(&mut open)
             .resizable(true)
             .default_width(420.0)
@@ -2445,7 +2445,7 @@ impl RemoainterApp {
 
 impl eframe::App for RemoainterApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        apply_substance_theme(ctx);
+        apply_theme(ctx);
 
         // Handle background asynchronous baking
         if self.is_baking {
@@ -2492,7 +2492,7 @@ impl eframe::App for RemoainterApp {
             ctx.request_repaint();
         }
 
-        // Global hotkey processing (Substance Painter standard)
+        // Global hotkey processing (reference PBR suite standard)
         let num_keys = [
             (egui::Key::Num1, 1),
             (egui::Key::Num2, 2),
@@ -2790,7 +2790,7 @@ impl eframe::App for RemoainterApp {
             return;
         }
 
-        // If Baker mode is active, render full docked Baking Studio Mode (Substance Painter 1:1)
+        // If Baker mode is active, render full docked Baking Studio Mode (reference PBR suite 1:1)
         if self.show_baker_dialog {
             self.ui_baker_studio_mode(ctx);
             if self.show_texture_importer_dialog {
@@ -2949,11 +2949,11 @@ impl eframe::App for RemoainterApp {
                             ui.close_menu();
                         }
                         if ui
-                            .button("🧩 Import .sbsar (Substance Archive)...")
+                            .button("🧩 Import .sbsar (reference Archive)...")
                             .clicked()
                         {
                             let picked = rfd::FileDialog::new()
-                                .add_filter("Substance Archive", &["sbsar"])
+                                .add_filter("reference Archive", &["sbsar"])
                                 .pick_file();
                             if let Some(path) = picked {
                                 self.import_sbsar_file(&path);
@@ -3062,7 +3062,7 @@ impl eframe::App for RemoainterApp {
                     });
 
                     ui.menu_button("Geometry", |ui| {
-                        if ui.button("Substance Material Sphere").clicked() {
+                        if ui.button("reference Material Sphere").clicked() {
                             self.load_model(0);
                             ui.close_menu();
                         }
@@ -3516,10 +3516,10 @@ impl eframe::App for RemoainterApp {
                 }
 
                 ui.separator();
-                // 3D/2D View Mode Switchers (Substance Painter F1/F2/F3/F4)
+                // 3D/2D View Mode Switchers (reference PBR suite F1/F2/F3/F4)
                 if ui
                     .selectable_label(self.viewport_view_mode == 2, "2D | 3D (F1)")
-                    .on_hover_text("Split 2D UV Texture Map View & 3D Viewport (Substance default)")
+                    .on_hover_text("Split 2D UV Texture Map View & 3D Viewport (reference default)")
                     .clicked()
                 {
                     self.viewport_view_mode = 2;
@@ -3732,7 +3732,7 @@ impl eframe::App for RemoainterApp {
 
                 ui.add(
                     egui::TextEdit::singleline(&mut self.search_query)
-                        .hint_text("Search Substance assets (label, category, keywords)..."),
+                        .hint_text("Search reference assets (label, category, keywords)..."),
                 );
                 ui.separator();
 
@@ -4206,7 +4206,7 @@ impl eframe::App for RemoainterApp {
                     self.render_2d_canvas(painter, rect, &response, ctx);
                 }
                 _ => {
-                    // Substance Painter parity: 2D UV view on the LEFT, 3D viewport on the RIGHT
+                    // reference PBR suite parity: 2D UV view on the LEFT, 3D viewport on the RIGHT
                     let half_w = rect.width() * 0.5;
                     let rect_2d = Rect::from_min_size(rect.min, vec2(half_w, rect.height()));
                     let rect_3d = Rect::from_min_size(
@@ -4282,7 +4282,7 @@ impl RemoainterApp {
         response: &egui::Response,
         ctx: &egui::Context,
     ) {
-        // Substance Painter parity: a full-pane dark 2D UV viewport with the texture in a
+        // reference PBR suite parity: a full-pane dark 2D UV viewport with the texture in a
         // fit-to-pane window, checkerboard under transparent areas, wheel zoom and
         // middle-drag pan around the pointer.
         painter.rect_filled(canvas_bounds, 0.0_f32, Color32::from_rgb(38, 38, 40));
@@ -4290,7 +4290,7 @@ impl RemoainterApp {
         let base_size = (canvas_bounds.width().min(canvas_bounds.height()) - 48.0).max(64.0);
         let base_center = canvas_bounds.center();
 
-        // Wheel zoom around the pointer (Substance 2D view behavior)
+        // Wheel zoom around the pointer (reference 2D view behavior)
         if canvas_bounds.contains(
             ctx.pointer_latest_pos()
                 .unwrap_or(egui::pos2(f32::INFINITY, f32::INFINITY)),
@@ -4330,7 +4330,7 @@ impl RemoainterApp {
             vec2(size, size),
         );
 
-        // Checkerboard behind the texture (Substance transparency indicator), 16px tile
+        // Checkerboard behind the texture (reference transparency indicator), 16px tile
         let checker_id = self
             .checker_handle
             .get_or_insert_with(|| {
@@ -4377,8 +4377,8 @@ impl RemoainterApp {
         // Texture window border
         painter.rect_stroke(canvas_rect, 2.0_f32, Stroke::new(1.0_f32, BORDER_COLOR));
 
-        // Draw UV Mesh Wireframe Overlay (Substance Painter 2D UV Layout)
-        // Substance renders UV island outlines & seams (boundary edges), not the dense
+        // Draw UV Mesh Wireframe Overlay (reference PBR suite 2D UV Layout)
+        // reference renders UV island outlines & seams (boundary edges), not the dense
         // triangle soup — boundary edges (counted once) are exactly that.
         if self.show_uv_wireframe {
             let mut edge_counts: std::collections::HashMap<(i64, i64, i64, i64), u32> =
@@ -4442,7 +4442,7 @@ impl RemoainterApp {
             egui::FontId::monospace(10.5),
             TEXT_DIMMED,
         );
-        // Pan/zoom hint (Substance-style toolbar info)
+        // Pan/zoom hint (reference-style toolbar info)
         if canvas_bounds.width() > 320.0 {
             painter.text(
                 pos2(canvas_bounds.right() - 8.0, canvas_bounds.top() + 8.0),
@@ -6079,7 +6079,7 @@ impl RemoainterApp {
 
                     let indent = if parent_id.is_some() { 16.0 } else { 0.0 };
 
-                    // Color tag indicator (Substance Painter color tags)
+                    // Color tag indicator (reference PBR suite color tags)
                     if let Some(tag) = layer.color_tag {
                         let tag_col = match tag {
                             1 => Color32::from_rgb(230, 60, 60),  // Red
@@ -6244,7 +6244,7 @@ impl RemoainterApp {
                         );
                     }
 
-                    // Right-Click Context Menu (Substance Painter 1:1 matching)
+                    // Right-Click Context Menu (reference PBR suite 1:1 matching)
                     resp.context_menu(|ui| {
                         ui.set_min_width(220.0);
                         ui.label(
@@ -6369,7 +6369,7 @@ impl RemoainterApp {
                         });
                         ui.separator();
 
-                        // ── 4. Blending Options (All 29 Substance Painter Blend Modes) ─
+                        // ── 4. Blending Options (All 29 reference PBR suite Blend Modes) ─
                         ui.menu_button("Blending options", |ui| {
                             let modes = [
                                 BlendMode::Normal,
@@ -6411,7 +6411,7 @@ impl RemoainterApp {
                         });
                         ui.separator();
 
-                        // ── 5. Effects Submenu (Substance Painter style) ───
+                        // ── 5. Effects Submenu (reference PBR suite style) ───
                         ui.menu_button("⚡ Add generator", |ui| {
                             if ui.button("Metal Edge Wear").clicked() {
                                 list_action = Some(LayerListAction::AddGenerator(
@@ -7108,8 +7108,8 @@ impl RemoainterApp {
                         }
                     });
 
-                    // Per-Layer Channel Blends & Overrides (Substance Painter Parity)
-                    ui.collapsing("CHANNEL BLEND & ROUTING (SUBSTANCE PARITY)", |ui| {
+                    // Per-Layer Channel Blends & Overrides (reference PBR suite Parity)
+                    ui.collapsing("CHANNEL BLEND & ROUTING (CHANNEL PARITY)", |ui| {
                         let mut ch_row = |name: &str,
                                           enabled: &mut bool,
                                           blend: &mut BlendMode,
@@ -7746,7 +7746,7 @@ impl RemoainterApp {
             ui.label(RichText::new("Color Management / Tone Mapping").strong());
             egui::ComboBox::from_id_salt("display_color_mgmt")
                 .selected_text(match self.color_management_mode {
-                    0 => "ACES Filmic (Substance 3D Painter Look)",
+                    0 => "ACES Filmic (reference PBR suite Look)",
                     1 => "sRGB Display (Raw Linear Transfer)",
                     _ => "Neutral Reinhard (Soft Highlight Shoulder)",
                 })
@@ -7754,7 +7754,7 @@ impl RemoainterApp {
                     ui.selectable_value(
                         &mut self.color_management_mode,
                         0,
-                        "ACES Filmic (Substance 3D Painter Look)",
+                        "ACES Filmic (reference PBR suite Look)",
                     );
                     ui.selectable_value(
                         &mut self.color_management_mode,
@@ -7773,7 +7773,7 @@ impl RemoainterApp {
     fn ui_shader_settings(&mut self, ui: &mut Ui) {
         ui.heading("SHADER SETTINGS");
         ui.separator();
-        ui.label("Shader: pbr-metal-rough (Substance Painter Parity)");
+        ui.label("Shader: pbr-metal-rough (reference PBR suite Parity)");
         ui.label("BRDF: Cook-Torrance Microfacet GGX");
         ui.label("Specular D: D_GGX (Trowbridge-Reitz)");
         ui.label("Shadowing G: Smith-Schlick GGX");
@@ -8480,7 +8480,7 @@ impl RemoainterApp {
                     self.baker_options.resolution
                 ));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Substance 3D Painter Baking Studio 1:1");
+                    ui.label("reference PBR suite Baking Studio 1:1");
                 });
             });
         });
@@ -9029,7 +9029,7 @@ Res: {}×{}",
                             ui.text_edit_singleline(&mut self.baker_high_suffix);
                             ui.end_row();
 
-                            // Substance parity: nearest-shell fallback when the
+                            // reference parity: nearest-shell fallback when the
                             // name suffixes cannot pair a low/high shell pair.
                             let _ = ui.checkbox(&mut self.baker_options.match_by_shell, "Match by Shell (name miss fallback)");
                             ui.end_row();
@@ -9400,7 +9400,7 @@ Res: {}×{}",
                         });
                         ui.end_row();
 
-                        // Padding algorithm (Substance parity: transparent / color / diffusion / passthrough)
+                        // Padding algorithm (reference parity: transparent / color / diffusion / passthrough)
                         ui.label(egui::RichText::new("Padding Algorithm:").strong());
                         let padding_modes = ["Color (Dilate)", "Transparent", "Diffusion", "Passthrough"];
                         egui::ComboBox::from_id_salt("export_padding_algo_combo")
@@ -10269,7 +10269,7 @@ Res: {}×{}",
                                 ui.selectable_value(
                                     &mut self.config.color_management_mode,
                                     0,
-                                    "ACES Filmic (Substance 3D Painter Look)",
+                                    "ACES Filmic (reference PBR suite Look)",
                                 );
                                 ui.selectable_value(
                                     &mut self.config.color_management_mode,
@@ -10324,7 +10324,7 @@ Res: {}×{}",
             .show(ctx, |ui| {
                 ui.heading("KEYBOARD SHORTCUTS TABLE");
                 ui.label(
-                    RichText::new("Substance 3D Painter 1:1 Parity Keybindings").color(TEXT_DIMMED),
+                    RichText::new("reference PBR suite 1:1 Parity Keybindings").color(TEXT_DIMMED),
                 );
                 ui.separator();
 

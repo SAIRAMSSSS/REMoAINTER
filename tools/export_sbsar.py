@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 REMoAINTER SBSAR & Smart Material Exporter
-Uses Adobe Substance Automation Toolkit (sbsrender) to batch-render .sbsar graphs into
+Uses Adobe sbsrender CLI (sbsrender) to batch-render .sbsar graphs into
 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO),
 generates material.json manifests, and extracts .spsm smart materials.
 """
@@ -15,8 +15,8 @@ import argparse
 from pathlib import Path
 from PIL import Image
 
-DEFAULT_SBSAR_DIR = "/mnt/shared/SubstancePainter11/App/resources/starter_assets/materials"
-DEFAULT_SPSM_DIR = "/mnt/shared/SubstancePainter11/App/resources/starter_assets/smart-materials"
+DEFAULT_SBSAR_DIR = "/mnt/shared/referencePainter11/App/resources/starter_assets/materials"
+DEFAULT_SPSM_DIR = "/mnt/shared/referencePainter11/App/resources/starter_assets/smart-materials"
 DEFAULT_OUT_DIR = "/mnt/shared/REMoAINTER/assets/materials"
 DEFAULT_SHELF_THUMBS = "/mnt/shared/REMoAINTER/assets/shelf/thumbnails/materials"
 
@@ -29,12 +29,12 @@ def find_sbsrender():
     # Check environment variable
     if "SBSRENDER_PATH" in os.environ and os.path.exists(os.environ["SBSRENDER_PATH"]):
         return os.environ["SBSRENDER_PATH"]
-    # Check common Substance directories
+    # Check common reference directories
     candidates = [
-        "/opt/Allegorithmic/Substance_Automation_Toolkit/sbsrender",
+        "/opt/Allegorithmic/reference_Automation_Toolkit/sbsrender",
         "/usr/local/bin/sbsrender",
-        "/mnt/shared/SubstancePainter11/App/sbsrender.exe",
-        "/mnt/shared/SubstancePainter11/App/sbsrender",
+        "/mnt/shared/referencePainter11/App/sbsrender.exe",
+        "/mnt/shared/referencePainter11/App/sbsrender",
     ]
     for c in candidates:
         if os.path.exists(c):
@@ -140,7 +140,7 @@ def process_spsm(spsm_path, out_dir):
         json.dump(manifest, f, indent=2)
 
 def main():
-    parser = argparse.ArgumentParser(description="REMoAINTER Substance SBSAR & SPSM Batch Exporter")
+    parser = argparse.ArgumentParser(description="REMoAINTER reference SBSAR & SPSM Batch Exporter")
     parser.add_argument("--sbsar-dir", default=DEFAULT_SBSAR_DIR, help="Path to starter_assets/materials")
     parser.add_argument("--spsm-dir", default=DEFAULT_SPSM_DIR, help="Path to starter_assets/smart-materials")
     parser.add_argument("--out-dir", default=DEFAULT_OUT_DIR, help="Destination directory for materials")
@@ -154,14 +154,14 @@ def main():
     sbsrender_bin = args.sbsrender or find_sbsrender()
 
     print("=" * 65)
-    print(" REMoAINTER - Substance PBR Material & SBSAR Exporter")
+    print(" REMoAINTER - reference PBR Material & SBSAR Exporter")
     print("=" * 65)
 
     if not sbsrender_bin:
-        print("\n[!] NOTICE: Adobe Substance Automation Toolkit (sbsrender) was not found.")
+        print("\n[!] NOTICE: Adobe sbsrender CLI (sbsrender) was not found.")
         print("    SBSAR files require `sbsrender` to execute the procedural graph rendering.")
         print("    To render SBSAR files to full 2048/4096 texture maps:")
-        print("      1. Install Substance 3D Automation Toolkit (SAT)")
+        print("      1. Install reference 3D Automation Toolkit (SAT)")
         print("      2. Ensure `sbsrender` is in your PATH or pass `--sbsrender /path/to/sbsrender`")
         print("      3. Or set `export SBSRENDER_PATH=/path/to/sbsrender`")
         print("\n[*] Processing .spsm smart materials and bundled assets instead...")

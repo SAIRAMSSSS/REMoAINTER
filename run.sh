@@ -12,9 +12,4 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 export LC_ALL="C.UTF-8"
 export LANG="C.UTF-8"
 
-if [[ "$1" == "--vulkan" || "$1" == "--cpp" ]]; then
-  shift
-  exec "$DIR/legacy-cpp/build/remoainter" "$@"
-else
-  exec "$DIR/rust/target/release/remoainter" "$@"
-fi
+exec "$DIR/rust/target/release/remoainter" "$@"

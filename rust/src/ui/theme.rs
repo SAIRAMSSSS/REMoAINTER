@@ -1,8 +1,8 @@
-//! Substance 3D Painter UI theme.
+//! reference PBR suite UI theme.
 //!
 //! Tokens are lifted from the *actual* shipped AlgWidgets QML style files
 //! (`AlgWidgets/Style.2/Alg{Style,BackgroundStyle,TextStyle,BorderStyle,
-//! WidgetsStyle}.qml` — see `docs/SUBSTANCE_REFERENCE_EXTRACTION.md`):
+//! WidgetsStyle}.qml` — see `docs/ARCHITECTURE.md`):
 //!
 //! - `colors.gray(L)` is `Qt.hsla(0, 0, L/100)`, so gray(20) = #333333,
 //!   gray(15) = #262626, gray(10) = #1A1A1A, gray(25) = #404040,
@@ -26,7 +26,7 @@ pub const JUNGLE_GREEN: Color32 = Color32::from_rgb(48, 178, 156);
 // ── Background grays (AlgStyle.background) ───────────────────────────────────
 /// `mainWindow: colors.gray(20)`
 pub const WINDOW_BG: Color32 = Color32::from_rgb(51, 51, 51);
-/// Shared panel background (same as the window in Substance).
+/// Shared panel background (same as the window in reference).
 pub const PANEL_BG: Color32 = WINDOW_BG;
 /// Text/combobox inputs idle: `gray(15)`
 pub const INPUT_BG: Color32 = Color32::from_rgb(38, 38, 38);
@@ -51,9 +51,9 @@ pub const TEXT_HOVERED: Color32 = Color32::WHITE;
 /// `text.color.disabled: colors.gray(40)`
 pub const TEXT_DIMMED: Color32 = Color32::from_rgb(102, 102, 102);
 
-/// Identity-magnitude Substance font stack (OpenSans embedded below answers
+/// Identity-magnitude reference font stack (OpenSans embedded below answers
 /// for glyph coverage; sizes mirror `text.font.size: 11` scaled for egui).
-pub fn configure_substance_fonts(ctx: &egui::Context) {
+pub fn configure_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
     // Embed authentic OpenSans fonts into the binary (Standalone on Linux & Windows)
@@ -78,9 +78,9 @@ pub fn configure_substance_fonts(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 }
 
-/// Apply the Substance-dark theme derived from the shipped QML tokens.
-pub fn apply_substance_theme(ctx: &egui::Context) {
-    // Text sizes: Substance uses an 11 px UI face on 96 DPI.
+/// Apply the reference-dark theme derived from the shipped QML tokens.
+pub fn apply_theme(ctx: &egui::Context) {
+    // Text sizes: reference uses an 11 px UI face on 96 DPI.
     let mut style = Style::default();
     style.text_styles = [
         (egui::TextStyle::Body, egui::FontId::proportional(11.5)),

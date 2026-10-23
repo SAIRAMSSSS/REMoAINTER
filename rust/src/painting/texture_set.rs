@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REMoAINTER — Multi-Texture Set & UDIM Tile Architecture (Substance Painter Parity)
+// REMoAINTER — Multi-Texture Set & UDIM Tile Architecture (reference PBR suite Parity)
 // Features:
 // - Multiple Texture Sets per Mesh (Material Groups)
 // - UDIM Tile Multi-Tile UV Support (1001, 1002, 1003...)
@@ -33,7 +33,7 @@ impl TextureChannelDef {
         }
     }
 
-    /// List of standard available channels in Substance Painter
+    /// List of standard available channels in reference PBR suite
     pub fn standard_channels() -> Vec<Self> {
         vec![
             Self::new("Base color", "sRGB8"),

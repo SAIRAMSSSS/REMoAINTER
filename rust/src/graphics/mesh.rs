@@ -29,12 +29,12 @@ impl Mesh {
             });
         }
     }
-    /// Creates a smooth, pristine Material Calibration Sphere with Substance Painter-parity
+    /// Creates a smooth, pristine Material Calibration Sphere with reference PBR suite-parity
     /// UV layout: a main body island (left column) plus two circular pole-cap islands in the
     /// right margin — organized flat islands instead of a full-bleed equirectangular "globe"
     /// map.
     pub fn create_material_sphere(rings: u32, sectors: u32) -> Self {
-        // Substance-parity UV island layout constants
+        // reference-parity UV island layout constants
         const BODY_U0: f32 = 0.02;
         const BODY_V0: f32 = 0.02;
         const BODY_U1: f32 = 0.70;
@@ -997,7 +997,7 @@ mod tests {
                 uv
             );
         }
-        // Substance-parity: every UV belongs to one of the three organized
+        // reference-parity: every UV belongs to one of the three organized
         // shells — the body island (left column) or one of the two circular
         // pole caps in the right margin. No full-bleed equirect corners.
         for uv in &s.uvs {

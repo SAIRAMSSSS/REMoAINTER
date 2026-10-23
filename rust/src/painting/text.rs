@@ -1,4 +1,4 @@
-//! Text / decal rasterization for the Decal tool. Substance Painter parity: real system
+//! Text / decal rasterization for the Decal tool. reference PBR suite parity: real system
 //! TTF/OTF fonts via `ab_glyph` (kerning, arbitrary Unicode, selectable font), with the
 //! original embedded bitmap vector font kept as the internal fallback when a chosen font
 //! fails to load or none is installed.
@@ -221,10 +221,10 @@ fn collect_font_files(
     }
 }
 
-/// App-bundled authentic Substance Painter font directory (TTF/OTF found via the
+/// App-bundled authentic reference PBR suite font directory (TTF/OTF found via the
 /// same candidate-path pattern as `find_materials_dir` / `find_shelf_dir`).
-fn substance_fonts_dir() -> Option<PathBuf> {
-    crate::painting::substance_library::find_substance_fonts_dir()
+fn fonts_dir_dir() -> Option<PathBuf> {
+    crate::painting::material_library::find_fonts_dir()
 }
 
 fn font_roots() -> Vec<PathBuf> {
@@ -246,14 +246,14 @@ fn font_roots() -> Vec<PathBuf> {
 }
 
 /// All discoverable fonts (`*.ttf|otf|ttc|otc`, case-insensitive): the app's own
-/// bundled Substance Painter fonts first (never truncated away by the cap), then
+/// bundled reference PBR suite fonts first (never truncated away by the cap), then
 /// standard Linux font directories. Sorted alphabetically within each tier and
 /// capped so the dropdown stays usable. Cached for process lifetime.
 pub fn system_fonts() -> &'static [String] {
     static FONTS: OnceLock<Vec<String>> = OnceLock::new();
     FONTS.get_or_init(|| {
         let mut sp_fonts: Vec<String> = Vec::new();
-        if let Some(app) = substance_fonts_dir() {
+        if let Some(app) = fonts_dir_dir() {
             if app.is_dir() {
                 // Sharing `visited` across tiers is harmless: distinct roots.
                 let mut visited = HashSet::new();
@@ -554,8 +554,8 @@ mod tests {
             !fonts.is_empty(),
             "OS font discovery found no TTF/OTF files"
         );
-        // The bundled Substance Painter starter font set must be discovered too.
-        let sp_dir = crate::painting::substance_library::find_substance_fonts_dir();
+        // The bundled reference PBR suite starter font set must be discovered too.
+        let sp_dir = crate::painting::material_library::find_fonts_dir();
         if let Some(app) = sp_dir {
             let sp_hits = fonts
                 .iter()

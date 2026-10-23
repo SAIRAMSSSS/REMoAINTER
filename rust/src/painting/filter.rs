@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// REMoAINTER — Non-Destructive Filter & Effects Stack (Substance Painter Parity)
+// REMoAINTER — Non-Destructive Filter & Effects Stack (reference PBR suite Parity)
 // Features:
 // - Levels (min/max input, gamma, min/max output)
 // - Gaussian Blur (Separable 2-pass convolution)

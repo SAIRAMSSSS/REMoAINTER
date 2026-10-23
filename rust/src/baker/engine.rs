@@ -162,7 +162,7 @@ impl PaintedOffsetMap {
 pub enum BakedMapFormat {
     /// Quantized 8 bit per channel: `round(clamp(v, 0, 1) * 255)`. 4x memory reduction.
     U8,
-    /// IEEE 754 binary16 (2 bytes/component). No 8-bit banding; matches Substance's
+    /// IEEE 754 binary16 (2 bytes/component). No 8-bit banding; matches reference's
     /// "16 bits float" bake output profile.
     F16,
     /// Raw little-endian f32 planes — identical to what was previously consumed
@@ -848,7 +848,7 @@ impl BakerEngine {
 
     /// Bake with [`AdvancedBakeOptions`] intents and emit the finished maps already
     /// quantized/encoded at [`AdvancedBakeOptions::map_format`] depth (8/16-bit parity
-    /// with Substance's bake output profile). Same geometric pipeline as
+    /// with reference's bake output profile). Same geometric pipeline as
     /// [`Self::bake_all_advanced`].
     pub fn bake_all_encoded(
         vertices: &[[f32; 3]],
@@ -1398,7 +1398,7 @@ impl BakerEngine {
                                 [tx / tl, ty / tl, tz / tl]
                             };
                             // Mirrored-UV parity fix: flip the bitangent on negative UV determinant
-                            // (matching Substance's signed handedness) so mirrored islands no longer
+                            // (matching reference's signed handedness) so mirrored islands no longer
                             // bake with an inverted G channel.
                             let bitangent = [
                                 (n_low[1] * tangent[2] - n_low[2] * tangent[1]) * handedness,

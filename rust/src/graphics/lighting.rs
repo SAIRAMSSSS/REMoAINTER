@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::f32::consts::PI;
 
-/// Authentic Substance 3D Painter Environment Presets
+/// Authentic reference PBR suite Environment Presets
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnvironmentPreset {
     StudioTomoco = 0,
@@ -21,7 +21,7 @@ impl EnvironmentPreset {
     }
 }
 
-// 9-Coefficient Spherical Harmonics (Ramamoorthi & Hanrahan) computed from official Substance EXR environments
+// 9-Coefficient Spherical Harmonics (Ramamoorthi & Hanrahan) computed from official reference EXR environments
 const SH_STUDIO_TOMOCO: [[f32; 3]; 9] = [
     [0.1820, 0.1739, 0.1752],
     [0.0940, 0.0889, 0.0856],
@@ -206,7 +206,7 @@ pub fn pbr_shade(
         base_rgb[2] * (1.0 - metallic),
     ];
 
-    // Specular F0: dielectrics use 0.04 (Substance standard); metals use base color
+    // Specular F0: dielectrics use 0.04 (reference standard); metals use base color
     let f0 = [
         0.04 * (1.0 - metallic) + base_rgb[0] * metallic,
         0.04 * (1.0 - metallic) + base_rgb[1] * metallic,
