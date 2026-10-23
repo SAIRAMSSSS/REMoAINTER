@@ -8,7 +8,8 @@ pub mod layer;
 pub mod mask;
 pub mod material_gen;
 pub mod sbsar;
-pub mod substance_library;
+pub mod sbsar_vm;
+pub mod material_library;
 pub mod text;
 pub mod texture_importer;
 pub mod texture_set;
@@ -22,7 +23,7 @@ pub use layer::*;
 pub use mask::*;
 pub use material_gen::*;
 #[allow(unused_imports)]
-pub use substance_library::*;
+pub use material_library::*;
 #[allow(unused_imports)]
 pub use text::*;
 #[allow(unused_imports)]

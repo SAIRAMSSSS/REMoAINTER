@@ -1,6 +1,6 @@
 //! `.sbsar` reference archive container parser.
 //!
-//! Real Adobe Smart Materials are `.sbsar` files: a 7z (LZMA, solid) archive
+//! Smart Materials are `.sbsar` files: a 7z (LZMA, solid) archive
 //! containing one or more `assemblies/content/<slot>/<name>.xml`
 //! (*sbsdescription*: parameters, widgets, output formats) plus a compiled
 //! `<name>.sbsasm` bytecode assembly. This module cracks the container and
@@ -9,7 +9,7 @@
 //! `docs/ARCHITECTURE.md` / `docs/ARCHITECTURE.md`).
 //!
 //! Parsing is deliberately defensive: unknown type codes or widget blocks are
-//! preserved verbatim (`Unknown`) instead of erroring, because Adobe extends
+//! preserved verbatim (`Unknown`) instead of erroring; it tolerates upstream extensions
 //! the format across versions and a partial parse is still useful for shelf
 //! browsing.
 
@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Verified against a live archive (`mg_dust.sbsar`): 0 = Float1 (Level 0.5),
 /// 4 = Int1 ($randomseed), 5 = Image (ambient_occlusion), 8 = Int2
-/// ($outputsize "8,8"). Other codes are Adobe version extensions; keep raw.
+/// ($outputsize "8,8"). Other codes are upstream version extensions; keep raw.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SbsarInputType {
     /// `type="0"` float scalar (Float1).
@@ -35,7 +35,7 @@ pub enum SbsarInputType {
     Image,
     /// `type="8"` integer pair — `$outputsize` ("8,8").
     Int2,
-    /// Anything else — Adobe extends this enum across versions.
+    /// Anything else — upstream extends this enum across versions.
     Unknown(i64),
 }
 
@@ -178,6 +178,68 @@ pub fn parse_sbsar(data: &[u8]) -> Result<SbsarPackage, String> {
 pub fn parse_sbsar_file(path: &Path) -> Result<SbsarPackage, String> {
     let data = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     parse_sbsar(&data)
+}
+
+/// Parse a `.spsm` smart material: a 7z archive whose members include an
+/// embedded `.sbs`/`.sbsar` graph. Opens the same parameter dialog as a
+/// plain `.sbsar` by forwarding the embedded member to `parse_sbsar`.
+pub fn parse_spsm_file(path: &Path) -> Result<SbsarPackage, String> {
+    let data = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    parse_spsm(&data, &path.display().to_string())
+}
+
+pub fn parse_spsm(data: &[u8], source_label: &str) -> Result<SbsarPackage, String> {
+    let mut cursor = std::io::Cursor::new(data);
+    let len = cursor.get_ref().len() as u64;
+    let mut reader = sevenz_rust::SevenZReader::new(&mut cursor, len, sevenz_rust::Password::empty())
+        .map_err(|e| format!("not a 7z archive (.spsm): {e}"))?;
+
+    let mut best: Option<(usize, Vec<u8>)> = None; // (path weight, bytes)
+    let walk_result = reader
+        .for_each_entries(&mut |entry: &sevenz_rust::SevenZArchiveEntry, data: &mut dyn Read| {
+            if !entry.is_directory {
+                let name = entry.name().to_lowercase();
+                if name.ends_with(".sbsar") || name.ends_with(".sbs") || name.ends_with(".sbd") {
+                    let mut buf = Vec::with_capacity(entry.size() as usize);
+                    let n = data.read_to_end(&mut buf).unwrap_or(0);
+                    if n > 0 {
+                        // Prefer .sbsar, then .sbs, then .sbd; then larger.
+                        let weight = if name.ends_with(".sbsar") {
+                            3
+                        } else if name.ends_with(".sbs") {
+                            2
+                        } else {
+                            1
+                        };
+                        let wins = best
+                            .as_ref()
+                            .map(|(w, old)| weight > *w || (weight == *w && n > old.len()))
+                            .unwrap_or(true);
+                        if wins {
+                            best = Some((weight, buf[..n as usize].to_vec()));
+                        }
+                    }
+                } else {
+                    // Other members keep the solid stream flowing correctly.
+                    let mut sink: Vec<u8> = Vec::new();
+                    let _ = data.read_to_end(&mut sink);
+                }
+            } else {
+                // Directories also drain the solid stream.
+                let mut sink: Vec<u8> = Vec::new();
+                let _ = data.read_to_end(&mut sink);
+            }
+            Ok(true)
+        });
+    if let Err(e) = walk_result {
+        if best.is_none() {
+            return Err(format!("spsm entry walk: {e}"));
+        }
+    }
+    let (_weight, bytes) =
+        best.ok_or_else(|| format!("{source_label} contains no embedded .sbs/.sbsar member"))?;
+    parse_sbsar(&bytes)
+        .map_err(|e| format!("embedded graph in {}.spsm failed to parse: {e}", source_label))
 }
 
 fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
@@ -407,6 +469,12 @@ mod tests {
     #[test]
     fn rejects_non_archive() {
         assert!(parse_sbsar(b"not an archive").is_err());
+    }
+
+    #[test]
+    fn rejects_non_sevenz_spsm() {
+        let err = parse_spsm(b"not an archive", "sample.spsm").unwrap_err();
+        assert!(err.contains("not a 7z archive"), "got: {err}");
     }
 
     #[test]

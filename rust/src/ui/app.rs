@@ -434,7 +434,13 @@ fn legacy_scan_category(
             }
             let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
             let ext = ext.to_lowercase();
-            if ext != "png" && ext != "webp" && ext != "sbsar" && ext != "spmsk" {
+            if ext != "png"
+                && ext != "webp"
+                && ext != "sbsar"
+                && ext != "spmsk"
+                && ext != "spsm"
+                && ext != "sbs"
+            {
                 continue;
             }
             let stem = p
@@ -2127,53 +2133,57 @@ impl RemoainterApp {
         self.graph_preview_tex = None;
     }
 
+    /// Parses a `.spsm` smart material (7z with an embedded `.sbs`/`.sbsar`
+    /// graph) and opens the same parameter import dialog.
+    pub fn import_spsm_file(&mut self, path: &Path) {
+        match crate::painting::sbsar::parse_spsm_file(path) {
+            Ok(package) => self.open_sbsar_package(package, path),
+            Err(e) => self.status_message = format!(".spsm import failed: {e}"),
+        }
+    }
+
     /// Parses a `.sbsar` file and opens the parameter import dialog.
     pub fn import_sbsar_file(&mut self, path: &Path) {
         match std::fs::read(path) {
             Ok(bytes) => match crate::painting::sbsar::parse_sbsar(&bytes) {
-                Ok(package) => {
-                    let graph_count = package.graphs.len();
-                    if let Some(graph) = package.primary() {
-                        // Seed parameter values with widget defaults.
-                        let mut values = std::collections::BTreeMap::new();
-                        for input in &graph.inputs {
-                            let default = match &input.widget {
-                                crate::painting::sbsar::SbsarWidget::Slider {
-                                    default,
-                                    ..
-                                } => *default,
-                                crate::painting::sbsar::SbsarWidget::Toggle {
-                                    default,
-                                } => {
-                                    if *default {
-                                        1.0
-                                    } else {
-                                        0.0
-                                    }
-                                }
-                                _ => 0.0,
-                            };
-                            values.insert(input.identifier.clone(), default);
-                        }
-                        self.sbsar_param_values = values;
-                        self.imported_sbsar = Some(package);
-                        self.sbsar_status = String::new();
-                        self.show_sbsar_import_dialog = true;
-                        self.logs.push((
-                            chrono::Local::now().format("%H:%M:%S").to_string(),
-                            "INFO".into(),
-                            format!("Imported '{}': {} graphs", path.display(), graph_count),
-                        ));
-                    } else {
-                        self.status_message =
-                            format!("Imported '{}': archive contains no graphs", path.display());
-                    }
-                }
+                Ok(package) => self.open_sbsar_package(package, path),
                 Err(e) => {
                     self.status_message = format!(".sbsar import failed: {e}");
                 }
             },
             Err(e) => self.status_message = format!("Could not read '{}': {e}", path.display()),
+        }
+    }
+
+    /// Routes a parsed archive package into the parameter import dialog,
+    /// seeding parameter values with widget defaults.
+    pub fn open_sbsar_package(&mut self, package: crate::painting::sbsar::SbsarPackage, path: &Path) {
+        let graph_count = package.graphs.len();
+        if let Some(graph) = package.primary() {
+            // Seed parameter values with widget defaults.
+            let mut values = std::collections::BTreeMap::new();
+            for input in &graph.inputs {
+                let default = match &input.widget {
+                    crate::painting::sbsar::SbsarWidget::Slider { default, .. } => *default,
+                    crate::painting::sbsar::SbsarWidget::Toggle { default } => {
+                        if *default { 1.0 } else { 0.0 }
+                    }
+                    _ => 0.0,
+                };
+                values.insert(input.identifier.clone(), default);
+            }
+            self.sbsar_param_values = values;
+            self.imported_sbsar = Some(package);
+            self.sbsar_status = String::new();
+            self.show_sbsar_import_dialog = true;
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "INFO".into(),
+                format!("Imported '{}': {} graphs", path.display(), graph_count),
+            ));
+        } else {
+            self.status_message =
+                format!("Imported '{}': archive contains no graphs", path.display());
         }
     }
 
@@ -2723,6 +2733,24 @@ impl eframe::App for RemoainterApp {
                 }
             }
             if !paths.is_empty() {
+                // Single dropped material archive (.sbsar / .spsm / .sbs)
+                // routes to the smart-material parameter dialog first.
+                if paths.len() == 1 && paths[0].is_file() {
+                    let p = &paths[0];
+                    let ext = p
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .map(|s| s.to_lowercase())
+                        .unwrap_or_default();
+                    if ext == "sbsar" || ext == "spsm" || ext == "sbs" {
+                        if ext == "sbsar" {
+                            self.import_sbsar_file(p);
+                        } else {
+                            self.import_spsm_file(p);
+                        }
+                        return;
+                    }
+                }
                 if paths.len() == 1 && paths[0].is_dir() {
                     let set = PbrTextureSet::from_folder(&paths[0]);
                     self.import_texture_set = set.clone();
@@ -2949,14 +2977,25 @@ impl eframe::App for RemoainterApp {
                             ui.close_menu();
                         }
                         if ui
-                            .button("🧩 Import .sbsar (reference Archive)...")
+                            .button("🧩 Import Material Archive (.sbsar / .spsm)...")
                             .clicked()
                         {
                             let picked = rfd::FileDialog::new()
-                                .add_filter("reference Archive", &["sbsar"])
+                                .add_filter(
+                                    "Material Archive",
+                                    &["sbsar", "spsm", "sbs", "spp"],
+                                )
                                 .pick_file();
                             if let Some(path) = picked {
-                                self.import_sbsar_file(&path);
+                                match path
+                                    .extension()
+                                    .and_then(|s| s.to_str())
+                                    .map(|s| s.to_lowercase())
+                                    .as_deref()
+                                {
+                                    Some("spsm") | Some("sbs") => self.import_spsm_file(&path),
+                                    _ => self.import_sbsar_file(&path),
+                                }
                             }
                             ui.close_menu();
                         }
