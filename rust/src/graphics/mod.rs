@@ -1,6 +1,7 @@
 pub mod gpu;
 pub mod lighting;
 pub mod mesh;
+pub mod raytrace;
 pub mod viewport_gl;
 
 pub use lighting::*;
