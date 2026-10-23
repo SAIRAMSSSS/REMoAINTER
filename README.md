@@ -6,28 +6,28 @@
 
 <h3 align="center">Next-Generation Open-Source 3D PBR Texture Painting Suite</h3>
 <p align="center">
-  <b>Version 2.0.0 (Rust High-Performance Core)</b> • Industry-Standard PBR Painting Workflow • Raytraced Baking • Black Masks • Anchor Points
+  <b>Version 0.2 (Rust High-Performance Core)</b> • Industry-Standard PBR Painting Workflow • Raytraced Baking • Black Masks • Anchor Points
 </p>
 
 ---
 
 ## What is REMoAINTER?
 
-**REMoAINTER** is an open-source, industry-aligned 3D physically based rendering (PBR) texture painting application engineered to deliver the feel, workflow, and capabilities of a from-scratch industry-standard PBR painting studio. 
+**REMoAINTER** is an open-source, industry-aligned 3D physically based rendering (PBR) texture painting application engineered to deliver the feel, workflow, and capabilities of a from-scratch professional PBR painting studio. 
 
-Version `v2.0.0` introduces a high-performance **Rust Engine** designed from the ground up for safe parallel execution, multi-core raytraced mesh map baking, non-destructive layer sub-stacks, black masks, anchor points, and seamless UV seam boundary painting.
+Version `v0.2` introduces a high-performance **Rust Engine** designed from the ground up for safe parallel execution, multi-core raytraced mesh map baking, non-destructive layer sub-stacks, black masks, anchor points, and seamless UV seam boundary painting.
 
 ---
 
-## Key Features in v2.0.0
+## Key Features in v0.2
 
 ### 1. 3D PBR Painting UI
-- **Authentic Allegorithmic Dark Theme**: Built with identical color palettes (`#212121`, `#242424`, `#1A4B75`, `#1A8DFF`, `#EF7E22`).
+- **Dark Theme**: Built with a custom color palette (`#212121`, `#242424`, `#1A4B75`, `#1A8DFF`, `#EF7E22`).
 - **Complete Panel Architecture**:
   - **Left Tool Strip**: Paint (`1`), Eraser (`2`), Projection (`3`), Polygon Fill (`4`), Smudge (`5`), Clone (`6`), Eyedropper (`I`).
   - **Context Control Bar**: Brush radius, flow %, opacity %, spacing %, seam wrapping, symmetry, and render channel switcher (Material, Base Color, Roughness, Metallic, Normal, AO, Curvature).
   - **Central 3D Viewport**: Interactive camera orbit (`Alt + Left Click`), pan (`Alt + Middle Click`), and zoom (`Alt + Right Click`).
-  - **Shelf / Asset Browser**: Organized tabs for Smart Materials (Orange `SM`), Materials (Blue `M`), Smart Masks, Alphas, and Textures with authentic sphere preview swatches.
+  - **Shelf / Asset Browser**: Organized tabs for Smart Materials (Orange `SM`), Materials (Blue `M`), Smart Masks, Alphas, and Textures with sphere preview swatches.
   - **Texture Set List**: Manage multiple meshes and texture set resolutions (1024x1024, 2048x2048, 4096x4096).
   - **Layer Stack**: Multi-layer compositing, blend modes, opacity, mask thumbnails, and anchor indicators.
   - **Properties Panel**: Direct control over active tool dynamics and PBR channels (Base Color, Roughness, Metallic, Normal).
@@ -77,7 +77,7 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 
 ### 8. Real Material Pipeline & Texture Set Importer
 - **SBSAR & SPSM Batch Exporter (`tools/export_sbsar.py`)**:
-  - Utilizes Adobe's `sbsrender` CLI (sbsrender CLI) to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
+  - Utilizes the `sbsrender` CLI to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
   - Graceful fallback with clear instructions when `sbsrender` is not installed; extracts bundled textures from `.spsm` smart materials.
 - **In-App PBR Texture Set Importer & Drag-and-Drop**:
   - Drag and drop any texture pack folder or multiple files onto the window to automatically match channels.
@@ -106,8 +106,8 @@ REMoAINTER/
 │   ├── export_sbsar.py     # SBSAR & SPSM batch exporter CLI
 │   └── generate_core_pbr_materials.py # Starter PBR material generator
 ├── docs/
-│   └── v2.0.0_ARCHITECTURE.md # Full architecture specification
-├── rust/                   # Rust v2.0.0 implementation
+│   └── v0.2_ARCHITECTURE.md # Full architecture specification
+├── rust/                   # Rust v0.2 implementation
 │   ├── Cargo.toml
 │   └── src/
 │       ├── baker/          # Rayon multithreaded baking engine
@@ -142,7 +142,7 @@ REMoAINTER/
 - Rust 1.80+ (with Cargo)
 - Wayland / X11 development headers (for Linux desktop display)
 
-### Quick Start (Rust v2.0.0)
+### Quick Start (Rust v0.2)
 ```bash
 cd rust
 cargo build --release
@@ -174,9 +174,9 @@ cargo build --release
 | `Shift + Right Drag` | Rotate Studio Environment Light |
 
 ### Batch SBSAR & Smart Material Exporter
-To render Adobe `.sbsar` procedural graphs into 2048x2048 PNG PBR texture sets with `material.json` manifests:
+To render `.sbsar` procedural graphs into 2048x2048 PNG PBR texture sets with `material.json` manifests:
 ```bash
-# Using Adobe sbsrender CLI (sbsrender)
+# Using the sbsrender CLI
 python3 tools/export_sbsar.py --resolution 2048
 
 # Or with custom directories
