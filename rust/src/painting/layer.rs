@@ -1044,6 +1044,30 @@ impl Layer {
         self.mask = Some(mask);
     }
 
+    /// Attaches or updates a first-class Smart Mask preset driven by baked mesh maps.
+    pub fn apply_smart_mask_preset(
+        &mut self,
+        preset: super::material_gen::SmartMaskPreset,
+        baked_curvature: Option<&[f32]>,
+        baked_ao: Option<&[f32]>,
+        baked_wsn: Option<&[[f32; 3]]>,
+        baked_pos: Option<&[[f32; 3]]>,
+        baked_thickness: Option<&[f32]>,
+        baked_id: Option<&[[f32; 4]]>,
+    ) {
+        let mask = preset.create_mask(
+            self.width,
+            self.height,
+            baked_curvature,
+            baked_ao,
+            baked_wsn,
+            baked_pos,
+            baked_thickness,
+            baked_id,
+        );
+        self.mask = Some(mask);
+    }
+
     pub fn new_folder(id: usize, name: impl Into<String>, width: u32, height: u32) -> Self {
         let mut l = Self::new_paint(id, name, width, height);
         l.layer_type = LayerType::Folder;
@@ -2814,6 +2838,50 @@ impl LayerStack {
         }
         let _ = bbox_guard;
         bbox
+    }
+
+    /// Returns the next available unique layer ID (strictly greater than any existing layer ID).
+    pub fn next_id(&self) -> usize {
+        self.layers.iter().map(|l| l.id).max().unwrap_or(0) + 1
+    }
+
+    /// Inserts a complete Smart Material folder hierarchy non-destructively above the active layer.
+    pub fn insert_smart_material(
+        &mut self,
+        preset: super::material_gen::SmartMaterialPreset,
+        baked_curvature: Option<&[f32]>,
+        baked_ao: Option<&[f32]>,
+        baked_wsn: Option<&[[f32; 3]]>,
+        baked_pos: Option<&[[f32; 3]]>,
+        baked_thickness: Option<&[f32]>,
+        baked_id: Option<&[[f32; 4]]>,
+    ) -> usize {
+        let start_id = self.next_id();
+        let hierarchy = super::material_gen::create_smart_material_hierarchy(
+            preset,
+            start_id,
+            self.width,
+            self.height,
+            baked_curvature,
+            baked_ao,
+            baked_wsn,
+            baked_pos,
+            baked_thickness,
+            baked_id,
+        );
+
+        let insert_idx = if self.layers.is_empty() {
+            0
+        } else {
+            (self.active_layer_index + 1).min(self.layers.len())
+        };
+        let folder_idx = insert_idx + hierarchy.len() - 1;
+
+        for (i, layer) in hierarchy.into_iter().enumerate() {
+            self.layers.insert(insert_idx + i, layer);
+        }
+        self.active_layer_index = folder_idx;
+        folder_idx
     }
 
     pub fn new(width: u32, height: u32) -> Self {
@@ -4728,6 +4796,111 @@ mod tests {
             mask_bbox,
             [0, 0, 0, 0],
             "paint stamp on generator mask must succeed"
+        );
+    }
+
+    #[test]
+    fn test_smart_material_hierarchy_compositing_edge_wear() {
+        use super::super::material_gen::{SmartMaskPreset, SmartMaterialPreset};
+
+        let mut stack = LayerStack::new(2, 2);
+        // Clear initial default layers so we only test the smart material
+        stack.layers.clear();
+
+        // Pixel 0: Sharp convex edge (curv = 1.0)
+        // Pixel 1: Flat surface (curv = 0.5)
+        // Pixel 2: Crevice (ao = 0.2, curv = 0.2)
+        // Pixel 3: Flat surface (curv = 0.5)
+        let curv = vec![1.0, 0.5, 0.2, 0.5];
+        let ao = vec![1.0, 1.0, 0.2, 1.0];
+
+        let folder_idx = stack.insert_smart_material(
+            SmartMaterialPreset::SteelPaintedWorn,
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert_eq!(stack.active_layer_index, folder_idx);
+        let folder = &stack.layers[folder_idx];
+        assert_eq!(folder.layer_type, LayerType::Folder);
+        let folder_id = folder.id;
+
+        // Verify parenting
+        for layer in &stack.layers[..folder_idx] {
+            assert_eq!(layer.parent_folder_id, Some(folder_id));
+        }
+
+        stack.composite(
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Pixel 1 (flat): Weathered navy paint coat is intact (metallic = 0.0)
+        assert!(
+            stack.composite_metallic[1] < 0.2,
+            "Pixel 1 (flat) must show non-metallic paint coat, got metallic={}",
+            stack.composite_metallic[1]
+        );
+
+        // Pixel 0 (sharp edge): Paint is stripped, exposing bare steel substrate (metallic > 0.7)
+        assert!(
+            stack.composite_metallic[0] > 0.7,
+            "Pixel 0 (convex edge) must expose bare metal substrate, got metallic={}",
+            stack.composite_metallic[0]
+        );
+
+        // Pixel 2 (crevice): Dirt grime darkened
+        assert!(
+            stack.composite_roughness[2] > 0.6,
+            "Pixel 2 (crevice) must be rough from cavity grime, got roughness={}",
+            stack.composite_roughness[2]
+        );
+
+        // Folder visibility test: turning off folder disables the entire smart material
+        stack.layers[folder_idx].visible = false;
+        stack.composite(
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+        // All child layers skipped -> default backdrop
+        assert_eq!(stack.composite_metallic[0], 0.0);
+
+        // Layer apply smart mask preset test
+        let mut paint_layer = Layer::new_paint(999, "Test Coat", 2, 2);
+        paint_layer.apply_smart_mask_preset(
+            SmartMaskPreset::MetalEdgeWear,
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert!(paint_layer.mask.is_some());
+        let mask = paint_layer.mask.as_ref().unwrap();
+        assert_eq!(mask.effects.len(), 1);
+        // Convex edge (pixel 0) should have high edge wear value
+        assert!(
+            mask.buffer[0] > mask.buffer[1],
+            "Edge wear mask must be higher at convex edge than flat surface"
         );
     }
 }

@@ -6,9 +6,9 @@ use crate::graphics::{EnvironmentPreset, Mesh};
 use crate::painting::brush::AlphaMaskData;
 use crate::painting::texture_importer::PbrTextureSet;
 use crate::painting::{
-    apply_smart_material_hierarchy, load_real_pbr_material, AnchorPoint, BitDepth, BlendMode,
-    Brush, ExportPreset, FilterEffect, FilterTargetChannel, GeneratorConfig, Layer, LayerStack,
-    LayerType, MaskBlendMode, MaskEffect, OutputFormat, PaddingAlgorithm, TextureExportContext,
+    load_real_pbr_material, AnchorPoint, BitDepth, BlendMode, Brush, ExportPreset, FilterEffect,
+    FilterTargetChannel, GeneratorConfig, Layer, LayerStack, LayerType, MaskBlendMode, MaskEffect,
+    OutputFormat, PaddingAlgorithm, SmartMaskPreset, SmartMaterialPreset, TextureExportContext,
 };
 use crate::project::AppConfig;
 use crate::ui::icons::{draw_icon, IconType};
@@ -562,12 +562,25 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
 
     // 3. Bundled Starter Smart Materials (multi-layer PBR hierarchy with wear)
     let starter_smart_mats = [
-        ("Steel Painted Worn", [0.18, 0.42, 0.22, 1.0], 0.1, 0.45),
-        ("Copper Patina", [0.22, 0.65, 0.55, 1.0], 0.2, 0.70),
-        ("Rusted Iron", [0.45, 0.22, 0.12, 1.0], 0.15, 0.85),
-        ("Gold Scratched", [1.0, 0.78, 0.28, 1.0], 1.0, 0.35),
-        ("Bronze Antique", [0.65, 0.45, 0.25, 1.0], 0.85, 0.40),
-        ("Aluminium Scratched", [0.85, 0.86, 0.88, 1.0], 0.95, 0.30),
+        ("Steel Painted Worn", [0.18, 0.26, 0.38, 1.0], 0.0, 0.58),
+        ("Machinery Heavy Duty", [0.92, 0.65, 0.08, 1.0], 0.0, 0.48),
+        ("Brass Antique", [0.88, 0.72, 0.35, 1.0], 0.92, 0.22),
+        ("Bronze Armor", [0.78, 0.52, 0.30, 1.0], 0.90, 0.32),
+        (
+            "Aluminium Anodized Red",
+            [0.82, 0.08, 0.12, 1.0],
+            0.85,
+            0.30,
+        ),
+        ("Iron Rough Rust", [0.38, 0.39, 0.40, 1.0], 0.85, 0.45),
+        (
+            "Plastic Scratched Rough",
+            [0.10, 0.50, 0.85, 1.0],
+            0.0,
+            0.25,
+        ),
+        ("Gold Antique Worn", [1.00, 0.82, 0.32, 1.0], 0.98, 0.15),
+        ("Wood Varnished Vintage", [0.55, 0.28, 0.10, 1.0], 0.0, 0.22),
     ];
     for (sm_name, col, met, rgh) in starter_smart_mats {
         let key = (1, sm_name.to_lowercase());
@@ -590,13 +603,8 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
     }
 
     // 4. Bundled Starter Smart Masks (procedural curvature & AO generators)
-    let starter_smart_masks = [
-        "Metal Edge Wear",
-        "Dirt Crevices",
-        "Cavity Dust",
-        "Surface Scratches",
-    ];
-    for mask_name in starter_smart_masks {
+    for mask_preset in SmartMaskPreset::ALL {
+        let mask_name = mask_preset.name();
         let key = (3, mask_name.to_lowercase());
         if seen.insert(key) {
             assets.push(ShelfAsset {
@@ -612,6 +620,36 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
                 item_dir: None,
                 icon_kind: crate::painting::material_library::IconKind::Flat,
                 search_text: format!("{} smart mask generator", mask_name.to_lowercase()),
+            });
+        }
+    }
+
+    // 5. Bundled Starter Generators (Category 5: procedural generator layers)
+    let starter_generators = [
+        "Metal Edge Wear",
+        "Dirt Crevices",
+        "Dust Accumulation",
+        "Position Gradient",
+        "World Normal Orientation",
+        "Thickness / Subsurface",
+        "Color / ID Selection",
+    ];
+    for gen_name in starter_generators {
+        let key = (5, gen_name.to_lowercase());
+        if seen.insert(key) {
+            assets.push(ShelfAsset {
+                name: gen_name.to_string(),
+                category: 5, // Effects / Generators
+                path: PathBuf::from(gen_name),
+                thumb_path: PathBuf::new(),
+                badge: "FX",
+                badge_color: Color32::from_rgb(255, 140, 50),
+                pbr_color: [0.8, 0.8, 0.8, 1.0],
+                pbr_metallic: 0.0,
+                pbr_roughness: 0.5,
+                item_dir: None,
+                icon_kind: crate::painting::material_library::IconKind::Flat,
+                search_text: format!("{} procedural generator layer", gen_name.to_lowercase()),
             });
         }
     }
@@ -1016,17 +1054,32 @@ impl RemoainterApp {
         use crate::painting::material_library as sl;
         let name = asset.name.clone();
         match asset.category {
-            // Cache-backed materials & smart materials: SP-style fill-layer instantiation.
-            1 | 2 => {
+            // Category 1: Smart Materials (Multi-layer PBR hierarchy with wear & cavity generators)
+            1 => {
+                let preset = SmartMaterialPreset::from_name_fuzzy(&name);
+                let folder_idx = self.layer_stack.insert_smart_material(
+                    preset,
+                    self.baked_maps.curvature.as_deref(),
+                    self.baked_maps.ambient_occlusion.as_deref(),
+                    self.baked_maps.world_space_normal.as_deref(),
+                    self.baked_maps.position.as_deref(),
+                    self.baked_maps.thickness.as_deref(),
+                    self.baked_maps.id.as_deref(),
+                );
+                self.layer_stack.active_layer_index = folder_idx;
+                self.paint_target_mask = false;
+                self.recompute_composite();
+                self.status_message = format!("Applied Smart Material: {}", preset.name());
+                self.history.push(format!(
+                    "{:02}  Apply Smart Material ({})",
+                    self.history.len() + 1,
+                    preset.name()
+                ));
+            }
+            // Category 2: Materials (Single PBR fill layer)
+            2 => {
                 if let Some(dir) = asset.item_dir.clone() {
-                    let next_id = self
-                        .layer_stack
-                        .layers
-                        .iter()
-                        .map(|l| l.id)
-                        .max()
-                        .unwrap_or(0)
-                        + 1;
+                    let next_id = self.layer_stack.next_id();
                     match sl::build_fill_layer(
                         &dir,
                         next_id,
@@ -1083,71 +1136,56 @@ impl RemoainterApp {
                         }
                     }
                 } else {
-                    // Legacy shelf previews (no cache entry) keep their old paths.
                     self.brush.color = asset.pbr_color;
                     self.brush.metallic = asset.pbr_metallic;
                     self.brush.roughness = asset.pbr_roughness;
-                    if asset.category == 1 {
-                        apply_smart_material_hierarchy(
-                            &mut self.layer_stack,
-                            &name,
-                            asset.pbr_color,
-                            asset.pbr_metallic,
-                            asset.pbr_roughness,
-                            self.baked_maps.curvature.as_deref(),
-                            self.baked_maps.ambient_occlusion.as_deref(),
-                        );
-                        self.recompute_composite();
-                        self.status_message = format!("Applied Smart Material: {}", name);
-                        self.history.push(format!(
-                            "{:02}  Apply Smart Material ({})",
-                            self.history.len() + 1,
-                            name
-                        ));
-                    } else {
-                        let id = self.layer_stack.layers.len() + 1;
-                        let fill = load_real_pbr_material(
-                            id,
-                            &name,
-                            asset.pbr_color,
-                            asset.pbr_metallic,
-                            asset.pbr_roughness,
-                            self.layer_stack.width,
-                            self.layer_stack.height,
-                        );
-                        self.layer_stack.layers.push(fill);
-                        self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
-                        self.recompute_composite();
-                        self.status_message = format!("Applied Real PBR Material: {}", name);
-                        self.history.push(format!(
-                            "{:02}  Apply Real PBR Material ({})",
-                            self.history.len() + 1,
-                            name
-                        ));
-                    }
+                    let id = self.layer_stack.next_id();
+                    let fill = load_real_pbr_material(
+                        id,
+                        &name,
+                        asset.pbr_color,
+                        asset.pbr_metallic,
+                        asset.pbr_roughness,
+                        self.layer_stack.width,
+                        self.layer_stack.height,
+                    );
+                    self.layer_stack.layers.push(fill);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.recompute_composite();
+                    self.status_message = format!("Applied Real PBR Material: {}", name);
+                    self.history.push(format!(
+                        "{:02}  Apply Real PBR Material ({})",
+                        self.history.len() + 1,
+                        name
+                    ));
                 }
             }
-            // Legacy shell smart masks (.spmsk / .webp previews).
+            // Category 3: Smart Masks (procedural curvature & AO generators)
             3 => {
                 if let Some(active_layer) = self
                     .layer_stack
                     .layers
                     .get_mut(self.layer_stack.active_layer_index)
                 {
-                    let path = asset.path.clone();
-                    active_layer.apply_smart_mask_file(
-                        &path,
+                    let preset = SmartMaskPreset::from_name_fuzzy(&name);
+                    active_layer.apply_smart_mask_preset(
+                        preset,
                         self.baked_maps.curvature.as_deref(),
                         self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
                     );
                     self.status_message = format!(
                         "Applied Smart Mask ({}) to Layer: {}",
-                        name, active_layer.name
+                        preset.name(),
+                        active_layer.name
                     );
                     self.history.push(format!(
                         "{:02}  Apply Smart Mask ({})",
                         self.history.len() + 1,
-                        name
+                        preset.name()
                     ));
                 }
                 self.recompute_composite();
@@ -1198,31 +1236,68 @@ impl RemoainterApp {
                     ));
                 }
             }
-            // Effects / generators: SP generator behavior applied as a layer mask.
+            // Effects / generators: First-class procedural generator layer added to stack
             5 => {
-                if let Some(active_layer) = self
-                    .layer_stack
-                    .layers
-                    .get_mut(self.layer_stack.active_layer_index)
+                let config = if name.to_lowercase().contains("edge") {
+                    GeneratorConfig::metal_edge_wear()
+                } else if name.to_lowercase().contains("crevice")
+                    || name.to_lowercase().contains("cavity")
+                    || name.to_lowercase().contains("dirt")
                 {
-                    let (w, h) = (self.layer_stack.width, self.layer_stack.height);
-                    let mask_name = asset.name.clone();
-                    active_layer.mask = Some(crate::painting::material_gen::generate_smart_mask(
-                        &mask_name,
-                        self.baked_maps.curvature.as_deref(),
-                        self.baked_maps.ambient_occlusion.as_deref(),
-                        w,
-                        h,
-                    ));
-                    self.status_message =
-                        format!("Applied SP Effect/Generator: {} (as layer generator)", name);
-                    self.history.push(format!(
-                        "{:02}  Apply SP Generator ({})",
-                        self.history.len() + 1,
-                        name
-                    ));
-                }
+                    GeneratorConfig::dirt_crevices()
+                } else if name.to_lowercase().contains("dust") {
+                    GeneratorConfig::dust_accumulation()
+                } else if name.to_lowercase().contains("position")
+                    || name.to_lowercase().contains("gradient")
+                {
+                    GeneratorConfig::position_gradient(1)
+                } else if name.to_lowercase().contains("normal") {
+                    GeneratorConfig::world_normal([0.0, 1.0, 0.0])
+                } else if name.to_lowercase().contains("thick")
+                    || name.to_lowercase().contains("subsurface")
+                {
+                    GeneratorConfig::thickness()
+                } else if name.to_lowercase().contains("color")
+                    || name.to_lowercase().contains("id")
+                {
+                    GeneratorConfig::color_id_selection([1.0, 0.0, 0.0, 1.0], 0.2)
+                } else {
+                    GeneratorConfig::metal_edge_wear()
+                };
+
+                let id = self.layer_stack.next_id();
+                let mut gen = Layer::new_generator(
+                    id,
+                    config.name.clone(),
+                    config,
+                    [0.18, 0.12, 0.08, 1.0],
+                    0.0,
+                    0.85,
+                    0.0,
+                    self.layer_stack.width,
+                    self.layer_stack.height,
+                );
+                gen.evaluate_generator(
+                    self.baked_maps.curvature.as_deref(),
+                    self.baked_maps.ambient_occlusion.as_deref(),
+                    self.baked_maps.world_space_normal.as_deref(),
+                    self.baked_maps.position.as_deref(),
+                    self.baked_maps.thickness.as_deref(),
+                    self.baked_maps.id.as_deref(),
+                    None,
+                );
+                let insert_at =
+                    (self.layer_stack.active_layer_index + 1).min(self.layer_stack.layers.len());
+                self.layer_stack.layers.insert(insert_at, gen);
+                self.layer_stack.active_layer_index = insert_at;
+                self.paint_target_mask = false;
                 self.recompute_composite();
+                self.status_message = format!("Applied Generator Layer: {}", name);
+                self.history.push(format!(
+                    "{:02}  Apply Generator Layer ({})",
+                    self.history.len() + 1,
+                    name
+                ));
             }
             _ => {}
         }
@@ -6096,7 +6171,7 @@ impl RemoainterApp {
                 .on_hover_text("Add Folder Group (Ctrl+G)")
                 .clicked()
             {
-                let id = self.layer_stack.layers.len() + 1;
+                let id = self.layer_stack.next_id();
                 self.layer_stack.layers.push(Layer::new_folder(
                     id,
                     format!("Folder {}", id),
@@ -6108,6 +6183,61 @@ impl RemoainterApp {
                 self.recompute_composite();
                 self.status_message = "Added Folder".into();
             }
+            ui.menu_button("📦 + Smart Material", |ui| {
+                for preset in SmartMaterialPreset::ALL {
+                    if ui.button(preset.name()).clicked() {
+                        let folder_idx = self.layer_stack.insert_smart_material(
+                            preset,
+                            self.baked_maps.curvature.as_deref(),
+                            self.baked_maps.ambient_occlusion.as_deref(),
+                            self.baked_maps.world_space_normal.as_deref(),
+                            self.baked_maps.position.as_deref(),
+                            self.baked_maps.thickness.as_deref(),
+                            self.baked_maps.id.as_deref(),
+                        );
+                        self.layer_stack.active_layer_index = folder_idx;
+                        self.paint_target_mask = false;
+                        self.recompute_composite();
+                        self.status_message = format!("Added Smart Material: {}", preset.name());
+                        self.history.push(format!(
+                            "{:02}  Add Smart Material ({})",
+                            self.history.len() + 1,
+                            preset.name()
+                        ));
+                        ui.close_menu();
+                    }
+                }
+            });
+            ui.menu_button("🎭 + Smart Mask", |ui| {
+                let active_idx = self.layer_stack.active_layer_index;
+                for preset in SmartMaskPreset::ALL {
+                    if ui.button(preset.name()).clicked() {
+                        if let Some(active) = self.layer_stack.layers.get_mut(active_idx) {
+                            active.apply_smart_mask_preset(
+                                preset,
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                                self.baked_maps.world_space_normal.as_deref(),
+                                self.baked_maps.position.as_deref(),
+                                self.baked_maps.thickness.as_deref(),
+                                self.baked_maps.id.as_deref(),
+                            );
+                            self.status_message = format!(
+                                "Applied Smart Mask ({}) to Layer {}",
+                                preset.name(),
+                                active.name
+                            );
+                            self.history.push(format!(
+                                "{:02}  Apply Smart Mask ({})",
+                                self.history.len() + 1,
+                                preset.name()
+                            ));
+                        }
+                        self.recompute_composite();
+                        ui.close_menu();
+                    }
+                }
+            });
             ui.menu_button("+ Adjustment", |ui| {
                 let id = self.layer_stack.layers.len() + 1;
                 let w = self.layer_stack.width;
@@ -6512,6 +6642,8 @@ impl RemoainterApp {
             AddFolder,
             AddAdjustmentLayer(FilterEffect),
             AddGeneratorLayer(GeneratorConfig, [f32; 4], f32, f32, f32),
+            AddSmartMaterial(SmartMaterialPreset),
+            AddSmartMask(usize, SmartMaskPreset),
             Cut(usize),
             Copy(usize),
             Paste,
@@ -6793,6 +6925,15 @@ impl RemoainterApp {
                                 ));
                                 ui.close_menu();
                             }
+                            ui.menu_button("🎭 Add smart mask", |ui| {
+                                for preset in SmartMaskPreset::ALL {
+                                    if ui.button(preset.name()).clicked() {
+                                        list_action =
+                                            Some(LayerListAction::AddSmartMask(i, preset));
+                                        ui.close_menu();
+                                    }
+                                }
+                            });
                         }
                         ui.separator();
 
@@ -7152,6 +7293,14 @@ impl RemoainterApp {
                                 ui.close_menu();
                             }
                         });
+                        ui.menu_button("📦 Add smart material", |ui| {
+                            for preset in SmartMaterialPreset::ALL {
+                                if ui.button(preset.name()).clicked() {
+                                    list_action = Some(LayerListAction::AddSmartMaterial(preset));
+                                    ui.close_menu();
+                                }
+                            }
+                        });
                         if layer_type == LayerType::Paint && ui.button("🧹 Clear layer").clicked()
                         {
                             list_action = Some(LayerListAction::ClearLayer(i));
@@ -7452,6 +7601,47 @@ impl RemoainterApp {
                     self.paint_target_mask = false;
                     recomposite_needed = true;
                     self.status_message = format!("Added Generator Layer {}", id);
+                }
+                LayerListAction::AddSmartMaterial(preset) => {
+                    let folder_idx = self.layer_stack.insert_smart_material(
+                        preset,
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                    );
+                    self.layer_stack.active_layer_index = folder_idx;
+                    self.paint_target_mask = false;
+                    recomposite_needed = true;
+                    self.status_message = format!("Added Smart Material: {}", preset.name());
+                    self.history.push(format!(
+                        "{:02}  Add Smart Material ({})",
+                        self.history.len() + 1,
+                        preset.name()
+                    ));
+                }
+                LayerListAction::AddSmartMask(i, preset) => {
+                    if let Some(l) = self.layer_stack.layers.get_mut(i) {
+                        l.apply_smart_mask_preset(
+                            preset,
+                            self.baked_maps.curvature.as_deref(),
+                            self.baked_maps.ambient_occlusion.as_deref(),
+                            self.baked_maps.world_space_normal.as_deref(),
+                            self.baked_maps.position.as_deref(),
+                            self.baked_maps.thickness.as_deref(),
+                            self.baked_maps.id.as_deref(),
+                        );
+                        recomposite_needed = true;
+                        self.status_message =
+                            format!("Applied Smart Mask ({}) to {}", preset.name(), l.name);
+                        self.history.push(format!(
+                            "{:02}  Apply Smart Mask ({})",
+                            self.history.len() + 1,
+                            preset.name()
+                        ));
+                    }
                 }
                 LayerListAction::InvertMask(i) => {
                     if let Some(l) = self.layer_stack.layers.get_mut(i) {

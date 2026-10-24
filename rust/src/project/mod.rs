@@ -1124,4 +1124,68 @@ mod tests {
         let _ = fs::remove_file(project_path);
         let _ = fs::remove_dir(temp_dir);
     }
+
+    #[test]
+    fn test_smart_material_hierarchy_project_roundtrip() {
+        use crate::painting::material_gen::SmartMaterialPreset;
+
+        let temp_dir = std::env::temp_dir().join("remoainter_smart_mat_roundtrip_test");
+        let _ = fs::create_dir_all(&temp_dir);
+        let project_path = temp_dir.join("test_smart_mat_project.rmp");
+
+        let mesh = Mesh::create_plane();
+        let mut layer_stack = LayerStack::new(4, 4);
+
+        let folder_idx = layer_stack.insert_smart_material(
+            SmartMaterialPreset::MachineryHeavyDuty,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        let folder_id = layer_stack.layers[folder_idx].id;
+
+        let baked_maps = BakedMaps::default();
+        let baker_options = BakerOptions::default();
+
+        let save_res = ProjectManager::save_project(
+            &project_path,
+            "SmartMatProject",
+            &mesh,
+            None,
+            &layer_stack,
+            &baked_maps,
+            &baker_options,
+            (0.0, 0.0, 2.0),
+            (0.0, 1.0, 0.0, 0),
+        );
+        assert!(save_res.is_ok(), "save failed: {:?}", save_res.err());
+
+        let load_res = ProjectManager::load_project(&project_path);
+        assert!(load_res.is_ok(), "load failed: {:?}", load_res.err());
+        let (manifest, _, loaded_stack, _, _) = load_res.unwrap();
+
+        assert_eq!(manifest.layers.len(), layer_stack.layers.len());
+        assert_eq!(loaded_stack.layers.len(), layer_stack.layers.len());
+
+        let loaded_folder = &loaded_stack.layers[folder_idx];
+        assert_eq!(loaded_folder.layer_type, LayerType::Folder);
+        assert_eq!(loaded_folder.id, folder_id);
+
+        // Verify child layers maintain their parent_folder_id
+        let child_count = loaded_stack
+            .layers
+            .iter()
+            .filter(|l| l.parent_folder_id == Some(folder_id))
+            .count();
+        assert!(
+            child_count >= 3,
+            "Must have at least 3 children parented to folder"
+        );
+
+        let _ = fs::remove_file(project_path);
+        let _ = fs::remove_dir(temp_dir);
+    }
 }
