@@ -2,7 +2,7 @@
 name = "remoainter"
 version = "2.0.0"
 edition = "2021"
-authors = ["REMoAINTER Team"]
+authors = ["Sairam <https://github.com/SAIRAMSSSS>"]
 description = "Next-Gen Open-Source 3D PBR Texture Painting Suite (Substance Painter Architecture in Rust)"
 license = "MIT OR Apache-2.0"
 

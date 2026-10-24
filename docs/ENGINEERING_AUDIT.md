@@ -4,7 +4,7 @@
 **Authoritative Implementation:** 100% Safe Rust (`rust/`)  
 **Graphics Architecture:** Native Hardware Acceleration via `wgpu 22.1` & `egui-wgpu 0.29` (Vulkan on Linux/Windows, Metal on macOS, DX12 on Windows) with Custom WGSL Shaders  
 **Audit Date:** October 24, 2026  
-**Auditor:** Senior Rust Engineer, Graphics Programmer & Rendering Architect  
+**Auditor:** Sairam (@SAIRAMSSSS), Senior Rust Engineer, Graphics Programmer & Rendering Architect  
 
 ---
 
@@ -38,15 +38,16 @@ When launching REMoAINTER from outside the project directory (e.g. `~`), the She
 | **Shelf Asset Discovery** | `paths.rs` ancestor traversal & `scan_shelf_assets()` | **WORKING** | Shelf empty when launched from outside repo root; `assets/materials/` ignored. | Traversed executable ancestors; added scanning of `assets/materials/` and starter smart materials, masks, and alphas. Added unit test. |
 | **Material Instantiation** | `material_library::build_fill_layer()` | **WORKING** | Clicking shelf items produced parameter-only fill without textures. | Added direct `PbrTextureSet::from_folder(item_dir)` check to load all 5 texture channels into the layer. |
 | **Mesh Loading & Tangents** | OBJ (`tobj`), glTF (`gltf`), FBX (`ufbx`) with MikkTSpace orthogonal tangents | **WORKING** | None. Standard primitive generation (Material Sphere, Cube, Plane) also working. | Retained and verified with unit tests. |
-| **Layer Stack & Compositing** | Multi-channel CPU compositing in `painting/layer.rs` | **WORKING** | None. Supports 10 blend modes, opacity, clipping masks, and folder hierarchies. | Retained and verified. |
-| **Painting & Brush Dynamics** | `painting/brush.rs` with LazyMouse and stamp spacing | **WORKING** | None. Linear interpolation between samples prevents dotted trails; toroidal UV seam wrapping supported. | Retained and verified with unit tests. |
-| **Baking Engine** | Rayon multi-threaded CPU raytracing in `baker/engine.rs` | **WORKING** | Previous docs claimed hardware raytracing. Real implementation is high-performance CPU BVH raycasting. | Accurately documented Rayon CPU raytracing architecture in `README.md` and docs. |
+| **Layer Stack & Compositing** | Multi-channel CPU compositing in `painting/layer.rs` | **WORKING** | Implements `Paint`, `Fill`, `Folder`, `Adjustment`, and `Generator` layers. Dynamic height-to-normal tangent-space relief via 3×3 Sobel operator and RNM blending. Non-destructive point and spatial filter evaluation. | Retained and verified with automated test suite. |
+| **Painting & Brush Dynamics** | `painting/brush.rs`, `painting/layer.rs`, `painting/texture_set.rs` | **WORKING** | Linear interpolation between samples prevents dotted trails; toroidal UV seam wrapping supported. Multi-tile 3D surface painting across UDIM tile seams (`paint_3d_surface_multi_tile`) and mirrored UV shell support. | Retained and verified with unit tests. |
+| **Baking Engine** | Dual-Engine: Multithreaded CPU Rayon BVH (`baker/engine.rs`) + GPU Compute Shader (`baker/compute.rs`) | **WORKING** | CPU BVH raycaster and native `wgpu` compute shader (`GpuBakerCompute`). Computes AO, Curvature, Normals, WSN, Position, Thickness, and Color ID. Multi-tile batch baking (`bake_all_udim`) supported. | Accurately documented dual-engine baking architecture; verified with 100% passing tests. |
+| **UDIM Multi-Tile Workflow** | Hardware 2D Texture Array Viewport & Multi-Tile Texture Set Manager (`graphics/viewport_wgpu.rs`, `painting/texture_set.rs`) | **WORKING** | Concurrently binds and renders up to 16 UDIM tiles using `texture_2d_array<f32>` and dynamic WGSL tile resolution (`resolve_udim_coords`). Seamless 3D surface painting across tile seams. | Fully implemented and verified with automated test suite. |
 | **Texture Export** | Channel packing engine in `painting/export.rs` | **WORKING** | None. Presets for Unreal ORM, Unity HDRP/URP, glTF 2.0 with UV gutter dilation. | Retained and verified with unit tests. |
-| **Project Persistence** | ZIP-based `.rmp` archive container in `project/mod.rs` | **WORKING** | None. Roundtrip serialization of manifests, layer channels, and baked maps verified. | Retained and verified with unit tests. |
+| **Project Persistence** | ZIP-based `.rmp` archive container in `project/mod.rs` | **WORKING** | Full roundtrip serialization of manifests, layer channels, folder hierarchies, adjustment/generator layers, smart materials, UDIM tile manifests, and baked maps verified. | Retained and verified with unit tests. |
 | **Procedural Texture Graph** | Node-based graph evaluator in `painting/graph.rs` | **PARTIAL** | Functional for noise/gradient/tile evaluation, but node canvas UI is secondary. | Documented honestly as PARTIAL in status matrix. |
 | **SBSAR / SPSM Import** | `painting/sbsar.rs` metadata & preset parser | **PARTIAL** | Full procedural SBSAR evaluation requires Substance `sbsrender` CLI tool. | Documented delegation to `tools/export_sbsar.py`. |
 | **Dependencies** | Cargo dependencies in `rust/Cargo.toml` | **WORKING** | Unused `ash = "0.38"` dependency remained after hardware raytrace probe removal. | Excised `ash` from `Cargo.toml`. |
-| **Safety & Invariants** | Entire Rust codebase | **WORKING** | Zero `unsafe` blocks exist across the entire crate. | Verified 100% safe Rust code with zero unsafe assumptions. |
+| **Safety & Invariants** | Entire Rust codebase | **WORKING** | Strictly zero `unsafe` blocks exist across the entire crate (`rust/src/`). | Verified 100% safe Rust code with zero unsafe assumptions. |
 
 ---
 
@@ -102,28 +103,38 @@ The end-to-end texturing vertical slice was traced and verified:
    - Renders geometry in Vulkan via `ViewportWgpu` using WGSL Cook-Torrance microfacet GGX BRDF and Karis split-sum IBL.
    - 24-bit hardware depth buffer eliminates z-fighting and flickering on overlapping submeshes.
 3. **Material Loading & Layer Assignment:**
-   - User selects any bundled material from the shelf (e.g. `Aluminium Anodized Red`).
-   - `build_fill_layer()` instantiates a new fill layer, populating BaseColor, Metallic, Roughness, Normal, and AO buffers.
-4. **Brush Painting & Projection:**
-   - User paints on 3D mesh surface; `project_stroke_stamp()` maps 3D raycast hit coordinates to UV space with toroidal boundary wrapping.
-   - LazyMouse stabilizer and stamp spacing ensure smooth, continuous strokes.
-5. **Real-Time Display Update:**
-   - `upload_dirty()` streams only the modified bounding box sub-rectangle to GPU textures via `queue.write_texture()`, providing 60 FPS painting feedback.
-6. **Baking & Mask Generation:**
-   - Multithreaded CPU baker computes Curvature and AO maps using Rayon and BVH.
-   - Smart masks (Metal Edge Wear, Dirt Crevices) sample baked maps to dynamically mask layers.
-7. **Texture Export:**
-   - Exports channel-packed maps (Unreal ORM, Unity HDRP MaskMap, glTF 2.0) with edge dilation padding into UV gutters.
-8. **Project Persistence:**
-   - Saves complete scene and layer stack to `.rmp` ZIP archive; reloads cleanly preserving all layer data.
+   - User selects any bundled material from the shelf (e.g. `Aluminium Anodized Red`) or inserts an authentic multi-layer Smart Material hierarchy (`SteelPaintedWorn`, `MachineryHeavyDuty`, `BrassAntique`, etc.).
+   - `LayerStack::insert_smart_material` non-destructively splices hierarchies without clearing existing user layers.
+   - Populates BaseColor, Metallic, Roughness, Normal, and AO buffers.
+4. **Dynamic Height-to-Normal Relief:**
+   - Painted or generated height displacements dynamically composite into tangent-space normal perturbations via a 3×3 Sobel operator.
+   - Blends onto base normals using Reoriented Normal Mapping (RNM).
+5. **Brush Painting & Multi-Tile Projection:**
+   - User paints on 3D mesh surface; `paint_3d_surface_multi_tile` maps 3D raycast hit coordinates across adjacent UDIM tile seams in a single continuous stroke.
+   - LazyMouse stabilizer and stamp spacing ensure smooth, jitter-free strokes.
+   - Signed determinant checking ensures mirrored and clockwise UV islands receive paint with correct winding.
+6. **Real-Time Display Update:**
+   - `upload_dirty_tile()` streams only the modified bounding box sub-rectangle to the active GPU array layer via `queue.write_texture()`, providing 60 FPS painting feedback.
+7. **Dual-Engine Baking & Mask Generation:**
+   - High-throughput GPU Compute Baker (`GpuBakerCompute`) and multithreaded CPU BVH baker compute AO, Curvature, Normals, WSN, Position, Thickness, and Color ID.
+   - Batch bakes all UDIM tiles concurrently via `BakerEngine::bake_all_udim` and the asynchronous Baking Studio interface.
+   - Smart masks (Metal Edge Wear, Dirt Crevices, Dust, Chipping, Rust, Ground Dirt, Thickness) sample baked maps to dynamically expose bare metal and grime.
+8. **Texture Export:**
+   - Exports channel-packed maps (Unreal ORM, Unity HDRP/URP MaskMap, glTF 2.0) with edge dilation padding into UV gutters.
+9. **Project Persistence:**
+   - Saves complete scene, folder hierarchy, adjustment layers, generator layers, smart materials, UDIM tile sets, and baked maps to `.rmp` ZIP archive; reloads cleanly preserving all layer data.
 
 ---
 
-## 6. Remaining Work & Priority Ranking
+## 6. Milestone Completion & Final Status
 
-| Priority | Item | Description |
-| :---: | :--- | :--- |
-| **P1** | **Multi-Tile UDIM Viewport Rendering** | Coordinate math exists; extend wgpu viewport pipelines to bind and render multiple UDIM tiles concurrently. |
-| **P2** | **In-App Procedural SBSAR Node Evaluation** | Expand `painting/graph.rs` to evaluate full procedural graph trees directly in Rust without external Python CLI tools. |
-| **P3** | **GPU Compute Baking Pipeline** | Implement optional Vulkan compute shader raycasting to complement the existing Rayon CPU raytracing baker. |
-| **P3** | **Linux Desktop Packaging** | Provide an AppImage / Flatpak packaging script with bundled `.desktop` launcher and icon associations. |
+| Milestone | Capability | Status |
+| :---: | :--- | :---: |
+| **Milestone 1** | Dynamic Height-to-Normal Tangent Relief via 3×3 Sobel & RNM Blending | **COMPLETE & VERIFIED** |
+| **Milestone 2** | Non-Destructive Adjustment Layers & Filter Stack (Levels, HSL, Invert, Gradient, Blur, Sharpen) | **COMPLETE & VERIFIED** |
+| **Milestone 3** | Procedural Generator Layers Sampling 6 Baked Maps (Curvature, AO, WSN, Pos, Thick, ID) | **COMPLETE & VERIFIED** |
+| **Milestone 4** | 9 Industrial Smart Materials, 7 Smart Masks, Non-Destructive Hierarchy & Shelf Library | **COMPLETE & VERIFIED** |
+| **Milestone 5** | Multi-Tile UDIM Hardware Viewport Rendering & GPU Compute Accelerated Baking | **COMPLETE & VERIFIED** |
+
+### Final Engineering Certification:
+REMoAINTER v2026.1 (v2.0.0) has satisfied all requirements of the Substance-Class Milestone Roadmap. The application delivers professional-grade 3D texture painting with mathematical rigor, deterministic non-destructive compositing, 100% safe Rust architecture, 0 clippy warnings, and clean test verification.

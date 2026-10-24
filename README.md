@@ -206,3 +206,8 @@ python3 tools/export_sbsar.py --sbsar-dir /path/to/materials --out-dir assets/ma
 If `sbsrender` is not installed on your system, the exporter will print clear setup instructions and proceed to index all `.spsm` smart materials and bundled texture sets.
 
 ---
+
+## Author & Maintainer
+
+Created and maintained by **Sairam** ([@SAIRAMSSSS](https://github.com/SAIRAMSSSS)).
+
