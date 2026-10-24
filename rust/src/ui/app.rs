@@ -7,8 +7,8 @@ use crate::painting::brush::AlphaMaskData;
 use crate::painting::texture_importer::PbrTextureSet;
 use crate::painting::{
     apply_smart_material_hierarchy, load_real_pbr_material, AnchorPoint, BitDepth, BlendMode,
-    Brush, ExportPreset, FilterEffect, FilterTargetChannel, Layer, LayerStack, LayerType,
-    MaskBlendMode, MaskEffect, OutputFormat, PaddingAlgorithm, TextureExportContext,
+    Brush, ExportPreset, FilterEffect, FilterTargetChannel, GeneratorConfig, Layer, LayerStack,
+    LayerType, MaskBlendMode, MaskEffect, OutputFormat, PaddingAlgorithm, TextureExportContext,
 };
 use crate::project::AppConfig;
 use crate::ui::icons::{draw_icon, IconType};
@@ -6225,6 +6225,138 @@ impl RemoainterApp {
                     ui.close_menu();
                 }
             });
+            ui.menu_button("⚡ + Generator", |ui| {
+                let id = self.layer_stack.layers.len() + 1;
+                let w = self.layer_stack.width;
+                let h = self.layer_stack.height;
+                if ui.button("⚡ Metal Edge Wear").clicked() {
+                    let mut gen = Layer::new_generator_edge_wear(id, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Metal Edge Wear Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🪨 Dirt Crevices").clicked() {
+                    let mut gen = Layer::new_generator_dirt_crevices(id, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Dirt Crevices Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("💨 Dust Accumulation").clicked() {
+                    let mut gen = Layer::new_generator_dust(id, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Dust Accumulation Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("📐 Position Gradient").clicked() {
+                    let mut gen = Layer::new_generator_position_gradient(id, 1, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Position Gradient Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🧭 World Normal Orientation").clicked() {
+                    let mut gen = Layer::new_generator_world_normal(id, [0.0, 1.0, 0.0], w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added World Normal Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🥩 Thickness / Subsurface").clicked() {
+                    let mut gen = Layer::new_generator_thickness(id, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Thickness Generator Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🎨 Color / ID Selection").clicked() {
+                    let mut gen =
+                        Layer::new_generator_id_selection(id, [1.0, 0.0, 0.0, 1.0], 0.2, w, h);
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    self.layer_stack.layers.push(gen);
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Color/ID Generator Layer".into();
+                    ui.close_menu();
+                }
+            });
             if ui
                 .small_button("+ Black Mask")
                 .on_hover_text("Add Black Mask with Sub-Stack")
@@ -6379,6 +6511,7 @@ impl RemoainterApp {
             AddFillLayer,
             AddFolder,
             AddAdjustmentLayer(FilterEffect),
+            AddGeneratorLayer(GeneratorConfig, [f32; 4], f32, f32, f32),
             Cut(usize),
             Copy(usize),
             Paste,
@@ -6489,6 +6622,7 @@ impl RemoainterApp {
                         LayerType::Fill => ("F", SMART_MAT_ORANGE),
                         LayerType::Folder => ("D", Color32::from_rgb(255, 215, 0)),
                         LayerType::Adjustment => ("A", Color32::from_rgb(180, 100, 255)),
+                        LayerType::Generator => ("G", Color32::from_rgb(255, 140, 50)),
                     };
                     ui.painter()
                         .rect_filled(mat_thumb_rect, 2.0, Color32::from_rgb(35, 35, 40));
@@ -6946,6 +7080,78 @@ impl RemoainterApp {
                                 ui.close_menu();
                             }
                         });
+                        ui.menu_button("⚡ Add generator layer", |ui| {
+                            if ui.button("⚡ Metal Edge Wear").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::metal_edge_wear(),
+                                    [0.85, 0.85, 0.85, 1.0],
+                                    1.0,
+                                    0.2,
+                                    0.0,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("🪨 Dirt Crevices").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::dirt_crevices(),
+                                    [0.18, 0.12, 0.08, 1.0],
+                                    0.0,
+                                    0.9,
+                                    -0.1,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("💨 Dust Accumulation").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::dust_accumulation(),
+                                    [0.65, 0.62, 0.58, 1.0],
+                                    0.0,
+                                    0.95,
+                                    0.02,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("📐 Position Gradient").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::position_gradient(1),
+                                    [0.9, 0.9, 0.9, 1.0],
+                                    0.0,
+                                    0.5,
+                                    0.0,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("🧭 World Normal Orientation").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::world_normal([0.0, 1.0, 0.0]),
+                                    [0.9, 0.9, 0.9, 1.0],
+                                    0.0,
+                                    0.5,
+                                    0.0,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("🥩 Thickness / Subsurface").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::thickness(),
+                                    [0.8, 0.2, 0.1, 1.0],
+                                    0.0,
+                                    0.6,
+                                    0.0,
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("🎨 Color / ID Selection").clicked() {
+                                list_action = Some(LayerListAction::AddGeneratorLayer(
+                                    GeneratorConfig::color_id_selection([1.0, 0.0, 0.0, 1.0], 0.2),
+                                    [1.0, 0.3, 0.1, 1.0],
+                                    0.0,
+                                    0.5,
+                                    0.0,
+                                ));
+                                ui.close_menu();
+                            }
+                        });
                         if layer_type == LayerType::Paint && ui.button("🧹 Clear layer").clicked()
                         {
                             list_action = Some(LayerListAction::ClearLayer(i));
@@ -7215,6 +7421,37 @@ impl RemoainterApp {
                     self.paint_target_mask = false;
                     recomposite_needed = true;
                     self.status_message = format!("Added Adjustment Layer {}", id);
+                }
+                LayerListAction::AddGeneratorLayer(config, color, met, rough, h_val) => {
+                    let id = self.layer_stack.layers.len() + 1;
+                    let name = format!("{} {}", config.name, id);
+                    let mut gen = Layer::new_generator(
+                        id,
+                        name,
+                        config,
+                        color,
+                        met,
+                        rough,
+                        h_val,
+                        self.layer_stack.width,
+                        self.layer_stack.height,
+                    );
+                    gen.evaluate_generator(
+                        self.baked_maps.curvature.as_deref(),
+                        self.baked_maps.ambient_occlusion.as_deref(),
+                        self.baked_maps.world_space_normal.as_deref(),
+                        self.baked_maps.position.as_deref(),
+                        self.baked_maps.thickness.as_deref(),
+                        self.baked_maps.id.as_deref(),
+                        None,
+                    );
+                    let insert_at = (self.layer_stack.active_layer_index + 1)
+                        .min(self.layer_stack.layers.len());
+                    self.layer_stack.layers.insert(insert_at, gen);
+                    self.layer_stack.active_layer_index = insert_at;
+                    self.paint_target_mask = false;
+                    recomposite_needed = true;
+                    self.status_message = format!("Added Generator Layer {}", id);
                 }
                 LayerListAction::InvertMask(i) => {
                     if let Some(l) = self.layer_stack.layers.get_mut(i) {
@@ -7948,6 +8185,260 @@ impl RemoainterApp {
                                 recomposite_needed = true;
                             }
                         });
+                    }
+
+                    if active_layer.layer_type == LayerType::Generator {
+                        ui.separator();
+                        ui.label(egui::RichText::new("PROCEDURAL GENERATOR").strong());
+
+                        let mut gen_changed = false;
+                        if let Some(ref mut config) = active_layer.generator {
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    egui::RichText::new(format!("⚡ Preset: {}", config.name))
+                                        .strong()
+                                        .color(Color32::from_rgb(255, 180, 50)),
+                                );
+                            });
+
+                            let has_maps = self.baked_maps.curvature.is_some()
+                                || self.baked_maps.ambient_occlusion.is_some();
+                            if !has_maps {
+                                ui.label(
+                                    egui::RichText::new(
+                                        "💡 Tip: Bake mesh maps (Curvature, AO, Position) in the Bake Maps dock for full procedural fidelity.",
+                                    )
+                                    .italics()
+                                    .color(egui::Color32::from_rgb(220, 180, 100)),
+                                );
+                            }
+
+                            ui.horizontal(|ui| {
+                                ui.label("Wear / Level:");
+                                if ui
+                                    .add(egui::Slider::new(&mut config.wear_level, 0.0..=2.0))
+                                    .changed()
+                                {
+                                    gen_changed = true;
+                                }
+                            });
+
+                            ui.horizontal(|ui| {
+                                ui.label("Contrast:");
+                                if ui
+                                    .add(egui::Slider::new(&mut config.contrast, 0.1..=4.0))
+                                    .changed()
+                                {
+                                    gen_changed = true;
+                                }
+                            });
+
+                            let gen_lower = config.name.to_lowercase();
+                            let is_dirt_or_thick = gen_lower.contains("dirt")
+                                || gen_lower.contains("cavity")
+                                || gen_lower.contains("crevice")
+                                || gen_lower.contains("thickness");
+                            if is_dirt_or_thick {
+                                ui.horizontal(|ui| {
+                                    ui.label("Dirt / Amount:");
+                                    if ui
+                                        .add(egui::Slider::new(&mut config.dirt_amount, 0.0..=2.0))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                            }
+
+                            if !gen_lower.contains("id") && !gen_lower.contains("color selection") {
+                                ui.horizontal(|ui| {
+                                    ui.label("Grunge Amount:");
+                                    if ui
+                                        .add(egui::Slider::new(
+                                            &mut config.grunge_amount,
+                                            0.0..=1.0,
+                                        ))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+
+                                ui.horizontal(|ui| {
+                                    ui.label("Grunge Scale:");
+                                    if ui
+                                        .add(egui::Slider::new(&mut config.grunge_scale, 0.5..=30.0))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                            }
+
+                            if gen_lower.contains("position") || gen_lower.contains("gradient") {
+                                ui.horizontal(|ui| {
+                                    ui.label("Axis:");
+                                    if ui.radio_value(&mut config.axis, 0, "X").changed()
+                                        || ui
+                                            .radio_value(&mut config.axis, 1, "Y (Height)")
+                                            .changed()
+                                        || ui.radio_value(&mut config.axis, 2, "Z").changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                            }
+
+                            if gen_lower.contains("normal") || gen_lower.contains("world") {
+                                ui.horizontal(|ui| {
+                                    ui.label("Direction X:");
+                                    if ui
+                                        .add(egui::Slider::new(
+                                            &mut config.normal_direction[0],
+                                            -1.0..=1.0,
+                                        ))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Direction Y:");
+                                    if ui
+                                        .add(egui::Slider::new(
+                                            &mut config.normal_direction[1],
+                                            -1.0..=1.0,
+                                        ))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Direction Z:");
+                                    if ui
+                                        .add(egui::Slider::new(
+                                            &mut config.normal_direction[2],
+                                            -1.0..=1.0,
+                                        ))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                            }
+
+                            if gen_lower.contains("id") || gen_lower.contains("color selection") {
+                                let mut id_col = [
+                                    (config.target_color[0] * 255.0) as u8,
+                                    (config.target_color[1] * 255.0) as u8,
+                                    (config.target_color[2] * 255.0) as u8,
+                                ];
+                                ui.horizontal(|ui| {
+                                    ui.label("Target Color:");
+                                    if ui.color_edit_button_srgb(&mut id_col).changed() {
+                                        config.target_color[0] = id_col[0] as f32 / 255.0;
+                                        config.target_color[1] = id_col[1] as f32 / 255.0;
+                                        config.target_color[2] = id_col[2] as f32 / 255.0;
+                                        gen_changed = true;
+                                    }
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("Tolerance:");
+                                    if ui
+                                        .add(egui::Slider::new(&mut config.tolerance, 0.01..=1.0))
+                                        .changed()
+                                    {
+                                        gen_changed = true;
+                                    }
+                                });
+                            }
+
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .checkbox(&mut config.use_curvature, "Use Curvature")
+                                    .changed()
+                                {
+                                    gen_changed = true;
+                                }
+                                if ui.checkbox(&mut config.use_ao, "Use AO").changed() {
+                                    gen_changed = true;
+                                }
+                                if ui.checkbox(&mut config.invert, "Invert Output").changed() {
+                                    gen_changed = true;
+                                }
+                            });
+                        }
+
+                        ui.separator();
+                        ui.label(egui::RichText::new("GENERATOR OUTPUT CHANNELS").strong());
+
+                        let mut col = [
+                            (active_layer.fill_color[0] * 255.0) as u8,
+                            (active_layer.fill_color[1] * 255.0) as u8,
+                            (active_layer.fill_color[2] * 255.0) as u8,
+                        ];
+                        ui.horizontal(|ui| {
+                            ui.label("Base Color:");
+                            if ui.color_edit_button_srgb(&mut col).changed() {
+                                active_layer.fill_color[0] = col[0] as f32 / 255.0;
+                                active_layer.fill_color[1] = col[1] as f32 / 255.0;
+                                active_layer.fill_color[2] = col[2] as f32 / 255.0;
+                                gen_changed = true;
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Metallic:");
+                            if ui
+                                .add(egui::Slider::new(
+                                    &mut active_layer.fill_metallic,
+                                    0.0..=1.0,
+                                ))
+                                .changed()
+                            {
+                                gen_changed = true;
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Roughness:");
+                            if ui
+                                .add(egui::Slider::new(
+                                    &mut active_layer.fill_roughness,
+                                    0.04..=1.0,
+                                ))
+                                .changed()
+                            {
+                                gen_changed = true;
+                            }
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label("Height:");
+                            if ui
+                                .add(egui::Slider::new(
+                                    &mut active_layer.fill_height,
+                                    -1.0..=1.0,
+                                ))
+                                .changed()
+                            {
+                                gen_changed = true;
+                            }
+                        });
+
+                        if gen_changed {
+                            active_layer.evaluate_generator(
+                                self.baked_maps.curvature.as_deref(),
+                                self.baked_maps.ambient_occlusion.as_deref(),
+                                self.baked_maps.world_space_normal.as_deref(),
+                                self.baked_maps.position.as_deref(),
+                                self.baked_maps.thickness.as_deref(),
+                                self.baked_maps.id.as_deref(),
+                                None,
+                            );
+                            recomposite_needed = true;
+                        }
                     }
 
                     ui.separator();

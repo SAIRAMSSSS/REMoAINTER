@@ -5,6 +5,7 @@ use super::filter::{
     apply_levels_scalar, apply_point_effect_pixel, gaussian_blur_f32, gaussian_blur_rgba,
     hsl_to_rgb, rgb_to_hsl, sharpen_f32, sharpen_rgba, FilterEffect, FilterTargetChannel,
 };
+use super::generator::{evaluate_generator_pixel, GeneratorConfig};
 use super::history::HistoryManager;
 use super::mask::{LayerMask, MaskType};
 use crate::graphics::lighting::{pbr_shade, EnvironmentPreset};
@@ -18,6 +19,7 @@ pub enum LayerType {
     Fill,
     Folder,
     Adjustment,
+    Generator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -544,7 +546,11 @@ pub struct Layer {
     pub anchor_point: Option<AnchorPoint>,
     pub color_tag: Option<u8>,
 
-    // Fill settings (for Fill layers)
+    // Procedural Generator Config (for Generator layers)
+    #[serde(default)]
+    pub generator: Option<GeneratorConfig>,
+
+    // Fill settings (for Fill & Generator layers)
     pub fill_color: [f32; 4],
     pub fill_metallic: f32,
     pub fill_roughness: f32,
@@ -682,6 +688,7 @@ impl Layer {
             mask: None,
             anchor_point: None,
             color_tag: None,
+            generator: None,
             fill_color: [0.8, 0.8, 0.8, 1.0],
             fill_metallic: 0.0,
             fill_roughness: 0.5,
@@ -738,6 +745,7 @@ impl Layer {
             mask: None,
             anchor_point: None,
             color_tag: None,
+            generator: None,
             fill_color: color,
             fill_metallic: metallic,
             fill_roughness: roughness,
@@ -1061,6 +1069,235 @@ impl Layer {
         l
     }
 
+    /// Creates a first-class procedural generator layer driving multi-channel PBR attributes
+    /// dynamically from baked mesh maps and noise.
+    pub fn new_generator(
+        id: usize,
+        name: impl Into<String>,
+        config: GeneratorConfig,
+        color: [f32; 4],
+        metallic: f32,
+        roughness: f32,
+        height: f32,
+        width: u32,
+        height_px: u32,
+    ) -> Self {
+        let mut l = Self::new_paint(id, name, width, height_px);
+        l.layer_type = LayerType::Generator;
+        l.generator = Some(config);
+        l.fill_color = color;
+        l.fill_metallic = metallic;
+        l.fill_roughness = roughness;
+        l.fill_height = height;
+        l.color_tag = Some(3); // Amber/orange badge for generator
+        l.channel_color_blend = BlendMode::Normal;
+        l.channel_metallic_blend = BlendMode::Normal;
+        l.channel_roughness_blend = BlendMode::Normal;
+        l.channel_normal_blend = BlendMode::Normal;
+        l.channel_height_blend = BlendMode::Add;
+        l
+    }
+
+    pub fn new_generator_edge_wear(id: usize, width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "Metal Edge Wear",
+            GeneratorConfig::metal_edge_wear(),
+            [0.85, 0.85, 0.85, 1.0],
+            1.0,
+            0.2,
+            0.0,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_dirt_crevices(id: usize, width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "Dirt Crevices",
+            GeneratorConfig::dirt_crevices(),
+            [0.18, 0.12, 0.08, 1.0],
+            0.0,
+            0.9,
+            -0.1,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_dust(id: usize, width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "Dust Accumulation",
+            GeneratorConfig::dust_accumulation(),
+            [0.65, 0.62, 0.58, 1.0],
+            0.0,
+            0.95,
+            0.02,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_position_gradient(id: usize, axis: u8, width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "Position Gradient",
+            GeneratorConfig::position_gradient(axis),
+            [0.9, 0.9, 0.9, 1.0],
+            0.0,
+            0.5,
+            0.0,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_world_normal(id: usize, dir: [f32; 3], width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "World Normal Orientation",
+            GeneratorConfig::world_normal(dir),
+            [0.9, 0.9, 0.9, 1.0],
+            0.0,
+            0.5,
+            0.0,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_thickness(id: usize, width: u32, height: u32) -> Self {
+        Self::new_generator(
+            id,
+            "Thickness / Subsurface",
+            GeneratorConfig::thickness(),
+            [0.8, 0.2, 0.1, 1.0],
+            0.0,
+            0.6,
+            0.0,
+            width,
+            height,
+        )
+    }
+
+    pub fn new_generator_id_selection(
+        id: usize,
+        target: [f32; 4],
+        tol: f32,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        Self::new_generator(
+            id,
+            "Color / ID Selection",
+            GeneratorConfig::color_id_selection(target, tol),
+            [1.0, 0.3, 0.1, 1.0],
+            0.0,
+            0.5,
+            0.0,
+            width,
+            height,
+        )
+    }
+
+    /// Evaluates the procedural generator into the layer's channel buffers non-destructively
+    /// from baked mesh maps and noise.
+    pub fn evaluate_generator(
+        &mut self,
+        baked_curvature: Option<&[f32]>,
+        baked_ao: Option<&[f32]>,
+        baked_wsn: Option<&[[f32; 3]]>,
+        baked_pos: Option<&[[f32; 3]]>,
+        baked_thickness: Option<&[f32]>,
+        baked_id: Option<&[[f32; 4]]>,
+        anchor_maps: Option<&std::collections::HashMap<String, Vec<f32>>>,
+    ) {
+        let Some(ref config) = self.generator else {
+            return;
+        };
+        if self.layer_type != LayerType::Generator {
+            return;
+        }
+
+        let w = self.width;
+        let h = self.height;
+        let total = (w * h) as usize;
+        if self.color_buffer.len() != total {
+            self.color_buffer.resize(total, self.fill_color);
+            self.metallic_buffer.resize(total, self.fill_metallic);
+            self.roughness_buffer.resize(total, self.fill_roughness);
+            self.height_buffer.resize(total, self.fill_height);
+            self.normal_buffer.resize(total, [0.5, 0.5, 1.0]);
+        }
+
+        let (pos_min, pos_max) = if let Some(pos_slice) = baked_pos {
+            let mut pmin = [f32::MAX, f32::MAX, f32::MAX];
+            let mut pmax = [f32::MIN, f32::MIN, f32::MIN];
+            for p in pos_slice {
+                pmin[0] = pmin[0].min(p[0]);
+                pmin[1] = pmin[1].min(p[1]);
+                pmin[2] = pmin[2].min(p[2]);
+                pmax[0] = pmax[0].max(p[0]);
+                pmax[1] = pmax[1].max(p[1]);
+                pmax[2] = pmax[2].max(p[2]);
+            }
+            (pmin, pmax)
+        } else {
+            ([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+        };
+
+        let anchor_buf = config
+            .anchor_name
+            .as_ref()
+            .and_then(|aname| anchor_maps.and_then(|maps| maps.get(aname)));
+
+        let w_f = w.max(1) as f32;
+        let h_f = h.max(1) as f32;
+
+        for y in 0..h {
+            let v_coord = y as f32 / h_f;
+            let row_offset = (y * w) as usize;
+            for x in 0..w {
+                let u_coord = x as f32 / w_f;
+                let idx = row_offset + x as usize;
+                let asig = anchor_buf.and_then(|abuf| abuf.get(idx).copied());
+
+                let gen_val = evaluate_generator_pixel(
+                    config,
+                    idx,
+                    u_coord,
+                    v_coord,
+                    pos_min,
+                    pos_max,
+                    baked_curvature,
+                    baked_ao,
+                    baked_wsn,
+                    baked_pos,
+                    baked_thickness,
+                    baked_id,
+                    asig,
+                );
+
+                self.color_buffer[idx] = [
+                    self.fill_color[0],
+                    self.fill_color[1],
+                    self.fill_color[2],
+                    (self.fill_color[3] * gen_val).clamp(0.0, 1.0),
+                ];
+                self.metallic_buffer[idx] = self.fill_metallic;
+                self.roughness_buffer[idx] = self.fill_roughness;
+                self.height_buffer[idx] = self.fill_height * gen_val;
+                self.normal_buffer[idx] = [0.5, 0.5, 1.0];
+            }
+        }
+
+        if !self.effects.is_empty() {
+            self.apply_effects();
+        }
+    }
+
     pub fn add_black_mask(&mut self) {
         let mut mask = LayerMask::new(MaskType::Black, self.width, self.height);
         mask.recompute(None, None, None, None, None, None);
@@ -1106,6 +1343,12 @@ impl Layer {
             self.roughness_buffer.fill(self.fill_roughness);
             self.normal_buffer.fill([0.5, 0.5, 1.0]);
             self.height_buffer.fill(self.fill_height);
+        } else if self.layer_type == LayerType::Generator {
+            self.color_buffer.fill([0.0, 0.0, 0.0, 0.0]);
+            self.metallic_buffer.fill(self.fill_metallic);
+            self.roughness_buffer.fill(self.fill_roughness);
+            self.normal_buffer.fill([0.5, 0.5, 1.0]);
+            self.height_buffer.fill(0.0);
         }
     }
 
@@ -1117,7 +1360,9 @@ impl Layer {
         mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
         if !on_mask
-            && (self.layer_type == LayerType::Folder || self.layer_type == LayerType::Adjustment)
+            && (self.layer_type == LayerType::Folder
+                || self.layer_type == LayerType::Adjustment
+                || self.layer_type == LayerType::Generator)
         {
             return [0, 0, 0, 0];
         }
@@ -1253,6 +1498,13 @@ impl Layer {
         on_mask: bool,
         mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
+        if !on_mask
+            && (self.layer_type == LayerType::Folder
+                || self.layer_type == LayerType::Adjustment
+                || self.layer_type == LayerType::Generator)
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -1435,6 +1687,13 @@ impl Layer {
         on_mask: bool,
         mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
+        if !on_mask
+            && (self.layer_type == LayerType::Folder
+                || self.layer_type == LayerType::Adjustment
+                || self.layer_type == LayerType::Generator)
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let w_f = self.width as f32;
@@ -1670,6 +1929,13 @@ impl LayerStack {
         is_eraser: bool,
         on_mask: bool,
     ) {
+        if !on_mask
+            && (layer.layer_type == LayerType::Folder
+                || layer.layer_type == LayerType::Adjustment
+                || layer.layer_type == LayerType::Generator)
+        {
+            return;
+        }
         if on_mask {
             if let Some(ref mut mask) = layer.mask {
                 if idx < mask.buffer.len() {
@@ -1832,6 +2098,12 @@ impl LayerStack {
             return [0, 0, 0, 0];
         }
         let li = self.active_layer_index.min(self.layers.len() - 1);
+        if self.layers[li].layer_type == LayerType::Folder
+            || self.layers[li].layer_type == LayerType::Adjustment
+            || self.layers[li].layer_type == LayerType::Generator
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -1969,6 +2241,12 @@ impl LayerStack {
             return [0, 0, 0, 0];
         }
         let li = self.active_layer_index.min(self.layers.len() - 1);
+        if self.layers[li].layer_type == LayerType::Folder
+            || self.layers[li].layer_type == LayerType::Adjustment
+            || self.layers[li].layer_type == LayerType::Generator
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let w_f = self.width as f32;
@@ -2180,6 +2458,13 @@ impl LayerStack {
             return [0, 0, 0, 0];
         }
         let li = self.active_layer_index.min(self.layers.len() - 1);
+        if !on_mask
+            && (self.layers[li].layer_type == LayerType::Folder
+                || self.layers[li].layer_type == LayerType::Adjustment
+                || self.layers[li].layer_type == LayerType::Generator)
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (dst_uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -2256,6 +2541,13 @@ impl LayerStack {
             return [0, 0, 0, 0];
         }
         let li = self.active_layer_index.min(self.layers.len() - 1);
+        if !on_mask
+            && (self.layers[li].layer_type == LayerType::Folder
+                || self.layers[li].layer_type == LayerType::Adjustment
+                || self.layers[li].layer_type == LayerType::Generator)
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let w_f = self.width as f32;
@@ -2415,6 +2707,13 @@ impl LayerStack {
             return [0, 0, 0, 0];
         }
         let li = self.active_layer_index.min(self.layers.len() - 1);
+        if !on_mask
+            && (self.layers[li].layer_type == LayerType::Folder
+                || self.layers[li].layer_type == LayerType::Adjustment
+                || self.layers[li].layer_type == LayerType::Generator)
+        {
+            return [0, 0, 0, 0];
+        }
         let w = self.width as i32;
         let h = self.height as i32;
         let w_f = self.width as f32;
@@ -2967,6 +3266,18 @@ impl LayerStack {
             if self.layers[layer_idx].layer_type == LayerType::Adjustment {
                 self.apply_adjustment_layer(layer_idx, folder_opacity);
                 continue;
+            }
+
+            if self.layers[layer_idx].layer_type == LayerType::Generator {
+                self.layers[layer_idx].evaluate_generator(
+                    baked_curvature,
+                    baked_ao,
+                    baked_wsn,
+                    baked_pos,
+                    baked_thickness,
+                    baked_id,
+                    Some(&anchor_maps),
+                );
             }
 
             let layer = &self.layers[layer_idx];
@@ -4274,5 +4585,149 @@ mod tests {
                 h
             );
         }
+    }
+
+    #[test]
+    fn test_generator_layer_metal_edge_wear_composite() {
+        let mut ls = LayerStack::new(2, 2);
+        ls.layers.clear();
+
+        // Base green paint layer (metallic 0.0, roughness 0.8)
+        let base = Layer::new_fill(1, "Base Paint", [0.1, 0.6, 0.2, 1.0], 0.0, 0.8, 2, 2);
+        ls.layers.push(base);
+
+        // Generator layer: Metal Edge Wear
+        let mut gen = Layer::new_generator_edge_wear(2, 2, 2);
+        // Disable noise for exact test determinism
+        if let Some(ref mut cfg) = gen.generator {
+            cfg.grunge_amount = 0.0;
+        }
+        ls.layers.push(gen);
+
+        // Curvature: pixel 0 convex (0.9), pixel 1 flat (0.5), pixel 2 crevice (0.1), pixel 3 flat (0.5)
+        let curv = vec![0.9f32, 0.5, 0.1, 0.5];
+        let ao = vec![1.0f32, 1.0, 1.0, 1.0];
+
+        ls.composite(
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Pixel 0 (convex edge) should have high metallic wear and bright color
+        assert!(
+            ls.composite_metallic[0] > 0.4,
+            "Pixel 0 should be metallic wear, got {}",
+            ls.composite_metallic[0]
+        );
+        assert!(
+            ls.composite_roughness[0] < 0.6,
+            "Pixel 0 roughness should be polished wear (< 0.6), got {}",
+            ls.composite_roughness[0]
+        );
+
+        // Pixel 1 (flat) should remain green base paint
+        assert!(
+            ls.composite_metallic[1] < 0.1,
+            "Pixel 1 should have minimal/zero metallic wear, got {}",
+            ls.composite_metallic[1]
+        );
+        assert!(
+            (ls.composite_color[1][1] - 0.6).abs() < 0.1,
+            "Pixel 1 color should remain predominantly green base"
+        );
+    }
+
+    #[test]
+    fn test_generator_layer_dirt_crevices_composite() {
+        let mut ls = LayerStack::new(2, 2);
+        ls.layers.clear();
+
+        // Base shiny white ceramic layer
+        let base = Layer::new_fill(1, "Ceramic", [0.9, 0.9, 0.9, 1.0], 0.0, 0.1, 2, 2);
+        ls.layers.push(base);
+
+        // Generator layer: Dirt Crevices
+        let mut gen = Layer::new_generator_dirt_crevices(2, 2, 2);
+        if let Some(ref mut cfg) = gen.generator {
+            cfg.grunge_amount = 0.0;
+        }
+        ls.layers.push(gen);
+
+        // Curvature: pixel 2 is crevice (0.1), others flat (0.5)
+        let curv = vec![0.5f32, 0.5, 0.1, 0.5];
+        // AO: pixel 2 is deeply occluded (0.2), others unoccluded (1.0)
+        let ao = vec![1.0f32, 1.0, 0.2, 1.0];
+
+        ls.composite(
+            Some(&curv),
+            Some(&ao),
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Pixel 2 (crevice) should accumulate dirt: darker color, rougher, and recessed height
+        assert!(
+            ls.composite_color[2][0] < 0.6,
+            "Pixel 2 crevice should be darkened by dirt, got r={}",
+            ls.composite_color[2][0]
+        );
+        assert!(
+            ls.composite_roughness[2] > 0.4,
+            "Pixel 2 crevice roughness should increase from dirt, got {}",
+            ls.composite_roughness[2]
+        );
+        assert!(
+            ls.composite_height[2] < 0.0,
+            "Pixel 2 crevice height should be recessed (< 0), got {}",
+            ls.composite_height[2]
+        );
+
+        // Pixel 0 (flat unoccluded) should remain bright white shiny ceramic
+        assert!(
+            ls.composite_color[0][0] > 0.8,
+            "Pixel 0 should remain bright ceramic, got {}",
+            ls.composite_color[0][0]
+        );
+        assert!(
+            ls.composite_roughness[0] < 0.2,
+            "Pixel 0 should remain smooth, got {}",
+            ls.composite_roughness[0]
+        );
+    }
+
+    #[test]
+    fn test_generator_layer_paint_stamp_guarded_and_mask_painting() {
+        let mut gen = Layer::new_generator_edge_wear(1, 4, 4);
+        let brush = Brush::default();
+
+        // 1. Direct paint stamp on generator layer must be rejected
+        let bbox = gen.paint_stamp([0.5, 0.5], &brush, false, None);
+        assert_eq!(
+            bbox,
+            [0, 0, 0, 0],
+            "paint stamp directly on generator channels must return empty bbox"
+        );
+
+        // 2. Add white mask and paint with eraser on mask
+        gen.add_white_mask();
+        assert!(gen.mask.is_some());
+        let mask_bbox = gen.paint_stamp([0.5, 0.5], &brush, true, None);
+        assert_ne!(
+            mask_bbox,
+            [0, 0, 0, 0],
+            "paint stamp on generator mask must succeed"
+        );
     }
 }

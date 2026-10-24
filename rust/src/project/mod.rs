@@ -13,6 +13,7 @@ use crate::baker::engine::{
 use crate::graphics::mesh::Mesh;
 use crate::painting::anchor::AnchorPoint;
 use crate::painting::filter::FilterEffect;
+use crate::painting::generator::GeneratorConfig;
 use crate::painting::layer::{BlendMode, Layer, LayerStack, LayerType};
 use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
 
@@ -172,6 +173,9 @@ pub struct LayerManifest {
     pub mask_effects: Vec<MaskEffect>,
 
     pub anchor_point: Option<AnchorPoint>,
+
+    #[serde(default)]
+    pub generator: Option<GeneratorConfig>,
 }
 
 pub struct ProjectManager;
@@ -212,6 +216,7 @@ impl ProjectManager {
                 LayerType::Fill => "Fill",
                 LayerType::Folder => "Folder",
                 LayerType::Adjustment => "Adjustment",
+                LayerType::Generator => "Generator",
             };
             let blend_str = match layer.blend_mode {
                 BlendMode::Normal => "Normal",
@@ -274,6 +279,7 @@ impl ProjectManager {
                 mask_type: mask_type_str,
                 mask_effects,
                 anchor_point: layer.anchor_point.clone(),
+                generator: layer.generator.clone(),
             });
         }
 
@@ -526,6 +532,7 @@ impl ProjectManager {
                 "Fill" => LayerType::Fill,
                 "Folder" => LayerType::Folder,
                 "Adjustment" => LayerType::Adjustment,
+                "Generator" => LayerType::Generator,
                 _ => LayerType::Paint,
             };
             let blend_mode = match lm.blend_mode.as_str() {
@@ -596,6 +603,7 @@ impl ProjectManager {
                 mask: None,
                 anchor_point: lm.anchor_point.clone(),
                 color_tag: lm.color_tag,
+                generator: lm.generator.clone(),
                 fill_color: lm.fill_color,
                 fill_metallic: lm.fill_metallic,
                 fill_roughness: lm.fill_roughness,
@@ -1063,6 +1071,55 @@ mod tests {
         assert_eq!(manifest.layers[1].layer_type, "Adjustment");
         assert_eq!(loaded_stack.layers[1].layer_type, LayerType::Adjustment);
         assert_eq!(loaded_stack.layers[1].effects.len(), 1);
+
+        let _ = fs::remove_file(project_path);
+        let _ = fs::remove_dir(temp_dir);
+    }
+
+    #[test]
+    fn test_generator_layer_project_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("remoainter_gen_layer_test");
+        let _ = fs::create_dir_all(&temp_dir);
+        let project_path = temp_dir.join("test_gen_project.rmp");
+
+        let mesh = Mesh::create_plane();
+        let mut layer_stack = LayerStack::new(4, 4);
+        layer_stack.layers.clear();
+
+        let fill = Layer::new_fill(1, "Base Layer", [0.2, 0.2, 0.2, 1.0], 0.0, 0.8, 4, 4);
+        let gen = Layer::new_generator_edge_wear(2, 4, 4);
+        layer_stack.layers.push(fill);
+        layer_stack.layers.push(gen);
+
+        let baked_maps = BakedMaps::default();
+        let baker_options = BakerOptions::default();
+
+        let save_res = ProjectManager::save_project(
+            &project_path,
+            "GenProject",
+            &mesh,
+            None,
+            &layer_stack,
+            &baked_maps,
+            &baker_options,
+            (0.0, 0.0, 2.0),
+            (0.0, 1.0, 0.0, 0),
+        );
+        assert!(save_res.is_ok(), "save failed: {:?}", save_res.err());
+
+        let load_res = ProjectManager::load_project(&project_path);
+        assert!(load_res.is_ok(), "load failed: {:?}", load_res.err());
+        let (manifest, _, loaded_stack, _, _) = load_res.unwrap();
+
+        assert_eq!(manifest.layers.len(), 2);
+        assert_eq!(manifest.layers[1].layer_type, "Generator");
+        assert_eq!(loaded_stack.layers[1].layer_type, LayerType::Generator);
+        assert!(loaded_stack.layers[1].generator.is_some());
+        let gen_cfg = loaded_stack.layers[1].generator.as_ref().unwrap();
+        assert_eq!(gen_cfg.name, "Metal Edge Wear");
+        assert_eq!(gen_cfg.wear_level, 0.8);
+        assert!(gen_cfg.use_curvature);
+        assert!(gen_cfg.use_ao);
 
         let _ = fs::remove_file(project_path);
         let _ = fs::remove_dir(temp_dir);

@@ -1,3 +1,4 @@
+use super::generator::{evaluate_generator_pixel, GeneratorConfig};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -238,17 +239,26 @@ impl LayerMask {
                     anchor_name,
                     ..
                 } => {
-                    let gen_lower = name.to_lowercase();
-                    let is_dust = gen_lower.contains("dust");
-                    let is_gradient =
-                        gen_lower.contains("gradient") || gen_lower.contains("position");
-                    let is_orientation =
-                        gen_lower.contains("normal") || gen_lower.contains("world");
-                    let is_thickness = gen_lower.contains("thickness");
-                    let is_id = gen_lower.contains("id") || gen_lower.contains("color selection");
-                    let is_dirt = gen_lower.contains("dirt")
-                        || gen_lower.contains("cavity")
-                        || gen_lower.contains("crevice");
+                    let config = GeneratorConfig {
+                        name: name.clone(),
+                        wear_level: *wear_level,
+                        contrast: *contrast,
+                        dirt_amount: *dirt_amount,
+                        invert: *invert,
+                        use_ao: *use_ao,
+                        use_curvature: *use_curvature,
+                        anchor_name: anchor_name.clone(),
+                        grunge_amount: *grunge_amount,
+                        grunge_scale: *grunge_scale,
+                        axis: *axis,
+                        normal_direction: *normal_direction,
+                        target_color: *target_color,
+                        tolerance: *tolerance,
+                    };
+
+                    let anchor_buf = anchor_name
+                        .as_ref()
+                        .and_then(|aname| anchor_maps.and_then(|anchors| anchors.get(aname)));
 
                     for y in 0..h {
                         let v_coord = y as f32 / h_f;
@@ -257,151 +267,23 @@ impl LayerMask {
                         for x in 0..w {
                             let u_coord = x as f32 / w_f;
                             let idx = row_offset + x as usize;
-                            let mut gen_val = 0.0f32;
+                            let asig = anchor_buf.and_then(|abuf| abuf.get(idx).copied());
 
-                            // 1. Position Gradient
-                            if is_gradient {
-                                let t = if let Some(pos_slice) = baked_pos {
-                                    if idx < pos_slice.len() {
-                                        let ax = (*axis as usize).min(2);
-                                        let range = (pos_max[ax] - pos_min[ax]).max(1e-5);
-                                        (pos_slice[idx][ax] - pos_min[ax]) / range
-                                    } else {
-                                        match *axis {
-                                            0 => u_coord,
-                                            1 => 1.0 - v_coord,
-                                            _ => (u_coord + v_coord) * 0.5,
-                                        }
-                                    }
-                                } else {
-                                    match *axis {
-                                        0 => u_coord,
-                                        1 => 1.0 - v_coord,
-                                        _ => (u_coord + v_coord) * 0.5,
-                                    }
-                                };
-                                gen_val = t.clamp(0.0, 1.0);
-                            }
-                            // 2. World Space Normal Orientation
-                            else if is_orientation {
-                                let n = if let Some(wsn) = baked_wsn {
-                                    wsn.get(idx).copied().unwrap_or([0.0, 1.0, 0.0])
-                                } else {
-                                    [0.0, 1.0, 0.0]
-                                };
-                                let dot = n[0] * normal_direction[0]
-                                    + n[1] * normal_direction[1]
-                                    + n[2] * normal_direction[2];
-                                gen_val = (dot * 0.5 + 0.5).clamp(0.0, 1.0);
-                            }
-                            // 3. Dust Accumulation (Top/Upward Facing + Cavity Occlusion)
-                            else if is_dust {
-                                let ny = if let Some(wsn) = baked_wsn {
-                                    wsn.get(idx).map(|n| n[1]).unwrap_or(1.0)
-                                } else {
-                                    1.0
-                                };
-                                let up_facing = ny.max(0.0);
-                                let ao_fac = if let Some(ao) = baked_ao {
-                                    ao.get(idx).copied().unwrap_or(1.0)
-                                } else {
-                                    1.0
-                                };
-                                gen_val = up_facing * (0.6 + 0.4 * (1.0 - ao_fac)) * wear_level;
-                            }
-                            // 4. Thickness / Subsurface
-                            else if is_thickness {
-                                let th = if let Some(thick) = baked_thickness {
-                                    thick.get(idx).copied().unwrap_or(0.5)
-                                } else {
-                                    0.5
-                                };
-                                gen_val = (1.0 - th) * dirt_amount + th * wear_level;
-                            }
-                            // 5. Color / ID Selection
-                            else if is_id {
-                                if let Some(ids) = baked_id {
-                                    if idx < ids.len() {
-                                        let c = ids[idx];
-                                        let dr = c[0] - target_color[0];
-                                        let dg = c[1] - target_color[1];
-                                        let db = c[2] - target_color[2];
-                                        let dist = (dr * dr + dg * dg + db * db).sqrt();
-                                        let tol = tolerance.max(0.001);
-                                        if dist <= tol {
-                                            gen_val = (1.0 - dist / tol).clamp(0.0, 1.0);
-                                        }
-                                    }
-                                }
-                            }
-                            // 6. Dirt Crevices
-                            else if is_dirt {
-                                if *use_ao {
-                                    if let Some(ao) = baked_ao {
-                                        if idx < ao.len() {
-                                            let a = ao[idx];
-                                            gen_val += (1.0 - a) * dirt_amount;
-                                        }
-                                    }
-                                }
-                                if *use_curvature {
-                                    if let Some(curv) = baked_curvature {
-                                        if idx < curv.len() {
-                                            let c = curv[idx];
-                                            if c < 0.5 {
-                                                gen_val += (0.5 - c) * 2.0 * wear_level;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // 7. Metal Edge Wear (Default)
-                            else {
-                                if *use_curvature {
-                                    if let Some(curv) = baked_curvature {
-                                        if idx < curv.len() {
-                                            let c = curv[idx];
-                                            if c > 0.5 {
-                                                gen_val += (c - 0.5) * 2.0 * wear_level;
-                                            }
-                                        }
-                                    }
-                                }
-                                if *use_ao {
-                                    if let Some(ao) = baked_ao {
-                                        if idx < ao.len() {
-                                            let a = ao[idx];
-                                            gen_val *= a;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Anchor Point modulation / injection if referenced
-                            if let Some(ref aname) = anchor_name {
-                                if let Some(anchors) = anchor_maps {
-                                    if let Some(abuf) = anchors.get(aname) {
-                                        if let Some(&asig) = abuf.get(idx) {
-                                            gen_val = (gen_val + asig * wear_level).clamp(0.0, 1.0);
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Modulate with multi-octave procedural grunge noise
-                            if *grunge_amount > 0.001 && !is_id {
-                                let g_scale = *grunge_scale;
-                                let noise = fbm_noise(u_coord * g_scale, v_coord * g_scale, 3);
-                                let mod_factor =
-                                    (1.0 - grunge_amount) + noise * grunge_amount * 1.5;
-                                gen_val *= mod_factor;
-                            }
-
-                            // Apply Contrast Curve
-                            gen_val = ((gen_val - 0.5) * contrast + 0.5).clamp(0.0, 1.0);
-                            if *invert {
-                                gen_val = 1.0 - gen_val;
-                            }
+                            let gen_val = evaluate_generator_pixel(
+                                &config,
+                                idx,
+                                u_coord,
+                                v_coord,
+                                pos_min,
+                                pos_max,
+                                baked_curvature,
+                                baked_ao,
+                                baked_wsn,
+                                baked_pos,
+                                baked_thickness,
+                                baked_id,
+                                asig,
+                            );
 
                             self.buffer[idx] =
                                 blend_scalar(self.buffer[idx], gen_val, *blend_mode, *opacity);
