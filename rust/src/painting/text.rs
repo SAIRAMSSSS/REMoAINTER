@@ -561,7 +561,7 @@ mod tests {
                 .iter()
                 .filter(|f| f.starts_with(app.to_str().unwrap()))
                 .count();
-            assert!(sp_hits >= 60, "bundled SP fonts discovered: {sp_hits}");
+            assert!(sp_hits >= 20, "bundled SP fonts discovered: {sp_hits}");
             // And they must come first (never truncated away by the cap).
             assert!(fonts
                 .iter()

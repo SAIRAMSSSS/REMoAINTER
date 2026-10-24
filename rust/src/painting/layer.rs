@@ -375,7 +375,11 @@ pub fn blend_scalar_channel(base: f32, top: f32, mode: BlendMode) -> f32 {
             } else {
                 (base / (2.0 * (1.0 - top))).min(1.0)
             };
-            if vivid >= 0.5 { 1.0 } else { 0.0 }
+            if vivid >= 0.5 {
+                1.0
+            } else {
+                0.0
+            }
         }
         BlendMode::Divide => {
             if top <= 0.0 {
@@ -2714,10 +2718,8 @@ impl LayerStack {
                             let top_n = layer.normal_buffer[i];
                             let mode = layer.channel_normal_blend;
                             let base_n = self.composite_normal[i];
-                            let blended_n = if matches!(
-                                mode,
-                                BlendMode::RNM | BlendMode::Whiteout
-                            ) {
+                            let blended_n = if matches!(mode, BlendMode::RNM | BlendMode::Whiteout)
+                            {
                                 blend_normal_channels(base_n, top_n, mode)
                             } else {
                                 top_n

@@ -689,9 +689,14 @@ pub fn dilate_rgba_mode(
         return;
     }
     match mode {
-        PaddingAlgorithm::Color => {
-            push_pull_dilate(buffer, valid_mask, width, height, radius, GutterAlphaMode::DilateAll)
-        }
+        PaddingAlgorithm::Color => push_pull_dilate(
+            buffer,
+            valid_mask,
+            width,
+            height,
+            radius,
+            GutterAlphaMode::DilateAll,
+        ),
         PaddingAlgorithm::Transparent => push_pull_dilate(
             buffer,
             valid_mask,
@@ -1303,7 +1308,7 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
 
         // sRGB / linear transfer-function correctness. The layer-stack
         // composite stores BaseColor in display (gamma 2.2) space — the GL
-        // viewport (`viewport_gl.rs`) and the CPU raytracer (`renderer.rs`)
+        // viewport (`viewport_wgpu.rs`) and the CPU raytracer (`renderer.rs`)
         // both degamma sample it with `pow(2.2)`. Linear-space exports must
         // therefore receive the decoded linear values so the on-disk file
         // matches its declared color space. Non-color data (AO, roughness,
@@ -1321,8 +1326,7 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
                     TargetChannel::Alpha => continue,
                 };
                 for pixel in float_buffer.iter_mut() {
-                    pixel[channel_index] =
-                        pixel[channel_index].clamp(0.0, 1.0).powf(1.0 / 2.2);
+                    pixel[channel_index] = pixel[channel_index].clamp(0.0, 1.0).powf(1.0 / 2.2);
                 }
             }
         }
@@ -1590,8 +1594,16 @@ mod tests {
         // The gutter must have received BOTH edge colors (diffusion blends
         // both boundaries smoothly into the unfilled area).
         let mid = 2;
-        assert!(buffer[mid][0] > 0.01, "red must diffuse to mid: {:?}", buffer[mid]);
-        assert!(buffer[mid][1] > 0.01, "green must diffuse to mid: {:?}", buffer[mid]);
+        assert!(
+            buffer[mid][0] > 0.01,
+            "red must diffuse to mid: {:?}",
+            buffer[mid]
+        );
+        assert!(
+            buffer[mid][1] > 0.01,
+            "green must diffuse to mid: {:?}",
+            buffer[mid]
+        );
         // Boundary colors themselves are unchanged (Dirichlet condition).
         assert_eq!(buffer[0], [1.0, 0.0, 0.0, 1.0]);
         assert_eq!(buffer[4], [0.0, 1.0, 0.0, 1.0]);
@@ -1610,7 +1622,14 @@ mod tests {
             "Cube_BaseColor"
         );
         assert_eq!(
-            resolve_naming_tokens("$set_name$_$-resolution$", "Cube", Some("My Material Set"), 2048, 1024, 0),
+            resolve_naming_tokens(
+                "$set_name$_$-resolution$",
+                "Cube",
+                Some("My Material Set"),
+                2048,
+                1024,
+                0
+            ),
             "My_Material_Set__2048"
         );
         assert_eq!(
@@ -1679,8 +1698,8 @@ mod tests {
 
     #[test]
     fn test_with_padding_algorithm_builder() {
-        let preset = ExportPreset::unreal_engine()
-            .with_padding_algorithm(PaddingAlgorithm::Diffusion);
+        let preset =
+            ExportPreset::unreal_engine().with_padding_algorithm(PaddingAlgorithm::Diffusion);
         assert_eq!(preset.padding_algorithm, PaddingAlgorithm::Diffusion);
     }
 

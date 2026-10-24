@@ -126,8 +126,9 @@ fn attr_key(attr: &quick_xml::events::attributes::Attribute) -> String {
 pub fn parse_sbsar(data: &[u8]) -> Result<SbsarPackage, String> {
     let mut cursor = std::io::Cursor::new(data);
     let len = cursor.get_ref().len() as u64;
-    let mut reader = sevenz_rust::SevenZReader::new(&mut cursor, len, sevenz_rust::Password::empty())
-        .map_err(|e| format!("not a 7z archive (.sbsar): {e}"))?;
+    let mut reader =
+        sevenz_rust::SevenZReader::new(&mut cursor, len, sevenz_rust::Password::empty())
+            .map_err(|e| format!("not a 7z archive (.sbsar): {e}"))?;
 
     // NOTE (upstream sevenz-rust #31): solid-block folder decodes abort with a
     // spurious ChecksumVerificationFailed / truncated tail member. We still use
@@ -135,8 +136,9 @@ pub fn parse_sbsar(data: &[u8]) -> Result<SbsarPackage, String> {
     // failure; the archived XML prefix is usually enough to expose every
     // parameter for shelf browsing. Revisit when upstream ships > 0.6.1.
     let mut xml_texts: Vec<(String, Vec<u8>)> = Vec::new();
-    let walk_result = reader
-        .for_each_entries(&mut |entry: &sevenz_rust::SevenZArchiveEntry, data: &mut dyn Read| {
+    let walk_result =
+        reader.for_each_entries(&mut |entry: &sevenz_rust::SevenZArchiveEntry,
+                                      data: &mut dyn Read| {
             if !entry.is_directory && entry.name().ends_with(".xml") {
                 let mut buf = Vec::with_capacity(entry.size() as usize);
                 let n = data.read_to_end(&mut buf).unwrap_or(0);
@@ -165,7 +167,11 @@ pub fn parse_sbsar(data: &[u8]) -> Result<SbsarPackage, String> {
         if let Some(graph) = parse_sbsdescription(xml)? {
             graphs.push(graph);
         } else {
-            eprintln!("[sbsar] member {} ({} bytes) had no <graph> block", name, xml.len());
+            eprintln!(
+                "[sbsar] member {} ({} bytes) had no <graph> block",
+                name,
+                xml.len()
+            );
         }
     }
     if graphs.is_empty() {
@@ -191,12 +197,14 @@ pub fn parse_spsm_file(path: &Path) -> Result<SbsarPackage, String> {
 pub fn parse_spsm(data: &[u8], source_label: &str) -> Result<SbsarPackage, String> {
     let mut cursor = std::io::Cursor::new(data);
     let len = cursor.get_ref().len() as u64;
-    let mut reader = sevenz_rust::SevenZReader::new(&mut cursor, len, sevenz_rust::Password::empty())
-        .map_err(|e| format!("not a 7z archive (.spsm): {e}"))?;
+    let mut reader =
+        sevenz_rust::SevenZReader::new(&mut cursor, len, sevenz_rust::Password::empty())
+            .map_err(|e| format!("not a 7z archive (.spsm): {e}"))?;
 
     let mut best: Option<(usize, Vec<u8>)> = None; // (path weight, bytes)
-    let walk_result = reader
-        .for_each_entries(&mut |entry: &sevenz_rust::SevenZArchiveEntry, data: &mut dyn Read| {
+    let walk_result =
+        reader.for_each_entries(&mut |entry: &sevenz_rust::SevenZArchiveEntry,
+                                      data: &mut dyn Read| {
             if !entry.is_directory {
                 let name = entry.name().to_lowercase();
                 if name.ends_with(".sbsar") || name.ends_with(".sbs") || name.ends_with(".sbd") {
@@ -238,8 +246,12 @@ pub fn parse_spsm(data: &[u8], source_label: &str) -> Result<SbsarPackage, Strin
     }
     let (_weight, bytes) =
         best.ok_or_else(|| format!("{source_label} contains no embedded .sbs/.sbsar member"))?;
-    parse_sbsar(&bytes)
-        .map_err(|e| format!("embedded graph in {}.spsm failed to parse: {e}", source_label))
+    parse_sbsar(&bytes).map_err(|e| {
+        format!(
+            "embedded graph in {}.spsm failed to parse: {e}",
+            source_label
+        )
+    })
 }
 
 fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
@@ -254,8 +266,7 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => {
-                let tag = String::from_utf8_lossy(e.local_name().as_ref())
-                    .to_ascii_lowercase();
+                let tag = String::from_utf8_lossy(e.local_name().as_ref()).to_ascii_lowercase();
                 match tag.as_str() {
                     "graph" => {
                         let mut pkgurl = String::new();
@@ -268,7 +279,12 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                                 _ => {}
                             }
                         }
-                        graph = Some(SbsarGraph { pkgurl, label, inputs: Vec::new(), outputs: Vec::new() });
+                        graph = Some(SbsarGraph {
+                            pkgurl,
+                            label,
+                            inputs: Vec::new(),
+                            outputs: Vec::new(),
+                        });
                     }
                     "input" => {
                         let mut identifier = String::new();
@@ -285,7 +301,12 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                                 _ => {}
                             }
                         }
-                        current_input = Some((identifier, String::new(), ty, SbsarWidget::Other(String::new())));
+                        current_input = Some((
+                            identifier,
+                            String::new(),
+                            ty,
+                            SbsarWidget::Other(String::new()),
+                        ));
                     }
                     "inputgui" => {
                         if let Some((_, label, _, widget)) = current_input.as_mut() {
@@ -322,12 +343,18 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                                     _ => {}
                                 }
                             }
-                            *widget = SbsarWidget::Slider { min, max, default: (min + max) * 0.5, step, clamp };
+                            *widget = SbsarWidget::Slider {
+                                min,
+                                max,
+                                default: (min + max) * 0.5,
+                                step,
+                                clamp,
+                            };
                         }
                     }
                     "output" => {
                         let mut identifier = String::new();
-                        let mut label = String::new();
+                        let label = String::new();
                         let mut format = -1i64;
                         let mut width = 0u32;
                         let mut height = 0u32;
@@ -344,7 +371,14 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                                 _ => {}
                             }
                         }
-                        current_output = Some(SbsarOutput { identifier, label, format, width, height, mipmaps });
+                        current_output = Some(SbsarOutput {
+                            identifier,
+                            label,
+                            format,
+                            width,
+                            height,
+                            mipmaps,
+                        });
                     }
                     "outputgui" => {
                         if let Some(out) = current_output.as_mut() {
@@ -361,8 +395,7 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
             }
             Ok(Event::Empty(e)) => {
                 // Self-closing widget markers may appear this way.
-                let tag = String::from_utf8_lossy(e.local_name().as_ref())
-                    .to_ascii_lowercase();
+                let tag = String::from_utf8_lossy(e.local_name().as_ref()).to_ascii_lowercase();
                 if tag == "inputgui" {
                     if let Some((_, label, _, widget)) = current_input.as_mut() {
                         for attr in e.attributes().flatten() {
@@ -394,15 +427,20 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                                 _ => {}
                             }
                         }
-                        *widget = SbsarWidget::Slider { min, max, default: (min + max) * 0.5, step, clamp };
+                        *widget = SbsarWidget::Slider {
+                            min,
+                            max,
+                            default: (min + max) * 0.5,
+                            step,
+                            clamp,
+                        };
                     }
                 } else if tag == "togglebutton" && current_input.is_some() {
                     current_input.as_mut().unwrap().3 = SbsarWidget::Toggle { default: false };
                 }
             }
             Ok(Event::End(e)) => {
-                let tag = String::from_utf8_lossy(e.local_name().as_ref())
-                    .to_ascii_lowercase();
+                let tag = String::from_utf8_lossy(e.local_name().as_ref()).to_ascii_lowercase();
                 match tag.as_str() {
                     "input" => {
                         if let Some((identifier, label, ty, widget)) = current_input.take() {
@@ -461,7 +499,11 @@ mod tests {
         // reading of first-truncated XML members lands when upstream releases a
         // fix — parse stays graceful meanwhile. See docs/ARCHITECTURE.md.
         assert!(!graph.inputs.is_empty(), "expected parameters");
-        let ao = graph.inputs.iter().find(|i| i.identifier == "ambient_occlusion").expect("image input");
+        let ao = graph
+            .inputs
+            .iter()
+            .find(|i| i.identifier == "ambient_occlusion")
+            .expect("image input");
         assert_eq!(ao.input_type, SbsarInputType::Image);
     }
 

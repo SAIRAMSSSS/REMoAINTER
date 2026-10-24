@@ -59,8 +59,8 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 ### 5. Toroidal UV Seam Wrapping
 - Eliminates unsightly seams when painting across 0.0–1.0 UV boundary edges by dynamically wrapping brush kernels toroidally.
 
-### 6. Embedded Hardware OpenGL PBR Viewport (`glow`)
-- **24-bit Hardware Depth Buffer**: Full OpenGL `GL_DEPTH_TEST` with `GL_LEQUAL` depth sorting—eliminating triangle flickering and ordering artifacts on complex overlapping geometry (lantern glass, burner, frame bars).
+### 6. Native Rust / Vulkan Hardware PBR Viewport (`wgpu`)
+- **24-bit Hardware Depth Buffer**: Full Vulkan `Depth24Plus` with `LessEqual` depth sorting—eliminating triangle flickering and ordering artifacts on complex overlapping geometry (lantern glass, burner, frame bars).
 - **Cook-Torrance Microfacet GGX BRDF**:
   - Specular distribution: Trowbridge-Reitz $D_{GGX}$
   - Shadowing-masking: Smith-Schlick $G_{Smith}$
@@ -113,9 +113,9 @@ REMoAINTER/
 │       ├── baker/          # Rayon multithreaded baking engine
 │       │   ├── engine.rs
 │       │   └── mod.rs
-│       ├── graphics/       # Hardware OpenGL viewport, mesh, tangents
+│       ├── graphics/       # Native Vulkan (wgpu) viewport, mesh, tangents
 │       │   ├── mesh.rs
-│       │   ├── viewport_gl.rs
+│       │   ├── viewport_wgpu.rs
 │       │   └── mod.rs
 │       ├── painting/       # Layer stack, black masks, brush, anchors, importer
 │       │   ├── anchor.rs
@@ -125,7 +125,7 @@ REMoAINTER/
 │       │   ├── material_gen.rs
 │       │   ├── texture_importer.rs
 │       │   └── mod.rs
-│       ├── ui/             # egui / glow PBR painting UI
+│       ├── ui/             # egui / wgpu Vulkan PBR painting UI
 │       │   ├── app.rs
 │       │   ├── theme.rs
 │       │   └── mod.rs

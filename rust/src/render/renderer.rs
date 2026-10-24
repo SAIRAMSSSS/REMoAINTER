@@ -17,11 +17,11 @@
 //!   (see `painting/layer.rs::SampleSource::sample_uv`).
 //! - Tangent frame uses `painting::tangent_basis(n)`; composited normals are
 //!   tangent-space packed in [0,1] and decoded with `* 2 - 1` exactly like the
-//!   GL viewport shader (`viewport_gl.rs`: `texture(...) * 2.0 - 1.0`).
+//!   hardware viewport shader (`viewport_wgpu.rs`: `texture(...) * 2.0 - 1.0`).
 //! - Albedo is degamma'd with `pow(2.2)`, exposure is `pow(2, stops)`, and the
-//!   tonemapper is the same ACES filmic fit used in `viewport_gl.rs`, followed
+//!   tonemapper is the same ACES filmic fit used in `viewport_wgpu.rs`, followed
 //!   by the viewport's `pow(1 / 2.2)` display gamma. (Documented CPU
-//!   convention: gamma matches the GL viewport, not the exact piecewise sRGB
+//!   convention: gamma matches the Vulkan viewport, not the exact piecewise sRGB
 //!   transfer.)
 //! - Camera orbit params (yaw/pitch/dist) match `ui/app.rs`
 //!   `render_3d_viewport` (45° FOV, camera looking at origin, +Y up).
@@ -841,7 +841,7 @@ fn material_at(
                 tri.uv[0][1] * w + tri.uv[1][1] * u + tri.uv[2][1] * v,
             ];
             let (albedo_srgb, rough, metal, n_packed) = maps.sample(uv[0], uv[1]);
-            // Decode tangent-space normal exactly like viewport_gl.rs:
+            // Decode tangent-space normal exactly like viewport_wgpu.rs:
             // `texture(...).rgb * 2.0 - 1.0`, then TBN with painting's
             // tangent_basis so shading constants match the GL preview.
             let n_ts = [
@@ -866,7 +866,7 @@ fn material_at(
             } else {
                 geo_n
             };
-            // Degamma albedo exactly like viewport_gl.rs line 336.
+            // Degamma albedo exactly like viewport_wgpu.rs line 336.
             let albedo = [
                 albedo_srgb[0].powf(2.2),
                 albedo_srgb[1].powf(2.2),
@@ -1130,7 +1130,7 @@ fn sample_ggx_half(n: [f32; 3], a: f32, rng: &mut Random) -> [f32; 3] {
 // Tone mapping & output
 // ---------------------------------------------------------------------------
 
-/// ACES filmic fit — identical formula to `viewport_gl.rs::aces_film`
+/// ACES filmic fit — identical formula to `viewport_wgpu.rs::aces_film`
 /// (exposure is applied by the caller before this, matching the GL pipeline).
 #[inline]
 pub fn aces_tonemap(x: [f32; 3]) -> [f32; 3] {

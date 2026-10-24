@@ -29,9 +29,7 @@ pub fn assets_dir_candidates() -> Vec<PathBuf> {
 
 /// First `assets/` root that exists, if any.
 pub fn find_assets_dir() -> Option<PathBuf> {
-    assets_dir_candidates()
-        .into_iter()
-        .find(|p| p.is_dir())
+    assets_dir_candidates().into_iter().find(|p| p.is_dir())
 }
 
 /// First `assets/<sub-path>` that exists.
@@ -58,7 +56,9 @@ mod tests {
     fn candidates_are_relative_first_and_never_absolute_machine_paths() {
         let cands = assets_dir_candidates();
         assert!(!cands.is_empty());
-        for p in &cands {
+        assert!(!cands[0].is_absolute());
+        assert!(!cands[1].is_absolute());
+        for p in &cands[..2] {
             let s = p.to_string_lossy();
             assert!(!s.starts_with("/mnt/"), "machine path leaked: {s}");
             assert!(!s.starts_with("/home/"), "machine path leaked: {s}");

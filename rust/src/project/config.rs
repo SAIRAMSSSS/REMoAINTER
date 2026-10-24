@@ -6,6 +6,7 @@ use std::path::PathBuf;
 /// Persistent application configuration saved in ~/.remoainter/config.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    #[allow(dead_code)] // persisted for forward-compat of older config.json files
     pub recent_projects: Vec<String>,
     /// Compositing engine preference: `true` = prefer the wgpu compute
     /// compositor when a supported adapter is present (automatic CPU fallback

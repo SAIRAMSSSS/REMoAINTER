@@ -970,8 +970,14 @@ mod tests {
         // The archive must carry depth-tagged members (legacy `.raw` absent).
         let mut zf = zip::ZipArchive::new(std::fs::File::open(&project_path).unwrap()).unwrap();
         assert!(zf.by_name("baked/ao.f16").is_ok(), "missing ao.f16 member");
-        assert!(zf.by_name("baked/thickness.f16").is_ok(), "missing thickness.f16 member");
-        assert!(zf.by_name("baked/ao.raw").is_err(), "legacy .raw should not exist for F16 projects");
+        assert!(
+            zf.by_name("baked/thickness.f16").is_ok(),
+            "missing thickness.f16 member"
+        );
+        assert!(
+            zf.by_name("baked/ao.raw").is_err(),
+            "legacy .raw should not exist for F16 projects"
+        );
         drop(zf);
 
         let load_res = ProjectManager::load_project(&project_path);
@@ -980,9 +986,8 @@ mod tests {
         assert_eq!(manifest.baker_options.map_format, BakedMapFormat::F16);
 
         let ao = loaded_maps.ambient_occlusion.expect("ao decoded");
-        let half = crate::baker::engine::half_bits_to_f32(
-            crate::baker::engine::f32_to_half_bits(0.5),
-        );
+        let half =
+            crate::baker::engine::half_bits_to_f32(crate::baker::engine::f32_to_half_bits(0.5));
         assert_eq!(ao[0], half, "0.5 must survive the f16 round-trip exactly");
 
         let _ = fs::remove_file(project_path);

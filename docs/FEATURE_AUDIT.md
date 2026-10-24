@@ -62,7 +62,7 @@ Status Legend:
 | **Retro Radio** | — | **Implemented** | Test OBJ asset bundled in `/mnt/shared/REMoAINTER/assets/`. |
 | **Primitive Cube** | — | **Implemented** | Unit cube with standard unwrapped UVs. |
 | **Primitive Plane** | — | **Implemented** | Quad planar mesh for decal/tiling material testing. |
-| **Isolate / Hide Meshes** | — | **Implemented** | `src/graphics/viewport_gl.rs`, `src/ui/app.rs`: Selective submesh visibility toggles, isolation button, and isolated submesh GPU drawing in Display Settings panel. |
+| **Isolate / Hide Meshes** | — | **Implemented** | `src/graphics/viewport_wgpu.rs`, `src/ui/app.rs`: Selective submesh visibility toggles, isolation button, and isolated submesh GPU drawing in Display Settings panel. |
 
 ---
 
@@ -85,8 +85,8 @@ Status Legend:
 | **Frame Camera** | `F` | **Implemented** | Resets camera distance and angles to frame active bounds. |
 | **Camera Bookmarks** | `Ctrl+1..9` / `Alt+1..9` | **Implemented** | `src/ui/app.rs`: 9 camera bookmark slots with keyboard shortcuts and UI Recall/Save/Clear controls. |
 | **Turntable Animation** | `Y` | **Implemented** | `src/ui/app.rs`: Continuous turntable animation loop with speed control and `Y` toggle key. |
-| **Post-Processing (Bloom/DoF/SSAO)** | — | **Implemented** | `src/graphics/viewport_gl.rs`: Bloom highlights extraction, Depth of Field defocusing, and SSAO contact shadow enhancements integrated in PBR shader. |
-| **Grid & World Axes** | — | **Implemented** | GPU ground-plane grid with world axes lines (`GpuGrid` in `src/graphics/viewport_gl.rs`, feature branch merged). |
+| **Post-Processing (Bloom/DoF/SSAO)** | — | **Implemented** | `src/graphics/viewport_wgpu.rs`: Bloom highlights extraction, Depth of Field defocusing, and SSAO contact shadow enhancements integrated in PBR shader. |
+| **Grid & World Axes** | — | **Implemented** | GPU ground-plane grid with world axes lines (`GpuGrid` in `src/graphics/viewport_wgpu.rs`, feature branch merged). |
 
 ---
 
@@ -182,16 +182,16 @@ Status Legend:
 
 | Viewport Feature | Status | Implementation Details / File Location |
 | :--- | :--- | :--- |
-| **Cook-Torrance GGX** | **Implemented** | `src/graphics/viewport_gl.rs`: $D_{\text{GGX}}$, $G_{\text{Smith-Schlick}}$, $F_{\text{Schlick}}$. |
+| **Cook-Torrance GGX** | **Implemented** | `src/graphics/viewport_wgpu.rs`: $D_{\text{GGX}}$, $G_{\text{Smith-Schlick}}$, $F_{\text{Schlick}}$. |
 | **Split-Sum IBL** | **Implemented** | Prefiltered cubemap convolution + 2D numerical BRDF integration LUT ($512 \times 512$). |
 | **HDR Environment Loader** | **Implemented** | Reads `.exr` and `.hdr` studio environments; dynamic exposure and rotation controls. |
 | **ACES Tonemapping** | **Implemented** | ACES filmic curve with sRGB gamma correction. |
 | **Wireframe Overlay** | **Implemented** | 3D mesh line overlay (`GL_POLYGON_OFFSET_LINE`) and 2D UV layout. |
 | **Solo Channels** | **Implemented** | BaseColor, Roughness, Metallic, Normal, AO, Curvature, Position, Thickness. |
-| **Bloom & Glow** | **Implemented** | `src/graphics/viewport_gl.rs`: High-luminance thresholding and specular bloom highlights overlay before ACES tonemapping. |
-| **Depth of Field (DoF)** | **Implemented** | `src/graphics/viewport_gl.rs`: Circle of confusion defocus simulation based on camera focal distance and aperture. |
-| **Screen Space Ambient Occlusion (SSAO)** | **Implemented** | `src/graphics/viewport_gl.rs`: Contact shadow ambient factor modulation with curvature-weighted intensity. |
-| **Color Management (Profiles)** | **Implemented** | `src/graphics/viewport_gl.rs` & `src/ui/app.rs`: Selectable color management modes (ACES Filmic, sRGB Linear Display transfer, Neutral Reinhard tonemapping) via `u_color_management_mode` uniform in PBR shader and persistent config. |
+| **Bloom & Glow** | **Implemented** | `src/graphics/viewport_wgpu.rs`: High-luminance thresholding and specular bloom highlights overlay before ACES tonemapping. |
+| **Depth of Field (DoF)** | **Implemented** | `src/graphics/viewport_wgpu.rs`: Circle of confusion defocus simulation based on camera focal distance and aperture. |
+| **Screen Space Ambient Occlusion (SSAO)** | **Implemented** | `src/graphics/viewport_wgpu.rs`: Contact shadow ambient factor modulation with curvature-weighted intensity. |
+| **Color Management (Profiles)** | **Implemented** | `src/graphics/viewport_wgpu.rs` & `src/ui/app.rs`: Selectable color management modes (ACES Filmic, sRGB Linear Display transfer, Neutral Reinhard tonemapping) via `u_color_management_mode` uniform in PBR shader and persistent config. |
 
 ---
 

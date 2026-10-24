@@ -213,9 +213,7 @@ impl EncodedBakedMaps {
     /// Decode back into the internal f32 representation (lossy for `U8`).
     pub fn to_baked_maps(&self) -> BakedMaps {
         let dec_s = |p: &Option<Vec<u8>>| p.as_ref().map(|b| decode_scalar_plane(b, self.format));
-        let dec_v3 = |p: &Option<Vec<u8>>| {
-            p.as_ref().map(|b| decode_vec3_plane(b, self.format))
-        };
+        let dec_v3 = |p: &Option<Vec<u8>>| p.as_ref().map(|b| decode_vec3_plane(b, self.format));
         BakedMaps {
             resolution: self.resolution,
             ambient_occlusion: dec_s(&self.ambient_occlusion),
@@ -224,10 +222,7 @@ impl EncodedBakedMaps {
             world_space_normal: dec_v3(&self.world_space_normal),
             position: dec_v3(&self.position),
             thickness: dec_s(&self.thickness),
-            id: self
-                .id
-                .as_ref()
-                .map(|b| decode_vec4_plane(b, self.format)),
+            id: self.id.as_ref().map(|b| decode_vec4_plane(b, self.format)),
             is_cancelled: self.is_cancelled,
         }
     }
@@ -411,7 +406,12 @@ pub fn half_bits_to_f32(h: u16) -> f32 {
         _ => {
             let e = exp - 15;
             let base = 1.0 + mant as f32 / 1024.0;
-            sign * base * if e >= 0 { 2f32.powi(e) } else { 1.0 / 2f32.powi(-e) }
+            sign * base
+                * if e >= 0 {
+                    2f32.powi(e)
+                } else {
+                    1.0 / 2f32.powi(-e)
+                }
         }
     }
 }
@@ -833,15 +833,7 @@ impl BakerEngine {
             match_by_shell: options.match_by_shell,
         };
         Self::bake_all_advanced(
-            vertices,
-            normals,
-            uvs,
-            indices,
-            submeshes,
-            options,
-            &advanced,
-            progress,
-            cancel,
+            vertices, normals, uvs, indices, submeshes, options, &advanced, progress, cancel,
             high_poly,
         )
     }
@@ -863,15 +855,7 @@ impl BakerEngine {
         high_poly: Option<&crate::graphics::mesh::Mesh>,
     ) -> EncodedBakedMaps {
         let maps = Self::bake_all_advanced(
-            vertices,
-            normals,
-            uvs,
-            indices,
-            submeshes,
-            options,
-            advanced,
-            progress,
-            cancel,
+            vertices, normals, uvs, indices, submeshes, options, advanced, progress, cancel,
             high_poly,
         );
         encode_baked_maps(&maps, advanced.map_format)
@@ -1227,8 +1211,7 @@ impl BakerEngine {
             // mirrored UV islands flip the sign — but *zero* is degenerate, so skip the
             // triangle instead of clamping the sign away (the old `.max(1e-7)` broke
             // mirrored islands' rasterization).
-            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
             if !det.is_finite() || det.abs() < 1e-9 {
                 continue;
             }
@@ -1521,12 +1504,9 @@ impl BakerEngine {
                                     // (origin perturbed by the same per-texel skew shear)
                                     if options.bake_thickness {
                                         let rev_origin = [
-                                            hp_hit.position[0] - hp_norm[0] * 0.002
-                                                + skew_world[0],
-                                            hp_hit.position[1] - hp_norm[1] * 0.002
-                                                + skew_world[1],
-                                            hp_hit.position[2] - hp_norm[2] * 0.002
-                                                + skew_world[2],
+                                            hp_hit.position[0] - hp_norm[0] * 0.002 + skew_world[0],
+                                            hp_hit.position[1] - hp_norm[1] * 0.002 + skew_world[1],
+                                            hp_hit.position[2] - hp_norm[2] * 0.002 + skew_world[2],
                                         ];
                                         let rev_dir = [-hp_norm[0], -hp_norm[1], -hp_norm[2]];
                                         let rev_inv = [
@@ -1590,11 +1570,14 @@ impl BakerEngine {
                                                     + hp_norm[2] * h_dir[2],
                                             ];
                                             let ao_origin = [
-                                                hp_hit.position[0] + hp_norm[0] * 0.002
+                                                hp_hit.position[0]
+                                                    + hp_norm[0] * 0.002
                                                     + skew_world[0],
-                                                hp_hit.position[1] + hp_norm[1] * 0.002
+                                                hp_hit.position[1]
+                                                    + hp_norm[1] * 0.002
                                                     + skew_world[1],
-                                                hp_hit.position[2] + hp_norm[2] * 0.002
+                                                hp_hit.position[2]
+                                                    + hp_norm[2] * 0.002
                                                     + skew_world[2],
                                             ];
                                             let ao_inv = [
@@ -1868,15 +1851,14 @@ mod tests {
             v[2] = v[2] * 0.4;
         }
         // Ground plane in the high-poly so the box interior gets closed off.
-        let mut ground: Vec<[f32; 3]> = verts.clone();
+        let ground: Vec<[f32; 3]> = verts.clone();
         hp.vertices.extend_from_slice(&ground);
         let nones: Vec<[f32; 3]> = vec![[0.0, 1.0, 0.0]; 4];
         hp.normals.extend_from_slice(&nones);
         hp.uvs.extend_from_slice(&uvs);
         let g0 = hp.vertices.len() as u32 - 4;
-        hp.indices.extend_from_slice(&[
-            g0 + 0, g0 + 2, g0 + 1, g0 + 0, g0 + 3, g0 + 2,
-        ]);
+        hp.indices
+            .extend_from_slice(&[g0 + 0, g0 + 2, g0 + 1, g0 + 0, g0 + 3, g0 + 2]);
 
         let mut opts = BakerOptions::default();
         opts.resolution = 32;
@@ -1909,7 +1891,7 @@ mod tests {
         // Center texel (u,v = 0.5) sits directly under the box: occluded.
         let w = 32usize;
         let center = (w / 2) * w + (w / 2);
-        let corner = (2 * w + 2);
+        let corner = 2 * w + 2;
         assert!(
             ao[center] < ao[corner],
             "AO under the floating box ({} = {}) must be darker than the open field ({})",
@@ -1918,7 +1900,11 @@ mod tests {
             ao[corner]
         );
         // And the shadow must actually be a real occlusion, not noise.
-        assert!(ao[corner] > 0.75, "open-field AO expected near-lit, got {}", ao[corner]);
+        assert!(
+            ao[corner] > 0.75,
+            "open-field AO expected near-lit, got {}",
+            ao[corner]
+        );
 
         // Normals: the floor is flat facing +Y, so tangent-space Z dominates
         // everywhere on the floor that isn't under the box silhouette.
@@ -1995,9 +1981,21 @@ mod tests {
         assert_eq!(f32_to_half_bits(f32::INFINITY), 0x7c00);
         assert_eq!(f32_to_half_bits(-f32::INFINITY), 0xfc00);
         assert_eq!(f32_to_half_bits(-1.0), 0xbc00);
-        assert_eq!(f32_to_half_bits(131008.0), 0x7c00, "overflow saturates to +Inf");
-        assert_eq!(f32_to_half_bits(6.0e-8), 0x0001, "2^-24 is the smallest half subnormal");
-        assert_eq!(f32_to_half_bits(1.0e-9), 0x0000, "too small flushes to zero");
+        assert_eq!(
+            f32_to_half_bits(131008.0),
+            0x7c00,
+            "overflow saturates to +Inf"
+        );
+        assert_eq!(
+            f32_to_half_bits(6.0e-8),
+            0x0001,
+            "2^-24 is the smallest half subnormal"
+        );
+        assert_eq!(
+            f32_to_half_bits(1.0e-9),
+            0x0000,
+            "too small flushes to zero"
+        );
         assert_eq!(
             half_bits_to_f32(f32_to_half_bits(6.0e-8)),
             5.960464477539063e-8,

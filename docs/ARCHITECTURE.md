@@ -12,7 +12,7 @@ graph TD
     
     UI --> Paint[src/painting/: Core Painting & Compositing]
     UI --> Baker[src/baker/: Raycast Mesh Map Baker]
-    UI --> Gfx[src/graphics/: Viewport & OpenGL Pipeline]
+    UI --> Gfx[src/graphics/: Viewport & Vulkan Pipeline]
     
     Paint --> Layer[layer.rs: LayerStack & Channel Buffers]
     Paint --> Brush[brush.rs: Brush Engine & Dynamics]
@@ -23,7 +23,7 @@ graph TD
     
     Baker --> BakeEng[engine.rs: Rayon Multithreaded Baker]
     
-    Gfx --> Viewport[viewport_gl.rs: GL Context & PBR Shaders]
+    Gfx --> Viewport[viewport_wgpu.rs: wgpu State & PBR WGSL Shaders]
     Gfx --> Mesh[mesh.rs: 3D Mesh & OBJ Parser]
     Gfx --> Lighting[lighting.rs: Camera & IBL Probes]
 ```
@@ -35,7 +35,7 @@ graph TD
 | **App Core & UI** | `src/main.rs`<br>`src/ui/app.rs`<br>`src/ui/icons.rs`<br>`src/ui/theme.rs` | Window lifecycle, event dispatching, egui dock panels, modal dialogs, status bar, and shortcut translation. |
 | **Painting Engine** | `src/painting/layer.rs`<br>`src/painting/brush.rs`<br>`src/painting/mask.rs`<br>`src/painting/anchor.rs`<br>`src/painting/material_gen.rs` | Channel pixel buffers, 3D Euclidean surface projection painting, layer compositing, mask effect evaluation, procedural materials. |
 | **Baking Engine** | `src/baker/engine.rs`<br>`src/baker/mod.rs` | High-to-low poly raycasting, cage bounds, MikkTSpace tangent vectors, Ambient Occlusion, Curvature, Position, Thickness, and ID map generation. |
-| **Graphics & Viewport** | `src/graphics/viewport_gl.rs`<br>`src/graphics/mesh.rs`<br>`src/graphics/lighting.rs` | Embedded OpenGL 3.3+ rendering via `glow`, Cook-Torrance GGX fragment shader, ACES tonemapping, wireframe overlay, HDRI cubemap sampling, and mesh I/O. |
+| **Graphics & Viewport** | `src/graphics/viewport_wgpu.rs`<br>`src/graphics/mesh.rs`<br>`src/graphics/lighting.rs` | Native Vulkan hardware acceleration via `wgpu`, Cook-Torrance GGX WGSL shaders, ACES tonemapping, wireframe overlay, HDR environment sampling, and mesh I/O. |
 
 ---
 

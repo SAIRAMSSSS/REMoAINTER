@@ -132,13 +132,10 @@ pub fn load_real_pbr_material(
 
     // 3. Fallback: check shelf materials/smart_materials preview images
     if !loaded {
-        let shelf_dirs: Vec<PathBuf> = [
-            "shelf/materials",
-            "shelf/smart_materials",
-        ]
-        .iter()
-        .filter_map(|sub| crate::paths::find_assets_subdir(sub))
-        .collect();
+        let shelf_dirs: Vec<PathBuf> = ["shelf/materials", "shelf/smart_materials"]
+            .iter()
+            .filter_map(|sub| crate::paths::find_assets_subdir(sub))
+            .collect();
         for sdir in &shelf_dirs {
             let p_png = sdir.join(format!("{}.png", clean_name));
             let p_webp = sdir.join(format!("{}.webp", clean_name));

@@ -149,7 +149,10 @@ impl GradientStop {
         t: 0.0,
         color: BLACK,
     };
-    pub const BLACK_WHITE_END: Self = Self { t: 1.0, color: WHITE };
+    pub const BLACK_WHITE_END: Self = Self {
+        t: 1.0,
+        color: WHITE,
+    };
 }
 
 /// Ramp shapes supported by the gradient generator node.
@@ -169,14 +172,10 @@ pub enum GradientKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum GraphNodeBody {
     /// Solid fill generator.
-    ConstantColor {
-        color: [f32; 4],
-    },
+    ConstantColor { color: [f32; 4] },
     /// Named sample from [`GraphContext::samples`]; resized to the render
     /// resolution with wrapped bilinear sampling when sizes differ.
-    ExternalImage {
-        name: String,
-    },
+    ExternalImage { name: String },
     /// Tileable fractal value noise (FBM), plain gray or ramped between two
     /// colors. `scale` is the base lattice period in cells; it doubles per
     /// octave so results stay tiling-safe.
@@ -259,10 +258,7 @@ pub enum GraphNodeBody {
         bg_color: [f32; 4],
     },
     /// Layer-style blend of `base` (slot 0) and `top` (slot 1).
-    Blend {
-        mode: BlendMode,
-        opacity: f32,
-    },
+    Blend { mode: BlendMode, opacity: f32 },
     /// In/out levels with gamma, per channel.
     Levels {
         min_in: f32,
@@ -274,9 +270,7 @@ pub enum GraphNodeBody {
     /// Per-channel RGB inversion; alpha passes through.
     Invert,
     /// Separable gaussian blur (`filter.rs` implementation).
-    GaussianBlur {
-        radius: f32,
-    },
+    GaussianBlur { radius: f32 },
     /// Scale about the image centre, rotate, translate. Samples the input
     /// bilinearly with repeat wrapping (seamless-results friendly).
     Transform {
@@ -298,21 +292,12 @@ pub enum GraphNodeBody {
     },
     /// Blur that follows the local gradient of the height input (slot 1):
     /// smears `input` along slope, sharpening creases. Height must be in 0..1.
-    SlopeBlur {
-        radius: f32,
-        taps: u32,
-    },
+    SlopeBlur { radius: f32, taps: u32 },
     /// Warps the input along a fixed direction, offset by the height input.
     /// `strength` is the maximum shift in pixels (at full 0->1 height swing).
-    DirectionalWarp {
-        angle_deg: f32,
-        strength: f32,
-    },
+    DirectionalWarp { angle_deg: f32, strength: f32 },
     /// Colorizes the luminance of the input through `stops`.
-    GradientMap {
-        stops: Vec<GradientStop>,
-        mix: f32,
-    },
+    GradientMap { stops: Vec<GradientStop>, mix: f32 },
     /// Graph output: passes its input through unchanged.
     Output,
 }
@@ -328,10 +313,7 @@ pub enum GraphError {
     /// Referenced node does not exist.
     MissingNode(GraphNodeId),
     /// Referenced slot index does not exist.
-    MissingSlot {
-        node: GraphNodeId,
-        slot: usize,
-    },
+    MissingSlot { node: GraphNodeId, slot: usize },
     /// Structural duplicate id (possible only with hand-crafted graphs).
     DuplicateNode(GraphNodeId),
     /// Slot vector length does not match the node body's arity.
@@ -341,22 +323,13 @@ pub enum GraphError {
         actual: usize,
     },
     /// A link points to an output index the source node does not have.
-    MissingOutput {
-        node: GraphNodeId,
-        output: u32,
-    },
+    MissingOutput { node: GraphNodeId, output: u32 },
     /// A link references a node id not present in the graph.
-    BadLink {
-        from: GraphNodeId,
-        to: GraphNodeId,
-    },
+    BadLink { from: GraphNodeId, to: GraphNodeId },
     /// `ExternalImage` references an unknown context sample.
     MissingSample(String),
     /// An input buffer does not match the requested resolution.
-    SizeMismatch {
-        expected: usize,
-        actual: usize,
-    },
+    SizeMismatch { expected: usize, actual: usize },
     /// Topological cycle; carries the path taken to the repeated node.
     CycleDetected(Vec<GraphNodeId>),
     /// Structurally fine but semantically invalid parameters.
@@ -371,7 +344,11 @@ impl fmt::Display for GraphError {
             Self::MissingNode(id) => write!(f, "missing node {:?}", id),
             Self::MissingSlot { node, slot } => write!(f, "node {:?} has no slot {}", node, slot),
             Self::DuplicateNode(id) => write!(f, "duplicate node id {:?}", id),
-            Self::SlotCount { node, expected, actual } => write!(
+            Self::SlotCount {
+                node,
+                expected,
+                actual,
+            } => write!(
                 f,
                 "node {:?} expects {} slots, has {}",
                 node, expected, actual
@@ -379,14 +356,16 @@ impl fmt::Display for GraphError {
             Self::MissingOutput { node, output } => {
                 write!(f, "node {:?} has no output {}", node, output)
             }
-            Self::BadLink { from, to } => write!(
-                f,
-                "link from {:?} into slot of {:?} is invalid",
-                from, to
-            ),
+            Self::BadLink { from, to } => {
+                write!(f, "link from {:?} into slot of {:?} is invalid", from, to)
+            }
             Self::MissingSample(name) => write!(f, "external image {:?} not in context", name),
             Self::SizeMismatch { expected, actual } => {
-                write!(f, "buffer size mismatch: expected {} px, got {}", expected, actual)
+                write!(
+                    f,
+                    "buffer size mismatch: expected {} px, got {}",
+                    expected, actual
+                )
             }
             Self::CycleDetected(path) => {
                 let ids: Vec<String> = path.iter().map(|i| i.0.to_string()).collect();
@@ -527,13 +506,31 @@ impl NodeImpl for GraphNodeBody {
         match self {
             Self::ConstantColor { color } => Ok(vec![vec![*color; area(width, height)]]),
             Self::ExternalImage { name } => eval_external_image(ctx, name, width, height),
-            Self::FbmNoise { seed, octaves, scale, gain, contrast, color_a, color_b } => {
-                Ok(vec![eval_fbm_noise(
-                    *seed ^ ctx.seed,
-                    *octaves, *scale, *gain, *contrast, *color_a, *color_b, width, height,
-                )])
-            }
-            Self::WhiteNoise { seed, cells, color_a, color_b } => Ok(vec![eval_white_noise(
+            Self::FbmNoise {
+                seed,
+                octaves,
+                scale,
+                gain,
+                contrast,
+                color_a,
+                color_b,
+            } => Ok(vec![eval_fbm_noise(
+                *seed ^ ctx.seed,
+                *octaves,
+                *scale,
+                *gain,
+                *contrast,
+                *color_a,
+                *color_b,
+                width,
+                height,
+            )]),
+            Self::WhiteNoise {
+                seed,
+                cells,
+                color_a,
+                color_b,
+            } => Ok(vec![eval_white_noise(
                 *seed ^ ctx.seed,
                 *cells,
                 *color_a,
@@ -541,7 +538,13 @@ impl NodeImpl for GraphNodeBody {
                 width,
                 height,
             )]),
-            Self::BnWSpots { seed, cells, radius, falloff, invert } => Ok(vec![eval_bnw_spots(
+            Self::BnWSpots {
+                seed,
+                cells,
+                radius,
+                falloff,
+                invert,
+            } => Ok(vec![eval_bnw_spots(
                 *seed ^ ctx.seed,
                 *cells,
                 *radius,
@@ -550,40 +553,142 @@ impl NodeImpl for GraphNodeBody {
                 width,
                 height,
             )]),
-            Self::Checker { cells, color_a, color_b } => {
-                Ok(vec![eval_checker(*cells, *color_a, *color_b, width, height)])
-            }
-            Self::Gradient { kind, angle_deg, from, to } => {
-                Ok(vec![eval_gradient(*kind, *angle_deg, *from, *to, width, height)])
-            }
-            Self::Brick { seed, cols, rows, mortar, bevel, brick_color, mortar_color } => Ok(vec![
-                eval_brick(*seed ^ ctx.seed, *cols, *rows, *mortar, *bevel, *brick_color, *mortar_color, width, height),
-            ]),
-            Self::Marble { seed, veins, turbulence, octaves, color_a, color_b } => Ok(vec![
-                eval_marble(*seed ^ ctx.seed, *veins, *turbulence, *octaves, *color_a, *color_b, width, height),
-            ]),
-            Self::Crystal { seed, cells, edge_width, edge_darkness, color_a, color_b } => Ok(vec![
-                eval_crystal(*seed ^ ctx.seed, *cells, *edge_width, *edge_darkness, *color_a, *color_b, width, height),
-            ]),
-            Self::BlobScatter { seed, count, size, falloff, blob_color, bg_color } => Ok(vec![
-                eval_blob_scatter(*seed ^ ctx.seed, *count, *size, *falloff, *blob_color, *bg_color, width, height),
-            ]),
+            Self::Checker {
+                cells,
+                color_a,
+                color_b,
+            } => Ok(vec![eval_checker(
+                *cells, *color_a, *color_b, width, height,
+            )]),
+            Self::Gradient {
+                kind,
+                angle_deg,
+                from,
+                to,
+            } => Ok(vec![eval_gradient(
+                *kind, *angle_deg, *from, *to, width, height,
+            )]),
+            Self::Brick {
+                seed,
+                cols,
+                rows,
+                mortar,
+                bevel,
+                brick_color,
+                mortar_color,
+            } => Ok(vec![eval_brick(
+                *seed ^ ctx.seed,
+                *cols,
+                *rows,
+                *mortar,
+                *bevel,
+                *brick_color,
+                *mortar_color,
+                width,
+                height,
+            )]),
+            Self::Marble {
+                seed,
+                veins,
+                turbulence,
+                octaves,
+                color_a,
+                color_b,
+            } => Ok(vec![eval_marble(
+                *seed ^ ctx.seed,
+                *veins,
+                *turbulence,
+                *octaves,
+                *color_a,
+                *color_b,
+                width,
+                height,
+            )]),
+            Self::Crystal {
+                seed,
+                cells,
+                edge_width,
+                edge_darkness,
+                color_a,
+                color_b,
+            } => Ok(vec![eval_crystal(
+                *seed ^ ctx.seed,
+                *cells,
+                *edge_width,
+                *edge_darkness,
+                *color_a,
+                *color_b,
+                width,
+                height,
+            )]),
+            Self::BlobScatter {
+                seed,
+                count,
+                size,
+                falloff,
+                blob_color,
+                bg_color,
+            } => Ok(vec![eval_blob_scatter(
+                *seed ^ ctx.seed,
+                *count,
+                *size,
+                *falloff,
+                *blob_color,
+                *bg_color,
+                width,
+                height,
+            )]),
             Self::Blend { mode, opacity } => eval_blend(*mode, *opacity, inputs),
-            Self::Levels { min_in, max_in, gamma, min_out, max_out } => eval_levels(
-                *min_in, *max_in, *gamma, *min_out, *max_out, inputs,
-            ),
+            Self::Levels {
+                min_in,
+                max_in,
+                gamma,
+                min_out,
+                max_out,
+            } => eval_levels(*min_in, *max_in, *gamma, *min_out, *max_out, inputs),
             Self::Invert => Ok(vec![invert_colors(&inputs[0])]),
             Self::GaussianBlur { radius } => eval_gaussian_blur(*radius, width, height, inputs),
-            Self::Transform { scale, rotation_deg, offset_x, offset_y } => eval_transform(
-                *scale, *rotation_deg, *offset_x, *offset_y, width, height, inputs,
+            Self::Transform {
+                scale,
+                rotation_deg,
+                offset_x,
+                offset_y,
+            } => eval_transform(
+                *scale,
+                *rotation_deg,
+                *offset_x,
+                *offset_y,
+                width,
+                height,
+                inputs,
             ),
-            Self::TileGenerator { seed, cols, rows, gap, jitter, zoom, mortar } => {
-                eval_tile_generator(*seed ^ ctx.seed, *cols, *rows, *gap, *jitter, *zoom, *mortar, width, height, inputs)
+            Self::TileGenerator {
+                seed,
+                cols,
+                rows,
+                gap,
+                jitter,
+                zoom,
+                mortar,
+            } => eval_tile_generator(
+                *seed ^ ctx.seed,
+                *cols,
+                *rows,
+                *gap,
+                *jitter,
+                *zoom,
+                *mortar,
+                width,
+                height,
+                inputs,
+            ),
+            Self::SlopeBlur { radius, taps } => {
+                eval_slope_blur(*radius, *taps, width, height, inputs)
             }
-            Self::SlopeBlur { radius, taps } => eval_slope_blur(*radius, *taps, width, height, inputs),
-            Self::DirectionalWarp { angle_deg, strength } => {
-                eval_directional_warp(*angle_deg, *strength, width, height, inputs)
-            }
+            Self::DirectionalWarp {
+                angle_deg,
+                strength,
+            } => eval_directional_warp(*angle_deg, *strength, width, height, inputs),
             Self::GradientMap { stops, mix } => eval_gradient_map(stops, *mix, inputs),
             Self::Output => Ok(vec![inputs[0].clone()]),
         }
@@ -636,9 +741,7 @@ impl Graph {
     }
 
     pub fn node_mut(&mut self, id: GraphNodeId) -> Result<&mut GraphNode, GraphError> {
-        self.nodes
-            .get_mut(&id)
-            .ok_or(GraphError::MissingNode(id))
+        self.nodes.get_mut(&id).ok_or(GraphError::MissingNode(id))
     }
 
     /// Graph output pointer (SBS "root node").
@@ -677,8 +780,7 @@ impl Graph {
     /// Replaces a node's body, resizing the slot vector (new slots default).
     pub fn set_body(&mut self, id: GraphNodeId, body: GraphNodeBody) -> Result<(), GraphError> {
         let node = self.node_mut(id)?;
-        node.inputs
-            .resize(body.slot_count(), GraphSlot::Default);
+        node.inputs.resize(body.slot_count(), GraphSlot::Default);
         node.body = body;
         Ok(())
     }
@@ -710,10 +812,7 @@ impl Graph {
     pub fn disconnect(&mut self, to: GraphNodeId, slot: usize) -> Result<(), GraphError> {
         let node = self.node_mut(to)?;
         if slot >= node.inputs.len() {
-            return Err(GraphError::MissingSlot {
-                node: to,
-                slot,
-            });
+            return Err(GraphError::MissingSlot { node: to, slot });
         }
         node.inputs[slot] = GraphSlot::Default;
         Ok(())
@@ -727,10 +826,7 @@ impl Graph {
         value: [f32; 4],
     ) -> Result<(), GraphError> {
         if slot >= self.node(to)?.body.slot_count() {
-            return Err(GraphError::MissingSlot {
-                node: to,
-                slot,
-            });
+            return Err(GraphError::MissingSlot { node: to, slot });
         }
         self.node_mut(to)?.inputs[slot] = GraphSlot::Value(value);
         Ok(())
@@ -912,11 +1008,7 @@ fn sample_bilinear_wrap(img: &[[f32; 4]], w: usize, h: usize, x: f32, y: f32) ->
     let c10 = img[y0 * w + x1];
     let c01 = img[y1 * w + x0];
     let c11 = img[y1 * w + x1];
-    mix_rgba(
-        mix_rgba(c00, c10, tx),
-        mix_rgba(c01, c11, tx),
-        ty,
-    )
+    mix_rgba(mix_rgba(c00, c10, tx), mix_rgba(c01, c11, tx), ty)
 }
 
 /// Ensures every input buffer matches the requested resolution.
@@ -946,12 +1038,10 @@ where
 {
     let mut data: ImageRgba = vec![TRANSPARENT; area(width, height)];
     let w = width as usize;
-    data.par_iter_mut()
-        .enumerate()
-        .for_each(|(i, px)| {
-            let (x, y) = row_major(i, w);
-            *px = f(i, x, y);
-        });
+    data.par_iter_mut().enumerate().for_each(|(i, px)| {
+        let (x, y) = row_major(i, w);
+        *px = f(i, x, y);
+    });
     data
 }
 
@@ -962,8 +1052,7 @@ where
 /// Stateless 2.5D integer hash in [0, 1). Fully deterministic across threads.
 #[inline]
 pub fn hash2(x: i32, y: i32, seed: u32) -> f32 {
-    let mut n = (x as u32)
-        .wrapping_mul(0x9E37_79B1)
+    let mut n = (x as u32).wrapping_mul(0x9E37_79B1)
         ^ (y as u32).wrapping_mul(0x85EB_CA77)
         ^ seed.wrapping_mul(0xC2B2_AE3D);
     n = (n ^ (n >> 15)).wrapping_mul(0x2C1B_3C6D);
@@ -1171,12 +1260,8 @@ fn eval_gradient(
         let u = x as f32 / width as f32;
         let v = y as f32 / height as f32;
         let t = match kind {
-            GradientKind::Linear => {
-                ((u - 0.5) * c + (v - 0.5) * s) / denom + 0.5
-            }
-            GradientKind::Radial => {
-                ((u - 0.5).hypot(v - 0.5) * 2.0).min(1.0)
-            }
+            GradientKind::Linear => ((u - 0.5) * c + (v - 0.5) * s) / denom + 0.5,
+            GradientKind::Radial => ((u - 0.5).hypot(v - 0.5) * 2.0).min(1.0),
             GradientKind::Angle => {
                 let a = (v - 0.5).atan2(u - 0.5);
                 (a + std::f32::consts::PI) / (2.0 * std::f32::consts::PI)
@@ -1357,11 +1442,7 @@ fn eval_blend(
         .zip(inputs[1].iter())
         .map(|(&base, &top)| {
             let a = o * clamp01(top[3]);
-            let blended = blend_colors(
-                [base[0], base[1], base[2]],
-                [top[0], top[1], top[2]],
-                mode,
-            );
+            let blended = blend_colors([base[0], base[1], base[2]], [top[0], top[1], top[2]], mode);
             [
                 mix(base[0], blended[0], a),
                 mix(base[1], blended[1], a),
@@ -1737,9 +1818,7 @@ impl GraphEngine {
         let mut inputs = Vec::with_capacity(node.inputs.len());
         for (slot, input) in node.inputs.iter().enumerate() {
             let def = node.body.slot_default(slot);
-            inputs.push(
-                (*self.resolve_slot(input, def, width, height, path)?).clone(),
-            );
+            inputs.push((*self.resolve_slot(input, def, width, height, path)?).clone());
         }
         node.body
             .eval(&self.context.clone(), width, height, &inputs)
@@ -1760,12 +1839,10 @@ impl GraphEngine {
             GraphSlot::Value(color) => Ok(Arc::new(solid(*color, width, height))),
             GraphSlot::Link(src) => {
                 let outs = self.eval_node(*src, width, height, path)?;
-                outs.into_iter()
-                    .next()
-                    .ok_or(GraphError::MissingOutput {
-                        node: *src,
-                        output: 0,
-                    })
+                outs.into_iter().next().ok_or(GraphError::MissingOutput {
+                    node: *src,
+                    output: 0,
+                })
             }
         }
     }
@@ -1825,9 +1902,7 @@ fn sane_resolution(width: u32, height: u32) -> Result<(u32, u32), GraphError> {
     if width as u64 * height as u64 > MAX_PIXELS {
         return Err(GraphError::InvalidParams(format!(
             "resolution {}x{} exceeds the {}-pixel budget",
-            width,
-            height,
-            MAX_PIXELS
+            width, height, MAX_PIXELS
         )));
     }
     Ok((width, height))
@@ -1870,14 +1945,15 @@ mod tests {
                 color_b: WHITE,
             })
             .unwrap();
-        let b = g.add_node(GraphNodeBody::Levels {
-            min_in: 0.0,
-            max_in: 1.0,
-            gamma: 1.0,
-            min_out: 0.1,
-            max_out: 0.9,
-        })
-        .unwrap();
+        let b = g
+            .add_node(GraphNodeBody::Levels {
+                min_in: 0.0,
+                max_in: 1.0,
+                gamma: 1.0,
+                min_out: 0.1,
+                max_out: 0.9,
+            })
+            .unwrap();
         g.connect(a, b, 0).unwrap();
         g.set_output(b).unwrap();
         let _ = output_seed;
@@ -1918,7 +1994,9 @@ mod tests {
     #[test]
     fn constant_color_and_output() {
         let mut g = Graph::new();
-        let n = g.add_node(GraphNodeBody::constant([0.25, 0.5, 0.75, 1.0])).unwrap();
+        let n = g
+            .add_node(GraphNodeBody::constant([0.25, 0.5, 0.75, 1.0]))
+            .unwrap();
         let out = g.add_node(GraphNodeBody::output()).unwrap();
         g.connect(n, out, 0).unwrap();
         g.set_output(out).unwrap();
@@ -1947,11 +2025,13 @@ mod tests {
 
     fn blend_result(mode: BlendMode, opacity: f32) -> Vec<[f32; 4]> {
         let mut g = Graph::new();
-        let base = g.add_node(GraphNodeBody::constant([1.0, 0.0, 0.0, 1.0])).unwrap();
-        let top = g.add_node(GraphNodeBody::constant([0.0, 0.0, 1.0, 1.0])).unwrap();
-        let blend = g
-            .add_node(GraphNodeBody::Blend { mode, opacity })
+        let base = g
+            .add_node(GraphNodeBody::constant([1.0, 0.0, 0.0, 1.0]))
             .unwrap();
+        let top = g
+            .add_node(GraphNodeBody::constant([0.0, 0.0, 1.0, 1.0]))
+            .unwrap();
+        let blend = g.add_node(GraphNodeBody::Blend { mode, opacity }).unwrap();
         let out = g.add_node(GraphNodeBody::output()).unwrap();
         g.connect(base, blend, 0).unwrap();
         g.connect(top, blend, 1).unwrap();
@@ -1963,7 +2043,9 @@ mod tests {
     #[test]
     fn invert_and_levels_spot_checks() {
         let mut g = Graph::new();
-        let src = g.add_node(GraphNodeBody::constant([1.0, 0.75, 0.25, 0.6])).unwrap();
+        let src = g
+            .add_node(GraphNodeBody::constant([1.0, 0.75, 0.25, 0.6]))
+            .unwrap();
         let inv = g.add_node(GraphNodeBody::Invert).unwrap();
         g.connect(src, inv, 0).unwrap();
         g.set_output(inv).unwrap();
@@ -1972,7 +2054,9 @@ mod tests {
 
         // gamma 2: norm 0.5 -> sqrt(0.5)
         let mut g = Graph::new();
-        let src = g.add_node(GraphNodeBody::constant([0.5, 0.5, 0.5, 1.0])).unwrap();
+        let src = g
+            .add_node(GraphNodeBody::constant([0.5, 0.5, 0.5, 1.0]))
+            .unwrap();
         let lvl = g
             .add_node(GraphNodeBody::Levels {
                 min_in: 0.0,
@@ -1985,7 +2069,7 @@ mod tests {
         g.connect(src, lvl, 0).unwrap();
         g.set_output(lvl).unwrap();
         let img = engine_of(g, 0).render().unwrap();
-        assert!((img[0][0] - 0.707_106_8).abs() < 1e-4);
+        assert!((img[0][0] - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-4);
     }
 
     #[test]
@@ -2014,9 +2098,7 @@ mod tests {
                 to: gray(to_val),
             })
             .unwrap();
-        let blur = g
-            .add_node(GraphNodeBody::GaussianBlur { radius })
-            .unwrap();
+        let blur = g.add_node(GraphNodeBody::GaussianBlur { radius }).unwrap();
         g.connect(ramp, blur, 0).unwrap();
         g.set_output(blur).unwrap();
         (*engine_of(g, 0).render_node(blur, W, H).unwrap()).clone()
@@ -2077,7 +2159,10 @@ mod tests {
             .unwrap();
         let gmap = g
             .add_node(GraphNodeBody::GradientMap {
-                stops: vec![GradientStop::BLACK_WHITE_START, GradientStop::BLACK_WHITE_END],
+                stops: vec![
+                    GradientStop::BLACK_WHITE_START,
+                    GradientStop::BLACK_WHITE_END,
+                ],
                 mix: 0.9,
             })
             .unwrap();
@@ -2132,14 +2217,13 @@ mod tests {
     fn missing_inputs_are_errors_not_panics() {
         let mut g = Graph::new();
         let ext = g
-            .add_node(GraphNodeBody::ExternalImage { name: "nope".into() })
+            .add_node(GraphNodeBody::ExternalImage {
+                name: "nope".into(),
+            })
             .unwrap();
         g.set_output(ext).unwrap();
         let mut engine = engine_of(g, 0);
-        assert!(matches!(
-            engine.render(),
-            Err(GraphError::MissingSample(_))
-        ));
+        assert!(matches!(engine.render(), Err(GraphError::MissingSample(_))));
 
         let mut g = Graph::new();
         let ghost = GraphNodeId(1234);
@@ -2153,10 +2237,15 @@ mod tests {
     #[test]
     fn gradient_map_colorizes_luminance() {
         let mut g = Graph::new();
-        let src = g.add_node(GraphNodeBody::constant([0.25, 0.25, 0.25, 1.0])).unwrap();
+        let src = g
+            .add_node(GraphNodeBody::constant([0.25, 0.25, 0.25, 1.0]))
+            .unwrap();
         let gmap = g
             .add_node(GraphNodeBody::GradientMap {
-                stops: vec![GradientStop::BLACK_WHITE_START, GradientStop::BLACK_WHITE_END],
+                stops: vec![
+                    GradientStop::BLACK_WHITE_START,
+                    GradientStop::BLACK_WHITE_END,
+                ],
                 mix: 1.0,
             })
             .unwrap();
@@ -2186,7 +2275,9 @@ mod tests {
     #[test]
     fn tile_generator_identity_when_params_are_neutral() {
         let mut g = Graph::new();
-        let src = g.add_node(GraphNodeBody::constant([0.3, 0.6, 0.9, 1.0])).unwrap();
+        let src = g
+            .add_node(GraphNodeBody::constant([0.3, 0.6, 0.9, 1.0]))
+            .unwrap();
         let tile = g
             .add_node(GraphNodeBody::TileGenerator {
                 seed: 5,

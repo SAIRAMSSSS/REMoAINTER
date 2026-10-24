@@ -112,29 +112,29 @@ pub fn apply_theme(ctx: &egui::Context) {
     visuals.widgets.open.rounding = 0.0.into();
 
     visuals.widgets.noninteractive.bg_fill = PANEL_BG;
-    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);
-    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, BORDER_DARK);
+    visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0_f32, TEXT_PRIMARY);
+    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, BORDER_DARK);
 
     visuals.widgets.inactive.bg_fill = BUTTON_BG;
-    visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, BORDER_DARK);
-    visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);
+    visuals.widgets.inactive.bg_stroke = Stroke::new(1.0_f32, BORDER_DARK);
+    visuals.widgets.inactive.fg_stroke = Stroke::new(1.0_f32, TEXT_PRIMARY);
 
     visuals.widgets.hovered.bg_fill = BUTTON_HOVER_BG;
-    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, TEXT_HOVERED);
-    visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, TEXT_HOVERED);
+    visuals.widgets.hovered.bg_stroke = Stroke::new(1.0_f32, TEXT_HOVERED);
+    visuals.widgets.hovered.fg_stroke = Stroke::new(1.0_f32, TEXT_HOVERED);
 
     // Pressed: fill `gray(15)`, border/text highlight = blue (`highlight_color`).
     visuals.widgets.active.bg_fill = BUTTON_PRESSED_BG;
-    visuals.widgets.active.bg_stroke = Stroke::new(1.0, ACTIVE_BLUE);
-    visuals.widgets.active.fg_stroke = Stroke::new(1.0, ACTIVE_BLUE);
+    visuals.widgets.active.bg_stroke = Stroke::new(1.0_f32, ACTIVE_BLUE);
+    visuals.widgets.active.fg_stroke = Stroke::new(1.0_f32, ACTIVE_BLUE);
 
     visuals.widgets.open.bg_fill = INPUT_BG;
-    visuals.widgets.open.bg_stroke = Stroke::new(1.0, BORDER_COLOR);
+    visuals.widgets.open.bg_stroke = Stroke::new(1.0_f32, BORDER_COLOR);
 
     visuals.selection.bg_fill = ACTIVE_ROW_FILL;
-    visuals.selection.stroke = Stroke::new(1.0, ACTIVE_BLUE);
+    visuals.selection.stroke = Stroke::new(1.0_f32, ACTIVE_BLUE);
 
-    visuals.window_stroke = Stroke::new(1.0, BORDER_DARK);
+    visuals.window_stroke = Stroke::new(1.0_f32, BORDER_DARK);
     visuals.popup_shadow = egui::epaint::Shadow::NONE;
     visuals.window_shadow = egui::epaint::Shadow::NONE;
 

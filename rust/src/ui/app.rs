@@ -1,5 +1,7 @@
 use crate::baker::{BakedMaps, BakerEngine, BakerOptions, MapType};
-use crate::graphics::viewport_gl::{list_available_environments, ViewportGl};
+use crate::graphics::viewport_wgpu::{
+    list_available_environments, ViewportPaintParams, ViewportWgpu,
+};
 use crate::graphics::{EnvironmentPreset, Mesh};
 use crate::painting::brush::AlphaMaskData;
 use crate::painting::texture_importer::PbrTextureSet;
@@ -164,9 +166,10 @@ pub struct RemoainterApp {
     pub show_uv_wireframe: bool,
     pub show_grid: bool,
 
-    // Hardware OpenGL PBR Viewport & Studio HDR Environment Pipeline
-    pub gl: Option<Arc<glow::Context>>,
-    pub viewport_gl: Option<Arc<Mutex<ViewportGl>>>,
+    // Hardware Vulkan / wgpu PBR Viewport & Studio HDR Environment Pipeline
+    pub wgpu_device: Option<Arc<wgpu::Device>>,
+    pub wgpu_queue: Option<Arc<wgpu::Queue>>,
+    pub viewport_wgpu: Option<Arc<Mutex<ViewportWgpu>>>,
     pub available_environments: Vec<(String, PathBuf)>,
     pub selected_env_idx: usize,
     pub exposure: f32,
@@ -471,9 +474,7 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
             crate::painting::material_library::MaterialGroup::SmartMaterials => {
                 (1, "SMAT", SMART_MAT_ORANGE)
             }
-            crate::painting::material_library::MaterialGroup::Materials => {
-                (2, "MAT", ACTIVE_BLUE)
-            }
+            crate::painting::material_library::MaterialGroup::Materials => (2, "MAT", ACTIVE_BLUE),
             crate::painting::material_library::MaterialGroup::Effects
             | crate::painting::material_library::MaterialGroup::Generators => {
                 (5, "FX", Color32::from_rgb(200, 90, 40))
@@ -667,8 +668,9 @@ impl Default for RemoainterApp {
             show_uv_wireframe: true,
             show_grid: true,
 
-            gl: None,
-            viewport_gl: None,
+            wgpu_device: None,
+            wgpu_queue: None,
+            viewport_wgpu: None,
             available_environments: list_available_environments(),
             selected_env_idx: 0,
             exposure: 0.0,
@@ -837,14 +839,25 @@ impl Default for RemoainterApp {
 impl RemoainterApp {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         let mut app = Self::default();
-        if let Some(ref gl) = cc.gl {
-            app.gl = Some(gl.clone());
-            match ViewportGl::new(gl, &app.mesh, &app.layer_stack, &app.baked_maps) {
+        if let Some(render_state) = &cc.wgpu_render_state {
+            app.wgpu_device = Some(render_state.device.clone());
+            app.wgpu_queue = Some(render_state.queue.clone());
+            match ViewportWgpu::new(
+                &render_state.device,
+                &render_state.queue,
+                render_state.target_format,
+                &app.mesh,
+                &app.layer_stack,
+                &app.baked_maps,
+            ) {
                 Ok(vp) => {
-                    app.viewport_gl = Some(Arc::new(Mutex::new(vp)));
+                    app.viewport_wgpu = Some(Arc::new(Mutex::new(vp)));
                 }
                 Err(e) => {
-                    eprintln!("[ERROR] Failed to initialize OpenGL PBR Viewport: {}", e);
+                    eprintln!(
+                        "[ERROR] Failed to initialize Vulkan/wgpu PBR Viewport: {}",
+                        e
+                    );
                 }
             }
         }
@@ -896,7 +909,7 @@ impl RemoainterApp {
                         self.layer_stack.height,
                     ) {
                         Ok((layer, kind)) => {
-                            if kind == sl::referenceContentKind::FlatParams
+                            if kind == sl::ReferenceContentKind::FlatParams
                                 && asset.icon_kind == sl::IconKind::Sphere
                             {
                                 self.log_line(
@@ -915,7 +928,7 @@ impl RemoainterApp {
                             self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
                             self.recompute_composite();
                             let note = match kind {
-                                sl::referenceContentKind::FlatParams => "parameters-only fill",
+                                sl::ReferenceContentKind::FlatParams => "parameters-only fill",
                                 _ => "preview-derived content",
                             };
                             self.status_message =
@@ -927,7 +940,7 @@ impl RemoainterApp {
                                 note
                             ));
                         }
-                        Err(sl::referenceApplyError::ForbiddenSphereBitmap) => {
+                        Err(sl::ReferenceApplyError::ForbiddenSphereBitmap) => {
                             self.status_message =
                                 format!("Refused sphere-render icon as paint content: {}", name);
                             {
@@ -935,7 +948,7 @@ impl RemoainterApp {
                                 self.log_line("WARN", &m);
                             }
                         }
-                        Err(sl::referenceApplyError::Io(e)) => {
+                        Err(sl::ReferenceApplyError::Io(e)) => {
                             self.status_message =
                                 format!("Failed to apply SP material: {}: {}", name, e);
                             {
@@ -1023,7 +1036,7 @@ impl RemoainterApp {
                             self.brush.custom_alpha = Some(Arc::new(alpha));
                             applied = true;
                         }
-                        Err(sl::referenceApplyError::ForbiddenSphereBitmap) => {
+                        Err(sl::ReferenceApplyError::ForbiddenSphereBitmap) => {
                             self.status_message =
                                 format!("'{}': sphere-render icon cannot be used as alpha", name);
                             {
@@ -1031,7 +1044,7 @@ impl RemoainterApp {
                                 self.log_line("WARN", &m);
                             }
                         }
-                        Err(sl::referenceApplyError::Io(e)) => {
+                        Err(sl::ReferenceApplyError::Io(e)) => {
                             self.status_message = format!("Failed to load alpha '{}': {}", name, e);
                             {
                                 let m = self.status_message.clone();
@@ -1107,11 +1120,10 @@ impl RemoainterApp {
         );
         self.texture_needs_update = true;
 
-        if let Some(ref vp_mutex) = self.viewport_gl {
-            if let Some(ref gl) = self.gl {
+        if let Some(ref vp_mutex) = self.viewport_wgpu {
+            if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    vp.textures
-                        .upload_all(gl, &self.layer_stack, &self.baked_maps);
+                    vp.upload_textures(device, queue, &self.layer_stack, &self.baked_maps);
                 }
             }
         }
@@ -1130,10 +1142,10 @@ impl RemoainterApp {
         );
         self.texture_needs_update = true;
 
-        if let Some(ref vp_mutex) = self.viewport_gl {
-            if let Some(ref gl) = self.gl {
+        if let Some(ref vp_mutex) = self.viewport_wgpu {
+            if let Some(ref queue) = self.wgpu_queue {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    vp.textures.upload_dirty(gl, &self.layer_stack, bbox);
+                    vp.upload_dirty(queue, &self.layer_stack, bbox);
                 }
             }
         }
@@ -1351,13 +1363,11 @@ impl RemoainterApp {
                 }
             }
             2 => {
-                let paths: Vec<PathBuf> = [
-                    "test_models/radio.obj",
-                    "../assets/test_models/radio.obj",
-                ]
-                .iter()
-                .filter_map(|sub| crate::paths::find_assets_subdir(sub))
-                .collect();
+                let paths: Vec<PathBuf> =
+                    ["test_models/radio.obj", "../assets/test_models/radio.obj"]
+                        .iter()
+                        .filter_map(|sub| crate::paths::find_assets_subdir(sub))
+                        .collect();
                 for p in &paths {
                     if let Ok(m) = Mesh::load_obj(p) {
                         self.mesh = m;
@@ -1406,10 +1416,10 @@ impl RemoainterApp {
                 self.layer_stack.active_layer_index = 1;
             }
         }
-        if let Some(ref vp_mutex) = self.viewport_gl {
-            if let Some(ref gl) = self.gl {
+        if let Some(ref vp_mutex) = self.viewport_wgpu {
+            if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    vp.set_mesh(gl, &self.mesh);
+                    vp.set_mesh(device, queue, &self.mesh);
                 }
             }
         }
@@ -1454,10 +1464,12 @@ impl RemoainterApp {
                     None,
                 );
 
-                if let Some(ref vp_mutex) = self.viewport_gl {
-                    if let Some(ref gl) = self.gl {
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                    if let (Some(ref device), Some(ref queue)) =
+                        (&self.wgpu_device, &self.wgpu_queue)
+                    {
                         if let Ok(mut vp) = vp_mutex.lock() {
-                            vp.set_mesh(gl, &self.mesh);
+                            vp.set_mesh(device, queue, &self.mesh);
                         }
                     }
                 }
@@ -1586,10 +1598,12 @@ impl RemoainterApp {
                 self.texture_needs_update = true;
 
                 // Update GPU mesh in Viewport
-                if let Some(ref vp_mutex) = self.viewport_gl {
-                    if let Some(ref gl) = self.gl {
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                    if let (Some(ref device), Some(ref queue)) =
+                        (&self.wgpu_device, &self.wgpu_queue)
+                    {
                         if let Ok(mut vp) = vp_mutex.lock() {
-                            vp.set_mesh(gl, &self.mesh);
+                            vp.set_mesh(device, queue, &self.mesh);
                         }
                     }
                 }
@@ -1686,7 +1700,7 @@ impl RemoainterApp {
         self.show_uv_wireframe = true;
         self.turntable_active = false;
         self.isolated_submesh = None;
-        if let Some(ref vp_mutex) = self.viewport_gl {
+        if let Some(ref vp_mutex) = self.viewport_wgpu {
             if let Ok(mut vp) = vp_mutex.lock() {
                 vp.isolate_submesh(None);
             }
@@ -1775,10 +1789,12 @@ impl RemoainterApp {
                 self.baker_options = baker_options;
                 self.texture_needs_update = true;
 
-                if let Some(ref vp_mutex) = self.viewport_gl {
-                    if let Some(ref gl) = self.gl {
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                    if let (Some(ref device), Some(ref queue)) =
+                        (&self.wgpu_device, &self.wgpu_queue)
+                    {
                         if let Ok(mut vp) = vp_mutex.lock() {
-                            vp.set_mesh(gl, &self.mesh);
+                            vp.set_mesh(device, queue, &self.mesh);
                         }
                     }
                 }
@@ -1812,10 +1828,12 @@ impl RemoainterApp {
                             None,
                             None,
                         );
-                        if let Some(ref vp_mutex) = self.viewport_gl {
-                            if let Some(ref gl) = self.gl {
+                        if let Some(ref vp_mutex) = self.viewport_wgpu {
+                            if let (Some(ref device), Some(ref queue)) =
+                                (&self.wgpu_device, &self.wgpu_queue)
+                            {
                                 if let Ok(mut vp) = vp_mutex.lock() {
-                                    vp.set_mesh(gl, &self.mesh);
+                                    vp.set_mesh(device, queue, &self.mesh);
                                 }
                             }
                         }
@@ -1983,13 +2001,16 @@ impl RemoainterApp {
         let scale = self.graph_scale.max(1.0);
         let contrast = self.graph_contrast;
         let mut graph = Graph::new();
-        let out = graph.add_node(GraphNodeBody::output()).expect("output node");
+        let out = graph
+            .add_node(GraphNodeBody::output())
+            .expect("output node");
         let link = |graph: &mut Graph, from: crate::painting::graph::GraphNodeId| {
             let _ = graph.connect(from, out, 0);
         };
         match kind {
             0 => {
-                let n = graph.add_node(GraphNodeBody::FbmNoise {
+                let n = graph
+                    .add_node(GraphNodeBody::FbmNoise {
                         seed,
                         octaves: 6,
                         scale,
@@ -1997,46 +2018,56 @@ impl RemoainterApp {
                         contrast,
                         color_a: [0.16, 0.28, 0.56, 1.0],
                         color_b: [0.66, 0.78, 0.92, 1.0],
-                    }).expect("fbm");
+                    })
+                    .expect("fbm");
                 link(&mut graph, n);
             }
             1 => {
-                let n = graph.add_node(GraphNodeBody::WhiteNoise {
+                let n = graph
+                    .add_node(GraphNodeBody::WhiteNoise {
                         seed,
                         cells: (scale * 2.0).max(2.0) as u32,
                         color_a: [0.12, 0.12, 0.13, 1.0],
                         color_b: [0.92, 0.92, 0.90, 1.0],
-                    }).expect("grain");
+                    })
+                    .expect("grain");
                 link(&mut graph, n);
             }
             2 => {
                 // Blotches: jittered spots, then soften with gaussian blur.
-                let n = graph.add_node(GraphNodeBody::BnWSpots {
+                let n = graph
+                    .add_node(GraphNodeBody::BnWSpots {
                         seed,
                         cells: scale.max(2.0) as u32,
                         radius: 0.9,
                         falloff: 1.8,
                         invert: false,
-                    }).expect("spots");
-                let blur = graph.add_node(GraphNodeBody::GaussianBlur {
+                    })
+                    .expect("spots");
+                let blur = graph
+                    .add_node(GraphNodeBody::GaussianBlur {
                         radius: (scale * 0.25).clamp(1.0, 6.0),
-                    }).expect("blur");
+                    })
+                    .expect("blur");
                 let _ = graph.connect(n, blur, 0);
                 let _ = graph.connect(blur, out, 0);
             }
             3 => {
-                let n = graph.add_node(GraphNodeBody::Marble {
+                let n = graph
+                    .add_node(GraphNodeBody::Marble {
                         seed,
                         veins: scale * 0.5 + 2.0,
                         turbulence: 2.0 + contrast * 6.0,
                         octaves: 5,
                         color_a: [0.06, 0.06, 0.07, 1.0],
                         color_b: [0.93, 0.93, 0.90, 1.0],
-                    }).expect("marble");
+                    })
+                    .expect("marble");
                 link(&mut graph, n);
             }
             4 => {
-                let n = graph.add_node(GraphNodeBody::Brick {
+                let n = graph
+                    .add_node(GraphNodeBody::Brick {
                         seed,
                         cols: scale as u32,
                         rows: (scale / 2.0).ceil() as u32,
@@ -2044,18 +2075,21 @@ impl RemoainterApp {
                         bevel: 0.10,
                         brick_color: [0.47, 0.19, 0.11, 1.0],
                         mortar_color: [0.26, 0.24, 0.22, 1.0],
-                    }).expect("brick");
+                    })
+                    .expect("brick");
                 link(&mut graph, n);
             }
             _ => {
-                let n = graph.add_node(GraphNodeBody::Crystal {
+                let n = graph
+                    .add_node(GraphNodeBody::Crystal {
                         seed,
                         cells: scale.max(2.0) as u32,
                         edge_width: 0.16,
                         edge_darkness: 0.9,
                         color_a: [0.38, 0.52, 0.62, 1.0],
                         color_b: [0.10, 0.14, 0.18, 1.0],
-                    }).expect("crystal");
+                    })
+                    .expect("crystal");
                 link(&mut graph, n);
             }
         }
@@ -2077,7 +2111,9 @@ impl RemoainterApp {
             self.graph_reset_engine();
         }
         let (w, h) = (self.layer_stack.width, self.layer_stack.height);
-        let Some(engine) = self.graph_engine.as_mut() else { return };
+        let Some(engine) = self.graph_engine.as_mut() else {
+            return;
+        };
         engine.context.width = w;
         engine.context.height = h;
         match engine.render() {
@@ -2101,8 +2137,7 @@ impl RemoainterApp {
                 self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
                 self.recompute_composite();
                 self.texture_needs_update = true;
-                self.status_message =
-                    "Procedural material applied to a new paint layer".into();
+                self.status_message = "Procedural material applied to a new paint layer".into();
                 self.history.push(format!(
                     "{:02}  Apply Graph Material ({})",
                     self.history.len() + 1,
@@ -2145,7 +2180,11 @@ impl RemoainterApp {
 
     /// Routes a parsed archive package into the parameter import dialog,
     /// seeding parameter values with widget defaults.
-    pub fn open_sbsar_package(&mut self, package: crate::painting::sbsar::SbsarPackage, path: &Path) {
+    pub fn open_sbsar_package(
+        &mut self,
+        package: crate::painting::sbsar::SbsarPackage,
+        path: &Path,
+    ) {
         let graph_count = package.graphs.len();
         if let Some(graph) = package.primary() {
             // Seed parameter values with widget defaults.
@@ -2154,7 +2193,11 @@ impl RemoainterApp {
                 let default = match &input.widget {
                     crate::painting::sbsar::SbsarWidget::Slider { default, .. } => *default,
                     crate::painting::sbsar::SbsarWidget::Toggle { default } => {
-                        if *default { 1.0 } else { 0.0 }
+                        if *default {
+                            1.0
+                        } else {
+                            0.0
+                        }
                     }
                     _ => 0.0,
                 };
@@ -2438,7 +2481,6 @@ impl RemoainterApp {
             self.show_graph_dialog = false;
         }
     }
-
 }
 
 impl eframe::App for RemoainterApp {
@@ -2969,10 +3011,7 @@ impl eframe::App for RemoainterApp {
                             .clicked()
                         {
                             let picked = rfd::FileDialog::new()
-                                .add_filter(
-                                    "Material Archive",
-                                    &["sbsar", "spsm", "sbs", "spp"],
-                                )
+                                .add_filter("Material Archive", &["sbsar", "spsm", "sbs", "spp"])
                                 .pick_file();
                             if let Some(path) = picked {
                                 match path
@@ -3049,10 +3088,7 @@ impl eframe::App for RemoainterApp {
                         }
 
                         ui.separator();
-                        if ui
-                            .button("Procedural (Graph) Material...")
-                            .clicked()
-                        {
+                        if ui.button("Procedural (Graph) Material...").clicked() {
                             self.show_graph_dialog = true;
                             self.graph_reset_engine();
                             ui.close_menu();
@@ -4915,78 +4951,77 @@ impl RemoainterApp {
             }
         }
 
-        // 1. OpenGL Hardware PBR 3D Render Callback (24-bit Depth Test + Per-Fragment GGX + ACES)
-        if let Some(ref vp_mutex) = self.viewport_gl {
-            let vp_clone = vp_mutex.clone();
-            let yaw = self.camera_yaw;
-            let pitch = self.camera_pitch;
-            let cam_dist = self.camera_dist;
-            let light_intensity = self.light_intensity;
-            let env_rotation = self.env_rotation;
-            let display_channel = self.display_channel;
+        // 1. Rust & Vulkan / wgpu Hardware PBR 3D Render Callback (24-bit Depth Test + Per-Fragment GGX + ACES)
+        if let Some(ref vp_mutex) = self.viewport_wgpu {
+            let aspect = view_bounds.width() / view_bounds.height().max(1.0);
+            let params = ViewportPaintParams {
+                yaw: self.camera_yaw,
+                pitch: self.camera_pitch,
+                cam_dist: self.camera_dist,
+                light_intensity: self.light_intensity,
+                env_rotation: self.env_rotation,
+                display_channel: self.display_channel,
+                exposure: self.exposure,
+                skybox_visible: self.skybox_visible,
+                skybox_blur: self.skybox_blur,
+                skybox_intensity: self.skybox_intensity,
+                uv_scale: self.uv_scale,
+                show_wireframe: self.show_wireframe,
+                show_grid: self.show_grid,
+                bloom_enabled: self.bloom_enabled,
+                bloom_intensity: self.bloom_intensity,
+                bloom_threshold: self.bloom_threshold,
+                ssao_enabled: self.ssao_enabled,
+                ssao_intensity: self.ssao_intensity,
+                dof_enabled: self.dof_enabled,
+                dof_focal_distance: self.dof_focal_distance,
+                dof_aperture: self.dof_aperture,
+                color_management_mode: self.color_management_mode,
+            };
 
-            let exposure = self.exposure;
-            let skybox_visible = self.skybox_visible;
-            let skybox_blur = self.skybox_blur;
-            let skybox_intensity = self.skybox_intensity;
-            let uv_scale = self.uv_scale;
-            let show_wireframe = self.show_wireframe;
-            let show_grid = self.show_grid;
+            struct ViewportWgpuCallback {
+                viewport: Arc<Mutex<ViewportWgpu>>,
+                params: ViewportPaintParams,
+                aspect: f32,
+            }
 
-            let bloom_enabled = self.bloom_enabled;
-            let bloom_intensity = self.bloom_intensity;
-            let bloom_threshold = self.bloom_threshold;
-            let ssao_enabled = self.ssao_enabled;
-            let ssao_intensity = self.ssao_intensity;
-            let dof_enabled = self.dof_enabled;
-            let dof_focal_distance = self.dof_focal_distance;
-            let dof_aperture = self.dof_aperture;
-            let color_management_mode = self.color_management_mode;
-
-            let callback = egui_glow::CallbackFn::new(move |info, painter| {
-                let rect = info.clip_rect_in_pixels();
-                let x = rect.left_px;
-                let y = rect.from_bottom_px;
-                let w = rect.width_px;
-                let h = rect.height_px;
-
-                if let Ok(mut vp) = vp_clone.lock() {
-                    vp.exposure = exposure;
-                    vp.skybox_visible = skybox_visible;
-                    vp.skybox_blur = skybox_blur;
-                    vp.skybox_intensity = skybox_intensity;
-                    vp.uv_scale = uv_scale;
-                    vp.show_wireframe = show_wireframe;
-                    vp.show_grid = show_grid;
-                    vp.bloom_enabled = bloom_enabled;
-                    vp.bloom_intensity = bloom_intensity;
-                    vp.bloom_threshold = bloom_threshold;
-                    vp.ssao_enabled = ssao_enabled;
-                    vp.ssao_intensity = ssao_intensity;
-                    vp.dof_enabled = dof_enabled;
-                    vp.dof_focal_distance = dof_focal_distance;
-                    vp.dof_aperture = dof_aperture;
-                    vp.color_management_mode = color_management_mode;
-                    vp.paint(
-                        painter.gl(),
-                        x,
-                        y,
-                        w,
-                        h,
-                        yaw,
-                        pitch,
-                        cam_dist,
-                        light_intensity,
-                        env_rotation,
-                        display_channel,
-                    );
+            impl egui_wgpu::CallbackTrait for ViewportWgpuCallback {
+                fn prepare(
+                    &self,
+                    device: &wgpu::Device,
+                    queue: &wgpu::Queue,
+                    _screen_descriptor: &egui_wgpu::ScreenDescriptor,
+                    _egui_encoder: &mut wgpu::CommandEncoder,
+                    _callback_resources: &mut egui_wgpu::CallbackResources,
+                ) -> Vec<wgpu::CommandBuffer> {
+                    if let Ok(mut vp) = self.viewport.lock() {
+                        vp.prepare(device, queue, &self.params, self.aspect);
+                    }
+                    Vec::new()
                 }
-            });
 
-            painter.add(egui::PaintCallback {
-                rect: view_bounds,
-                callback: Arc::new(callback),
-            });
+                fn paint(
+                    &self,
+                    _info: egui::PaintCallbackInfo,
+                    render_pass: &mut wgpu::RenderPass<'static>,
+                    _callback_resources: &egui_wgpu::CallbackResources,
+                ) {
+                    if let Ok(vp) = self.viewport.lock() {
+                        vp.paint(render_pass);
+                    }
+                }
+            }
+
+            let callback = ViewportWgpuCallback {
+                viewport: vp_mutex.clone(),
+                params,
+                aspect,
+            };
+
+            painter.add(egui_wgpu::Callback::new_paint_callback(
+                view_bounds,
+                callback,
+            ));
         }
 
         // Raycasting & 3D Surface Painting
@@ -7654,7 +7689,7 @@ impl RemoainterApp {
                 ui.horizontal(|ui| {
                     if ui.button("Show All Submeshes").clicked() {
                         self.isolated_submesh = None;
-                        if let Some(ref vp_mutex) = self.viewport_gl {
+                        if let Some(ref vp_mutex) = self.viewport_wgpu {
                             if let Ok(mut vp) = vp_mutex.lock() {
                                 vp.isolate_submesh(None);
                             }
@@ -7667,7 +7702,7 @@ impl RemoainterApp {
                 let mut to_toggle = None;
                 let mut to_isolate = None;
 
-                if let Some(ref vp_mutex) = self.viewport_gl {
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
                     if let Ok(vp) = vp_mutex.lock() {
                         for (i, sm) in vp.submeshes().iter().enumerate() {
                             ui.horizontal(|ui| {
@@ -7691,7 +7726,7 @@ impl RemoainterApp {
                 }
 
                 if let Some((idx, vis)) = to_toggle {
-                    if let Some(ref vp_mutex) = self.viewport_gl {
+                    if let Some(ref vp_mutex) = self.viewport_wgpu {
                         if let Ok(mut vp) = vp_mutex.lock() {
                             vp.set_submesh_visibility(idx, vis);
                         }
@@ -7699,7 +7734,7 @@ impl RemoainterApp {
                 }
                 if let Some(target) = to_isolate {
                     self.isolated_submesh = target;
-                    if let Some(ref vp_mutex) = self.viewport_gl {
+                    if let Some(ref vp_mutex) = self.viewport_wgpu {
                         if let Ok(mut vp) = vp_mutex.lock() {
                             vp.isolate_submesh(target);
                         }
@@ -7726,10 +7761,14 @@ impl RemoainterApp {
                                 .selectable_value(&mut self.selected_env_idx, i, env_name)
                                 .clicked()
                             {
-                                if let Some(ref vp_mutex) = self.viewport_gl {
-                                    if let Some(ref gl) = self.gl {
+                                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                                    if let (Some(ref device), Some(ref queue)) =
+                                        (&self.wgpu_device, &self.wgpu_queue)
+                                    {
                                         if let Ok(mut vp) = vp_mutex.lock() {
-                                            if let Err(e) = vp.load_environment(gl, env_path) {
+                                            if let Err(e) =
+                                                vp.load_environment(device, queue, env_path)
+                                            {
                                                 eprintln!(
                                                     "[ERROR] Failed to load environment {}: {}",
                                                     env_name, e
@@ -7809,7 +7848,7 @@ impl RemoainterApp {
         ui.label("Tone Mapping: ACES Filmic Curve (sRGB transfer)");
         ui.label("Color Profiles: ACES Filmic / sRGB Display / Neutral Reinhard");
         ui.label("Depth Buffer: 24-bit Hardware GL_DEPTH_TEST (GL_LEQUAL)");
-        ui.label("Hardware Core: Embedded OpenGL / glow Viewport");
+        ui.label("Hardware Core: Native Vulkan / wgpu PBR Viewport");
         ui.label("Status: [OK] Active & Real-Time GPU Rasterized");
     }
 
@@ -10052,11 +10091,11 @@ Res: {}×{}",
                 );
             }
 
-            // Sync OpenGL Viewport mesh
-            if let Some(ref vp_mutex) = self.viewport_gl {
-                if let Some(ref gl) = self.gl {
+            // Sync Vulkan Viewport mesh
+            if let Some(ref vp_mutex) = self.viewport_wgpu {
+                if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                     if let Ok(mut vp) = vp_mutex.lock() {
-                        vp.set_mesh(gl, &self.mesh);
+                        vp.set_mesh(device, queue, &self.mesh);
                     }
                 }
             }
@@ -10116,10 +10155,10 @@ Res: {}×{}",
                                             self.baked_maps = baked_maps;
                                             self.baker_options = baker_options;
                                             self.texture_needs_update = true;
-                                            if let Some(ref vp_mutex) = self.viewport_gl {
-                                                if let Some(ref gl) = self.gl {
+                                            if let Some(ref vp_mutex) = self.viewport_wgpu {
+                                                if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                                                     if let Ok(mut vp) = vp_mutex.lock() {
-                                                        vp.set_mesh(gl, &self.mesh);
+                                                        vp.set_mesh(device, queue, &self.mesh);
                                                     }
                                                 }
                                             }
@@ -10244,45 +10283,7 @@ Res: {}×{}",
                         ui.end_row();
 
                         ui.label("Compositing Engine:");
-                        ui.horizontal(|ui| {
-                            let gpu_ok = crate::graphics::gpu::is_available();
-                            let engine_text = if !gpu_ok {
-                                "CPU (no wgpu adapter detected)".to_string()
-                            } else if self.config.prefer_gpu_compositor {
-                                format!(
-                                    "GPU ({} · experimental)",
-                                    crate::graphics::gpu::adapter_name()
-                                        .unwrap_or_else(|| "GPU".into())
-                                )
-                            } else {
-                                format!(
-                                    "CPU (GPU available: {})",
-                                    crate::graphics::gpu::adapter_name()
-                                        .unwrap_or_else(|| "GPU".into())
-                                )
-                            };
-                            egui::ComboBox::from_id_salt("pref_gpu_comp")
-                                .selected_text(engine_text)
-                                .width(240.0)
-                                .show_ui(ui, |ui| {
-                                    let _ = ui.selectable_value(
-                                        &mut self.config.prefer_gpu_compositor,
-                                        false,
-                                        "CPU (Safe)",
-                                    );
-                                    if gpu_ok {
-                                        let _ = ui.selectable_value(
-                                            &mut self.config.prefer_gpu_compositor,
-                                            true,
-                                            format!(
-                                                "GPU — {} (experimental)",
-                                                crate::graphics::gpu::adapter_name()
-                                                    .unwrap_or_else(|| "GPU".into())
-                                            ),
-                                        );
-                                    }
-                                });
-                        });
+                        ui.label("CPU (built-in blend pipeline)");
                         ui.end_row();
 
                         ui.label("Color Management:");
