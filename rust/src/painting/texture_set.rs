@@ -254,7 +254,7 @@ pub fn detect_mesh_udim_tiles(mesh: &Mesh) -> Vec<u32> {
         let u_tile = u.floor() as i32;
         let v_tile = v.floor() as i32;
 
-        if u_tile >= 0 && u_tile < 10 && v_tile >= 0 {
+        if (0..10).contains(&u_tile) && v_tile >= 0 {
             let udim = 1001 + (u_tile as u32) + 10 * (v_tile as u32);
             tiles.insert(udim);
         }

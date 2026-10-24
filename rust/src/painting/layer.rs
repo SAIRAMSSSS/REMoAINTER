@@ -3060,7 +3060,7 @@ mod tests {
 
             let s = blend_scalar_channel(0.5, 0.8, mode);
             assert!(
-                s >= 0.0 && s <= 1.0,
+                (0.0..=1.0).contains(&s),
                 "Scalar mode {:?} out of bounds: {}",
                 mode,
                 s

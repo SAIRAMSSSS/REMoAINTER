@@ -281,12 +281,16 @@ pub fn decode_scalar_plane(bytes: &[u8], format: BakedMapFormat) -> Vec<f32> {
     match format {
         BakedMapFormat::U8 => bytes.iter().map(|&b| b as f32 / 255.0).collect(),
         BakedMapFormat::F16 => bytes
-            .chunks_exact(2)
-            .map(|c| half_bits_to_f32(u16::from_le_bytes([c[0], c[1]])))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| half_bits_to_f32(u16::from_le_bytes(*c)))
             .collect(),
         BakedMapFormat::F32 => bytes
-            .chunks_exact(4)
-            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| f32::from_le_bytes(*c))
             .collect(),
     }
 }
@@ -395,7 +399,7 @@ pub fn half_bits_to_f32(h: u16) -> f32 {
     let exp = ((h >> 10) & 0x1f) as i32;
     let mant = (h & 0x03ff) as u32;
     match exp {
-        0 => sign * (mant as f32) * 5.9604644775390625e-8, // mant * 2^-24
+        0 => sign * (mant as f32) * 5.960_464_5e-8, // mant * 2^-24
         31 => {
             if mant == 0 {
                 sign * f32::INFINITY
@@ -461,12 +465,12 @@ impl BoundingBox {
     }
 
     pub fn grow(&mut self, p: [f32; 3]) {
-        for i in 0..3 {
-            if p[i] < self.min[i] {
-                self.min[i] = p[i];
+        for (i, &val) in p.iter().enumerate() {
+            if val < self.min[i] {
+                self.min[i] = val;
             }
-            if p[i] > self.max[i] {
-                self.max[i] = p[i];
+            if val > self.max[i] {
+                self.max[i] = val;
             }
         }
     }
@@ -1106,9 +1110,7 @@ impl BakerEngine {
         for (s, sm) in sm_sorted.iter().enumerate() {
             let t0 = (sm.index_start / 3).min(num_tris);
             let t1 = ((sm.index_start + sm.index_count) / 3).min(num_tris);
-            for t in t0..t1 {
-                tri_shell[t] = s;
-            }
+            tri_shell[t0..t1].fill(s);
         }
 
         let mut low_shell_bbox = vec![BoundingBox::empty(); shell_count];
@@ -1141,7 +1143,7 @@ impl BakerEngine {
                             let d = (ca[0] - cb[0]).powi(2)
                                 + (ca[1] - cb[1]).powi(2)
                                 + (ca[2] - cb[2]).powi(2);
-                            if best.map_or(true, |(bd, _)| d < bd) {
+                            if best.is_none_or(|(bd, _)| d < bd) {
                                 best = Some((d, i));
                             }
                         }
@@ -1549,7 +1551,7 @@ impl BakerEngine {
                                         for s in 0..num_samples {
                                             let xi1 =
                                                 ((s as f32 + 0.5) / num_samples as f32).fract();
-                                            let xi2 = ((s as f32 * 0.6180339887) + 0.1).fract();
+                                            let xi2 = ((s as f32 * 0.618_034) + 0.1).fract();
                                             let phi = 2.0 * std::f32::consts::PI * xi1;
                                             let cos_theta = (1.0 - xi2).sqrt();
                                             let sin_theta = xi2.sqrt();
@@ -1624,13 +1626,13 @@ impl BakerEngine {
                             acc.ao += final_ao * sample_w;
                             acc.curv += final_curv * sample_w;
                             acc.thick += final_thick * sample_w;
-                            for c in 0..3 {
-                                acc.norm[c] += final_norm[c] * sample_w;
+                            for (c, &val) in final_norm.iter().enumerate() {
+                                acc.norm[c] += val * sample_w;
                                 acc.wsn[c] += final_wsn[c] * sample_w;
                                 acc.pos[c] += final_pos[c] * sample_w;
                             }
-                            for c in 0..4 {
-                                acc.id[c] += final_id[c] * sample_w;
+                            for (c, &val) in final_id.iter().enumerate() {
+                                acc.id[c] += val * sample_w;
                             }
                         }
                     }
@@ -1846,9 +1848,9 @@ mod tests {
         let mut hp = Mesh::create_cube();
         // Cube spans [-0.4,0.4]^2 centered at origin, base at y = 0.2.
         for v in hp.vertices.iter_mut() {
-            v[0] = v[0] * 0.4;
+            v[0] *= 0.4;
             v[1] = (v[1] * 0.4) + 0.6; // bottom face at ~0.2, top ~1.0
-            v[2] = v[2] * 0.4;
+            v[2] *= 0.4;
         }
         // Ground plane in the high-poly so the box interior gets closed off.
         let ground: Vec<[f32; 3]> = verts.clone();
@@ -1858,7 +1860,7 @@ mod tests {
         hp.uvs.extend_from_slice(&uvs);
         let g0 = hp.vertices.len() as u32 - 4;
         hp.indices
-            .extend_from_slice(&[g0 + 0, g0 + 2, g0 + 1, g0 + 0, g0 + 3, g0 + 2]);
+            .extend_from_slice(&[g0, g0 + 2, g0 + 1, g0, g0 + 3, g0 + 2]);
 
         let mut opts = BakerOptions::default();
         opts.resolution = 32;
@@ -1998,7 +2000,7 @@ mod tests {
         );
         assert_eq!(
             half_bits_to_f32(f32_to_half_bits(6.0e-8)),
-            5.960464477539063e-8,
+            5.960_464_5e-8,
             "smallest half subnormal survives a round trip"
         );
         let f16p = encode_scalar_plane(&bits, F16);

@@ -804,22 +804,20 @@ fn diffusion_dilate(
                 },
             ];
 
-            for n_opt in neighbors {
-                if let Some(n_idx) = n_opt {
-                    // Coverage pixels are fixed Dirichlet values and stay in
-                    // `buffer`; gutter neighbors were either seeded by the
-                    // push sweep and are relaxed (read from `prev`), or lie
-                    // outside the band and never change (also read from
-                    // `buffer`).
-                    let val = match relax.binary_search(&n_idx) {
-                        Ok(p) => prev[p],
-                        Err(_) => buffer[n_idx],
-                    };
-                    for ch in 0..4 {
-                        sum[ch] += val[ch];
-                    }
-                    neighbor_count += 1.0;
+            for n_idx in neighbors.into_iter().flatten() {
+                // Coverage pixels are fixed Dirichlet values and stay in
+                // `buffer`; gutter neighbors were either seeded by the
+                // push sweep and are relaxed (read from `prev`), or lie
+                // outside the band and never change (also read from
+                // `buffer`).
+                let val = match relax.binary_search(&n_idx) {
+                    Ok(p) => prev[p],
+                    Err(_) => buffer[n_idx],
+                };
+                for ch in 0..4 {
+                    sum[ch] += val[ch];
                 }
+                neighbor_count += 1.0;
             }
 
             if neighbor_count > 0.0 {
@@ -896,19 +894,17 @@ fn push_pull_dilate(
                 },
             ];
 
-            for n_opt in neighbors {
-                if let Some(n_idx) = n_opt {
-                    if current_mask[n_idx] {
-                        let c = buffer[n_idx];
-                        let channels = match alpha_mode {
-                            GutterAlphaMode::DilateAll => 4,
-                            GutterAlphaMode::TransparentGutter => 3,
-                        };
-                        for ch in 0..channels {
-                            sum[ch] += c[ch];
-                        }
-                        count += 1.0;
+            for n_idx in neighbors.into_iter().flatten() {
+                if current_mask[n_idx] {
+                    let c = buffer[n_idx];
+                    let channels = match alpha_mode {
+                        GutterAlphaMode::DilateAll => 4,
+                        GutterAlphaMode::TransparentGutter => 3,
+                    };
+                    for ch in 0..channels {
+                        sum[ch] += c[ch];
                     }
+                    count += 1.0;
                 }
             }
 
@@ -953,11 +949,9 @@ fn push_pull_dilate(
                 },
             ];
 
-            for n_opt in neighbors {
-                if let Some(n_idx) = n_opt {
-                    if !current_mask[n_idx] {
-                        next_frontier.push(n_idx);
-                    }
+            for n_idx in neighbors.into_iter().flatten() {
+                if !current_mask[n_idx] {
+                    next_frontier.push(n_idx);
                 }
             }
         }
@@ -1543,7 +1537,7 @@ mod tests {
         let h = 3;
         let mut buffer = vec![[0.0f32; 4]; w * h];
         let mut mask = vec![false; w * h];
-        let center_idx = 1 * w + 1;
+        let center_idx = w + 1;
         buffer[center_idx] = [1.0, 1.0, 1.0, 1.0];
         mask[center_idx] = true;
 
@@ -1551,7 +1545,7 @@ mod tests {
 
         // Gutter must be exactly as it was (alpha untouched as well).
         assert_eq!(buffer[0], [0.0, 0.0, 0.0, 0.0]);
-        assert_eq!(buffer[1 * w + 2], [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(buffer[w + 2], [0.0, 0.0, 0.0, 0.0]);
         assert_eq!(buffer[center_idx], [1.0, 1.0, 1.0, 1.0]);
     }
 
@@ -1561,14 +1555,14 @@ mod tests {
         let h = 3;
         let mut buffer = vec![[0.0f32; 4]; w * h];
         let mut mask = vec![false; w * h];
-        let center_idx = 1 * w + 1;
+        let center_idx = w + 1;
         buffer[center_idx] = [1.0, 0.0, 0.0, 0.25];
         mask[center_idx] = true;
 
         dilate_rgba_mode(&mut buffer, &mask, w, h, 1, PaddingAlgorithm::Transparent);
 
         // Neighbor gutter: RGB extended from the edge, alpha forced to 0.
-        let gutter_idx = 1 * w + 2;
+        let gutter_idx = w + 2;
         assert!(buffer[gutter_idx][0] > 0.0, "gutter RGB must be extended");
         assert_eq!(buffer[gutter_idx][3], 0.0);
         // Coverage alpha is preserved untouched.
@@ -1728,7 +1722,7 @@ mod tests {
         let mut mask = vec![false; w * h];
 
         // Mark center pixel (1, 1) as valid green
-        let center_idx = 1 * w + 1;
+        let center_idx = w + 1;
         buffer[center_idx] = [0.0, 1.0, 0.0, 1.0];
         mask[center_idx] = true;
 
@@ -1736,7 +1730,7 @@ mod tests {
         dilate_rgba(&mut buffer, &mask, w, h, 1);
 
         // Neighbor (2, 1) must have received color from (1, 1)
-        let neighbor_idx = 1 * w + 2;
+        let neighbor_idx = w + 2;
         assert_eq!(buffer[neighbor_idx], [0.0, 1.0, 0.0, 1.0]);
 
         // Corner (3, 3) was not reached by 1 radius dilation

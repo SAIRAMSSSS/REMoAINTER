@@ -583,7 +583,7 @@ impl Mesh {
         for uv in &self.uvs {
             s.push_str(&format!("vt {:.6} {:.6}\n", uv[0], uv[1]));
         }
-        for chunk in self.indices.chunks_exact(3) {
+        for chunk in self.indices.as_chunks::<3>().0 {
             let i0 = chunk[0] + 1;
             let i1 = chunk[1] + 1;
             let i2 = chunk[2] + 1;

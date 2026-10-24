@@ -1,3 +1,6 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::field_reassign_with_default)]
+
 pub mod baker;
 pub mod graphics;
 pub mod painting;

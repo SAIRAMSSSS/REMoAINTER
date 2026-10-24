@@ -1690,7 +1690,7 @@ impl RemoainterApp {
         if let Some(path) = rfd::FileDialog::new()
             .set_title("Save REMoAINTER Project")
             .add_filter("REMoAINTER Project (*.rmp)", &["rmp"])
-            .set_file_name(&format!("{}.rmp", self.project_name))
+            .set_file_name(format!("{}.rmp", self.project_name))
             .save_file()
         {
             if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
@@ -1870,7 +1870,7 @@ impl RemoainterApp {
         let id = self.snapshots.len() + 1;
         let snap_path = snap_dir.join(format!("snapshot_{}_{}.rmp", id, name.replace(' ', "_")));
 
-        if let Ok(_) = crate::project::ProjectManager::save_project(
+        if crate::project::ProjectManager::save_project(
             &snap_path,
             name,
             &self.mesh,
@@ -1885,7 +1885,9 @@ impl RemoainterApp {
                 self.env_rotation,
                 self.selected_env_idx,
             ),
-        ) {
+        )
+        .is_ok()
+        {
             let snap = crate::project::SnapshotInfo {
                 id,
                 name: name.to_string(),
@@ -2317,13 +2319,7 @@ impl RemoainterApp {
             for input in &graph.inputs {
                 let default = match &input.widget {
                     crate::painting::sbsar::SbsarWidget::Slider { default, .. } => *default,
-                    crate::painting::sbsar::SbsarWidget::Toggle { default } => {
-                        if *default {
-                            1.0
-                        } else {
-                            0.0
-                        }
-                    }
+                    crate::painting::sbsar::SbsarWidget::Toggle { default } if *default => 1.0,
                     _ => 0.0,
                 };
                 values.insert(input.identifier.clone(), default);
@@ -2915,7 +2911,7 @@ impl eframe::App for RemoainterApp {
                         .layers
                         .get_mut(self.layer_stack.active_layer_index)
                     {
-                        if let Ok(_) = set.load_into_layer(active, set.is_directx_normal) {
+                        if set.load_into_layer(active, set.is_directx_normal).is_ok() {
                             if let Some(ao) =
                                 set.load_ao_map(self.layer_stack.width, self.layer_stack.height)
                             {
@@ -2940,7 +2936,7 @@ impl eframe::App for RemoainterApp {
                         .layers
                         .get_mut(self.layer_stack.active_layer_index)
                     {
-                        if let Ok(_) = set.load_into_layer(active, set.is_directx_normal) {
+                        if set.load_into_layer(active, set.is_directx_normal).is_ok() {
                             if let Some(ao) =
                                 set.load_ao_map(self.layer_stack.width, self.layer_stack.height)
                             {
@@ -3669,7 +3665,13 @@ impl eframe::App for RemoainterApp {
                                 Ok(img) => {
                                     let rgba = img.to_rgba8();
                                     let (w, h) = (rgba.width(), rgba.height());
-                                    let a = rgba.into_raw().chunks_exact(4).map(|p| p[3]).collect();
+                                    let a = rgba
+                                        .into_raw()
+                                        .as_chunks::<4>()
+                                        .0
+                                        .iter()
+                                        .map(|p| p[3])
+                                        .collect();
                                     self.decal_alpha = Some(std::sync::Arc::new(
                                         crate::painting::brush::AlphaMaskData {
                                             width: w,
@@ -5713,11 +5715,9 @@ impl RemoainterApp {
                     to_duplicate = Some(idx);
                     ui.close_menu();
                 }
-                if num_sets > 1 {
-                    if ui.button("Delete Texture Set").clicked() {
-                        to_delete = Some(idx);
-                        ui.close_menu();
-                    }
+                if num_sets > 1 && ui.button("Delete Texture Set").clicked() {
+                    to_delete = Some(idx);
+                    ui.close_menu();
                 }
             });
         }
@@ -5905,15 +5905,14 @@ impl RemoainterApp {
                     .circle_filled(dot_rect.center(), 4.5, dot_color);
                 ui.label(egui::RichText::new(&ch.name).color(Color32::WHITE));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if !is_required {
-                        if ui
+                    if !is_required
+                        && ui
                             .small_button(
                                 egui::RichText::new("×").color(Color32::from_rgb(255, 80, 80)),
                             )
                             .clicked()
-                        {
-                            to_remove = Some(ci);
-                        }
+                    {
+                        to_remove = Some(ci);
                     }
                     ui.label(
                         egui::RichText::new(&ch.format)
@@ -6231,12 +6230,12 @@ impl RemoainterApp {
                 let parent_id = self.layer_stack.layers[i].parent_folder_id;
 
                 // Hide child layers if parent folder is collapsed
-                let is_hidden = parent_id.map_or(false, |pid| {
+                let is_hidden = parent_id.is_some_and(|pid| {
                     self.layer_stack
                         .layers
                         .iter()
                         .find(|l| l.id == pid)
-                        .map_or(false, |p| !p.folder_expanded)
+                        .is_some_and(|p| !p.folder_expanded)
                 });
                 if is_hidden {
                     continue;
@@ -6505,11 +6504,11 @@ impl RemoainterApp {
                             list_action = Some(LayerListAction::Copy(i));
                             ui.close_menu();
                         }
-                        if self.layer_clipboard.is_some() {
-                            if ui.button("Paste layer(s)\tCtrl+V").clicked() {
-                                list_action = Some(LayerListAction::Paste);
-                                ui.close_menu();
-                            }
+                        if self.layer_clipboard.is_some()
+                            && ui.button("Paste layer(s)\tCtrl+V").clicked()
+                        {
+                            list_action = Some(LayerListAction::Paste);
+                            ui.close_menu();
                         }
                         if ui.button("Duplicate layer(s)\tCtrl+D").clicked() {
                             list_action = Some(LayerListAction::Duplicate(i));
@@ -6720,11 +6719,10 @@ impl RemoainterApp {
                             list_action = Some(LayerListAction::AddFillLayer);
                             ui.close_menu();
                         }
-                        if layer_type == LayerType::Paint {
-                            if ui.button("🧹 Clear layer").clicked() {
-                                list_action = Some(LayerListAction::ClearLayer(i));
-                                ui.close_menu();
-                            }
+                        if layer_type == LayerType::Paint && ui.button("🧹 Clear layer").clicked()
+                        {
+                            list_action = Some(LayerListAction::ClearLayer(i));
+                            ui.close_menu();
                         }
                     });
 
@@ -9149,7 +9147,7 @@ Res: {}×{}",
                                             Ok(img) => {
                                                 let rgba = img.to_rgba8();
                                                 let (w, h) = (rgba.width(), rgba.height());
-                                                let data: Vec<[f32; 2]> = rgba.into_raw().chunks_exact(4)
+                                                let data: Vec<[f32; 2]> = rgba.into_raw().as_chunks::<4>().0.iter()
                                                     .map(|p| [(p[0] as f32 / 255.0) * 2.0 - 1.0, (p[1] as f32 / 255.0) * 2.0 - 1.0])
                                                     .collect();
                                                 self.baker_skew_map = Some(std::sync::Arc::new(crate::baker::engine::SkewMap { width: w, height: h, data }));
@@ -9169,7 +9167,7 @@ Res: {}×{}",
                                 }
                             });
                             if !self.baker_skew_map_path.is_empty() {
-                                ui.label(egui::RichText::new(&self.baker_skew_map_path).small().color(TEXT_DIMMED.clone()));
+                                ui.label(egui::RichText::new(&self.baker_skew_map_path).small().color(TEXT_DIMMED));
                             }
                         });
                         ui.end_row();

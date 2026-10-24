@@ -68,7 +68,7 @@ fn glyph(ch: char) -> Option<&'static [u8; 7]> {
     let upper = ch.to_ascii_uppercase();
     FONT_5X7
         .iter()
-        .find(|(c, _)| c.chars().next() == Some(upper))
+        .find(|(c, _)| c.starts_with(upper))
         .map(|(_, g)| g)
 }
 
@@ -95,8 +95,7 @@ pub fn rasterize_text(text: &str, pixel_height: u32) -> AlphaMaskData {
     let width: u32 = (pixel_height * 2).max(text_w + cell_w).max(32);
     let offset_x = ((width as i64 - text_w as i64) / 2).max(0);
     let offset_y =
-        ((pixel_height as i64 - (num_lines as u32 * line_cells as u32 * dots_per_dot) as i64) / 2)
-            .max(1);
+        ((pixel_height as i64 - (num_lines as u32 * line_cells * dots_per_dot) as i64) / 2).max(1);
 
     let mut data = vec![0u8; (width * pixel_height) as usize];
     for (li, line) in lines.iter().enumerate() {
@@ -108,8 +107,7 @@ pub fn rasterize_text(text: &str, pixel_height: u32) -> AlphaMaskData {
                         if bits & (1 << (4 - col)) != 0 {
                             let x0 = cursor + (col * dots_per_dot) as i64;
                             let y0 = offset_y
-                                + ((li as u32 * line_cells as u32 + row as u32) * dots_per_dot)
-                                    as i64;
+                                + ((li as u32 * line_cells + row as u32) * dots_per_dot) as i64;
                             for y in y0..(y0 + dots_per_dot as i64) {
                                 if y >= pixel_height as i64 {
                                     continue;
@@ -526,7 +524,7 @@ mod tests {
         let mut center_col_hits = 0;
         let cx = (a.width / 2) as usize;
         for y in 0..a.height as usize {
-            for x in (cx - 16).max(0)..(cx + 16).min(a.width as usize - 1) {
+            for x in cx.saturating_sub(16)..(cx + 16).min(a.width as usize - 1) {
                 if a.data[y * a.width as usize + x] > 200 {
                     center_col_hits += 1;
                 }

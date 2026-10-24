@@ -431,7 +431,7 @@ impl LayerMask {
 
 /// Deterministic 2D procedural pseudo-random noise
 fn pseudo_noise(x: f32, y: f32) -> f32 {
-    let s = (x * 12.9898 + y * 78.233).sin() * 43758.5453;
+    let s = (x * 12.9898 + y * 78.233).sin() * 43_758.547;
     s - s.floor()
 }
 

@@ -1095,7 +1095,7 @@ fn fbm(u: f32, v: f32, seed: u32, octaves: u32, base_period: u32, gain: f32) -> 
     let mut norm = 0.0f32;
     let mut period = base_period.max(1);
     for o in 0..octaves.clamp(1, MAX_OCTAVES) {
-        let s = seed.wrapping_add((o as u32).wrapping_mul(0x9E37_79B9));
+        let s = seed.wrapping_add(o.wrapping_mul(0x9E37_79B9));
         sum += value_noise(u, v, period as i32, s) * amp;
         norm += amp;
         amp *= gain.clamp(0.05, 1.0);
@@ -1161,7 +1161,7 @@ fn eval_fbm_noise(
     width: u32,
     height: u32,
 ) -> ImageRgba {
-    let base = scale.max(1.0).min(2048.0) as u32;
+    let base = scale.clamp(1.0, 2048.0) as u32;
     let oc = octaves.clamp(1, MAX_OCTAVES);
     let g = gain.clamp(0.05, 1.0);
     let c = contrast.max(0.05);

@@ -267,7 +267,7 @@ pub fn apply_smart_material_hierarchy(
 
         // High-frequency pseudo-random chipping noise for realistic paint peeling
         let n1 = (x * 0.12).sin() * (y * 0.12).cos() * 0.5 + 0.5;
-        let n2 = (((x * 0.31 + y * 0.27) * 12.9898).sin() * 43758.5453)
+        let n2 = (((x * 0.31 + y * 0.27) * 12.9898).sin() * 43_758.547)
             .fract()
             .abs();
         let noise = n1 * 0.6 + n2 * 0.4;

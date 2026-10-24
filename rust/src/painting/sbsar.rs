@@ -143,7 +143,7 @@ pub fn parse_sbsar(data: &[u8]) -> Result<SbsarPackage, String> {
                 let mut buf = Vec::with_capacity(entry.size() as usize);
                 let n = data.read_to_end(&mut buf).unwrap_or(0);
                 if n > 0 {
-                    xml_texts.push((entry.name().to_string(), buf[..n as usize].to_vec()));
+                    xml_texts.push((entry.name().to_string(), buf[..n].to_vec()));
                 }
             } else {
                 // Non-XML members keep the solid stream flowing correctly.
@@ -224,7 +224,7 @@ pub fn parse_spsm(data: &[u8], source_label: &str) -> Result<SbsarPackage, Strin
                             .map(|(w, old)| weight > *w || (weight == *w && n > old.len()))
                             .unwrap_or(true);
                         if wins {
-                            best = Some((weight, buf[..n as usize].to_vec()));
+                            best = Some((weight, buf[..n].to_vec()));
                         }
                     }
                 } else {
@@ -435,8 +435,10 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
                             clamp,
                         };
                     }
-                } else if tag == "togglebutton" && current_input.is_some() {
-                    current_input.as_mut().unwrap().3 = SbsarWidget::Toggle { default: false };
+                } else if tag == "togglebutton" {
+                    if let Some(input) = current_input.as_mut() {
+                        input.3 = SbsarWidget::Toggle { default: false };
+                    }
                 }
             }
             Ok(Event::End(e)) => {

@@ -2402,8 +2402,8 @@ mod tests {
         let lut = compute_brdf_lut(32);
         assert_eq!(lut.len(), 32 * 32);
         let (a, b) = lut[16 * 32 + 16];
-        assert!(a >= 0.0 && a <= 1.0);
-        assert!(b >= 0.0 && b <= 1.0);
+        assert!((0.0..=1.0).contains(&a));
+        assert!((0.0..=1.0).contains(&b));
     }
 
     #[test]
