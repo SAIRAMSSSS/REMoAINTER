@@ -2,8 +2,8 @@
 use super::anchor::AnchorPoint;
 use super::brush::{sample_brush_alpha, Brush};
 use super::filter::{
-    apply_levels_scalar, gaussian_blur_f32, gaussian_blur_rgba, hsl_to_rgb, rgb_to_hsl,
-    sharpen_f32, sharpen_rgba, FilterEffect, FilterTargetChannel,
+    apply_levels_scalar, apply_point_effect_pixel, gaussian_blur_f32, gaussian_blur_rgba,
+    hsl_to_rgb, rgb_to_hsl, sharpen_f32, sharpen_rgba, FilterEffect, FilterTargetChannel,
 };
 use super::history::HistoryManager;
 use super::mask::{LayerMask, MaskType};
@@ -17,6 +17,7 @@ pub enum LayerType {
     Paint,
     Fill,
     Folder,
+    Adjustment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1042,6 +1043,24 @@ impl Layer {
         l
     }
 
+    pub fn new_adjustment(
+        id: usize,
+        name: impl Into<String>,
+        effect: FilterEffect,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let total = (width * height) as usize;
+        let mut l = Self::new_paint(id, name, width, height);
+        l.layer_type = LayerType::Adjustment;
+        l.blend_mode = BlendMode::Normal;
+        l.channel_height_blend = BlendMode::Normal;
+        l.effects = vec![effect];
+        l.color_tag = Some(7);
+        l.color_buffer = vec![[0.0, 0.0, 0.0, 0.0]; total];
+        l
+    }
+
     pub fn add_black_mask(&mut self) {
         let mut mask = LayerMask::new(MaskType::Black, self.width, self.height);
         mask.recompute(None, None, None, None, None, None);
@@ -1097,6 +1116,12 @@ impl Layer {
         on_mask: bool,
         mut history: Option<&mut HistoryManager>,
     ) -> [i32; 4] {
+        if !on_mask
+            && (self.layer_type == LayerType::Folder || self.layer_type == LayerType::Adjustment)
+        {
+            return [0, 0, 0, 0];
+        }
+
         let w = self.width as i32;
         let h = self.height as i32;
         let px_center = (uv[0].clamp(0.0, 1.0) * (w - 1) as f32).round() as i32;
@@ -2588,6 +2613,255 @@ impl LayerStack {
         );
     }
 
+    /// Evaluates an adjustment layer non-destructively onto accumulated composite channels.
+    pub fn apply_adjustment_layer(&mut self, layer_idx: usize, folder_opacity: f32) {
+        let LayerStack {
+            ref layers,
+            ref mut composite_color,
+            ref mut composite_metallic,
+            ref mut composite_roughness,
+            ref mut composite_height,
+            width,
+            height,
+            ..
+        } = *self;
+
+        let layer = &layers[layer_idx];
+        if !layer.visible || layer.opacity <= 0.001 || folder_opacity <= 0.001 {
+            return;
+        }
+
+        let effects = &layer.effects;
+        if effects.is_empty() {
+            return;
+        }
+
+        let layer_opacity = layer.opacity * folder_opacity;
+        let mask_slice = layer.mask.as_ref().map(|m| m.buffer.as_slice());
+
+        let col_enabled = layer.channel_color_enabled;
+        let col_blend = layer.channel_color_blend;
+        let col_op = layer.channel_color_opacity;
+
+        let met_enabled = layer.channel_metallic_enabled;
+        let met_blend = layer.channel_metallic_blend;
+        let met_op = layer.channel_metallic_opacity;
+
+        let rough_enabled = layer.channel_roughness_enabled;
+        let rough_blend = layer.channel_roughness_blend;
+        let rough_op = layer.channel_roughness_opacity;
+
+        let height_enabled = layer.channel_height_enabled;
+        let height_blend = layer.channel_height_blend;
+        let height_op = layer.channel_height_opacity;
+
+        let total = (width * height) as usize;
+        let w = width as usize;
+        let h = height as usize;
+        let has_spatial = effects.iter().any(|e| e.is_spatial());
+
+        if has_spatial {
+            // Spatial pipeline: execute 2D convolution filters across target channel working copies
+            let mut work_color = composite_color.clone();
+            let mut work_met = composite_metallic.clone();
+            let mut work_rough = composite_roughness.clone();
+            let mut work_height = composite_height.clone();
+
+            for effect in effects {
+                match effect {
+                    FilterEffect::Blur { radius, channel } => {
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::BaseColor
+                        {
+                            work_color = gaussian_blur_rgba(&work_color, w, h, *radius);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Metallic
+                        {
+                            work_met = gaussian_blur_f32(&work_met, w, h, *radius);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Roughness
+                        {
+                            work_rough = gaussian_blur_f32(&work_rough, w, h, *radius);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Height
+                        {
+                            work_height = gaussian_blur_f32(&work_height, w, h, *radius);
+                        }
+                    }
+                    FilterEffect::Sharpen { strength, channel } => {
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::BaseColor
+                        {
+                            work_color = sharpen_rgba(&work_color, w, h, *strength);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Metallic
+                        {
+                            work_met = sharpen_f32(&work_met, w, h, *strength);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Roughness
+                        {
+                            work_rough = sharpen_f32(&work_rough, w, h, *strength);
+                        }
+                        if *channel == FilterTargetChannel::All
+                            || *channel == FilterTargetChannel::Height
+                        {
+                            work_height = sharpen_f32(&work_height, w, h, *strength);
+                        }
+                    }
+                    point_eff => {
+                        for i in 0..total {
+                            apply_point_effect_pixel(
+                                point_eff,
+                                &mut work_color[i],
+                                &mut work_met[i],
+                                &mut work_rough[i],
+                                &mut work_height[i],
+                            );
+                        }
+                    }
+                }
+            }
+
+            for i in 0..total {
+                let mask_val = if let Some(m) = mask_slice {
+                    m.get(i).copied().unwrap_or(1.0)
+                } else {
+                    1.0
+                };
+                let eff_a = (layer_opacity * mask_val).clamp(0.0, 1.0);
+                if eff_a <= 0.001 {
+                    continue;
+                }
+
+                if col_enabled {
+                    let a = (eff_a * col_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let b = [
+                            composite_color[i][0],
+                            composite_color[i][1],
+                            composite_color[i][2],
+                        ];
+                        let t = [work_color[i][0], work_color[i][1], work_color[i][2]];
+                        let blended = blend_colors(b, t, col_blend);
+                        composite_color[i] = [
+                            b[0] * (1.0 - a) + blended[0] * a,
+                            b[1] * (1.0 - a) + blended[1] * a,
+                            b[2] * (1.0 - a) + blended[2] * a,
+                            1.0,
+                        ];
+                    }
+                }
+
+                if met_enabled {
+                    let a = (eff_a * met_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended =
+                            blend_scalar_channel(composite_metallic[i], work_met[i], met_blend);
+                        composite_metallic[i] = composite_metallic[i] * (1.0 - a) + blended * a;
+                    }
+                }
+
+                if rough_enabled {
+                    let a = (eff_a * rough_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended = blend_scalar_channel(
+                            composite_roughness[i],
+                            work_rough[i],
+                            rough_blend,
+                        );
+                        composite_roughness[i] = composite_roughness[i] * (1.0 - a) + blended * a;
+                    }
+                }
+
+                if height_enabled {
+                    let a = (eff_a * height_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended =
+                            blend_scalar_channel(composite_height[i], work_height[i], height_blend);
+                        composite_height[i] = composite_height[i] * (1.0 - a) + blended * a;
+                    }
+                }
+            }
+        } else {
+            // Pure point filter pipeline: zero buffer re-allocations
+            for i in 0..total {
+                let mask_val = if let Some(m) = mask_slice {
+                    m.get(i).copied().unwrap_or(1.0)
+                } else {
+                    1.0
+                };
+                let eff_a = (layer_opacity * mask_val).clamp(0.0, 1.0);
+                if eff_a <= 0.001 {
+                    continue;
+                }
+
+                let orig_c = composite_color[i];
+                let orig_met = composite_metallic[i];
+                let orig_rough = composite_roughness[i];
+                let orig_height = composite_height[i];
+
+                let mut filt_c = orig_c;
+                let mut filt_met = orig_met;
+                let mut filt_rough = orig_rough;
+                let mut filt_height = orig_height;
+
+                for eff in effects {
+                    apply_point_effect_pixel(
+                        eff,
+                        &mut filt_c,
+                        &mut filt_met,
+                        &mut filt_rough,
+                        &mut filt_height,
+                    );
+                }
+
+                if col_enabled {
+                    let a = (eff_a * col_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let b = [orig_c[0], orig_c[1], orig_c[2]];
+                        let t = [filt_c[0], filt_c[1], filt_c[2]];
+                        let blended = blend_colors(b, t, col_blend);
+                        composite_color[i] = [
+                            b[0] * (1.0 - a) + blended[0] * a,
+                            b[1] * (1.0 - a) + blended[1] * a,
+                            b[2] * (1.0 - a) + blended[2] * a,
+                            1.0,
+                        ];
+                    }
+                }
+
+                if met_enabled {
+                    let a = (eff_a * met_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended = blend_scalar_channel(orig_met, filt_met, met_blend);
+                        composite_metallic[i] = orig_met * (1.0 - a) + blended * a;
+                    }
+                }
+
+                if rough_enabled {
+                    let a = (eff_a * rough_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended = blend_scalar_channel(orig_rough, filt_rough, rough_blend);
+                        composite_roughness[i] = orig_rough * (1.0 - a) + blended * a;
+                    }
+                }
+
+                if height_enabled {
+                    let a = (eff_a * height_op).clamp(0.0, 1.0);
+                    if a > 0.001 {
+                        let blended = blend_scalar_channel(orig_height, filt_height, height_blend);
+                        composite_height[i] = orig_height * (1.0 - a) + blended * a;
+                    }
+                }
+            }
+        }
+    }
+
     /// Full PBR Stack Composite with Blend Modes, Channel Masking, and Rayon Multi-threaded Global Illumination
     pub fn composite(
         &mut self,
@@ -2610,13 +2884,6 @@ impl LayerStack {
             self.composite_height.resize(total, 0.0);
         }
         self.composite_height.fill(0.0);
-
-        // Apply layer effects
-        for layer in &mut self.layers {
-            if !layer.effects.is_empty() {
-                layer.apply_effects();
-            }
-        }
 
         let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
             .layers
@@ -2650,15 +2917,23 @@ impl LayerStack {
             }
         }
 
-        for layer in &mut self.layers {
-            if layer.layer_type == LayerType::Folder || !layer.visible {
+        for layer_idx in 0..self.layers.len() {
+            let (is_folder, is_visible, parent_folder_id) = {
+                let layer = &self.layers[layer_idx];
+                (
+                    layer.layer_type == LayerType::Folder,
+                    layer.visible,
+                    layer.parent_folder_id,
+                )
+            };
+            if is_folder || !is_visible {
                 continue;
             }
 
             // Check parent folder visibility and opacity hierarchy
             let mut folder_visible = true;
             let mut folder_opacity = 1.0f32;
-            let mut curr_parent = layer.parent_folder_id;
+            let mut curr_parent = parent_folder_id;
             while let Some(parent_id) = curr_parent {
                 if let Some(parent) = layers_meta.iter().find(|m| m.0 == parent_id) {
                     if !parent.1 {
@@ -2675,18 +2950,26 @@ impl LayerStack {
                 continue;
             }
 
-            if let Some(ref mut mask) = layer.mask {
-                mask.recompute_with_anchors(
-                    baked_curvature,
-                    baked_ao,
-                    baked_wsn,
-                    baked_pos,
-                    baked_thickness,
-                    baked_id,
-                    Some(&anchor_maps),
-                );
+            if let Some(ref mut mask) = self.layers[layer_idx].mask {
+                if !mask.effects.is_empty() {
+                    mask.recompute_with_anchors(
+                        baked_curvature,
+                        baked_ao,
+                        baked_wsn,
+                        baked_pos,
+                        baked_thickness,
+                        baked_id,
+                        Some(&anchor_maps),
+                    );
+                }
             }
 
+            if self.layers[layer_idx].layer_type == LayerType::Adjustment {
+                self.apply_adjustment_layer(layer_idx, folder_opacity);
+                continue;
+            }
+
+            let layer = &self.layers[layer_idx];
             let layer_op = layer.opacity * folder_opacity;
 
             for i in 0..total {
@@ -2902,6 +3185,88 @@ impl LayerStack {
                 continue;
             }
 
+            if layer.layer_type == LayerType::Adjustment {
+                let mask_val = if let Some(ref mask) = layer.mask {
+                    mask.buffer.get(i).copied().unwrap_or(1.0)
+                } else {
+                    1.0
+                };
+                let eff_a = (layer.opacity * folder_opacity * mask_val).clamp(0.0, 1.0);
+                if eff_a > 0.001 {
+                    let orig_c = base_c;
+                    let orig_met = base_met;
+                    let orig_rough = base_rough;
+                    let orig_height = base_height;
+
+                    let mut filt_c = orig_c;
+                    let mut filt_met = orig_met;
+                    let mut filt_rough = orig_rough;
+                    let mut filt_height = orig_height;
+
+                    for eff in &layer.effects {
+                        apply_point_effect_pixel(
+                            eff,
+                            &mut filt_c,
+                            &mut filt_met,
+                            &mut filt_rough,
+                            &mut filt_height,
+                        );
+                    }
+
+                    if layer.channel_color_enabled {
+                        let a = (eff_a * layer.channel_color_opacity).clamp(0.0, 1.0);
+                        if a > 0.001 {
+                            let b = [orig_c[0], orig_c[1], orig_c[2]];
+                            let t = [filt_c[0], filt_c[1], filt_c[2]];
+                            let blended = blend_colors(b, t, layer.channel_color_blend);
+                            base_c = [
+                                b[0] * (1.0 - a) + blended[0] * a,
+                                b[1] * (1.0 - a) + blended[1] * a,
+                                b[2] * (1.0 - a) + blended[2] * a,
+                                1.0,
+                            ];
+                        }
+                    }
+
+                    if layer.channel_metallic_enabled {
+                        let a = (eff_a * layer.channel_metallic_opacity).clamp(0.0, 1.0);
+                        if a > 0.001 {
+                            let blended = blend_scalar_channel(
+                                orig_met,
+                                filt_met,
+                                layer.channel_metallic_blend,
+                            );
+                            base_met = orig_met * (1.0 - a) + blended * a;
+                        }
+                    }
+
+                    if layer.channel_roughness_enabled {
+                        let a = (eff_a * layer.channel_roughness_opacity).clamp(0.0, 1.0);
+                        if a > 0.001 {
+                            let blended = blend_scalar_channel(
+                                orig_rough,
+                                filt_rough,
+                                layer.channel_roughness_blend,
+                            );
+                            base_rough = orig_rough * (1.0 - a) + blended * a;
+                        }
+                    }
+
+                    if layer.channel_height_enabled {
+                        let a = (eff_a * layer.channel_height_opacity).clamp(0.0, 1.0);
+                        if a > 0.001 {
+                            let blended = blend_scalar_channel(
+                                orig_height,
+                                filt_height,
+                                layer.channel_height_blend,
+                            );
+                            base_height = orig_height * (1.0 - a) + blended * a;
+                        }
+                    }
+                }
+                continue;
+            }
+
             let mask_val = if let Some(ref mask) = layer.mask {
                 mask.buffer.get(i).copied().unwrap_or(1.0)
             } else {
@@ -3085,7 +3450,14 @@ impl LayerStack {
         if bbox[2] < bbox[0] || bbox[3] < bbox[1] {
             return;
         }
-        if (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
+
+        let has_spatial_adjustment = self.layers.iter().any(|l| {
+            l.visible
+                && l.layer_type == LayerType::Adjustment
+                && l.effects.iter().any(|e| e.is_spatial())
+        });
+
+        if has_spatial_adjustment || (bbox[2] - bbox[0]) > w / 2 || (bbox[3] - bbox[1]) > h / 2 {
             self.composite(
                 None,
                 baked_ao,
@@ -3653,5 +4025,254 @@ mod tests {
             "flat center must remain near neutral, got {:?}",
             center_norm
         );
+    }
+
+    #[test]
+    fn test_adjustment_layer_invert_non_destructive() {
+        let mut ls = LayerStack::new(4, 4);
+        ls.layers.clear();
+
+        let base_col = [0.8, 0.2, 0.1, 1.0];
+        let fill = Layer::new_fill(1, "Base Fill", base_col, 0.0, 0.5, 4, 4);
+        ls.layers.push(fill);
+
+        // Baseline composite
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+        for c in &ls.composite_color {
+            assert!((c[0] - 0.8).abs() < 0.01);
+            assert!((c[1] - 0.2).abs() < 0.01);
+            assert!((c[2] - 0.1).abs() < 0.01);
+        }
+
+        // Add Adjustment Layer with Invert filter
+        let adj = Layer::new_adjustment(
+            2,
+            "Invert Adjustment",
+            FilterEffect::Invert {
+                channel: FilterTargetChannel::All,
+            },
+            4,
+            4,
+        );
+        ls.layers.push(adj);
+
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Verify composite color is now inverted
+        for c in &ls.composite_color {
+            assert!((c[0] - 0.2).abs() < 0.01, "expected r~0.2, got {}", c[0]);
+            assert!((c[1] - 0.8).abs() < 0.01, "expected g~0.8, got {}", c[1]);
+            assert!((c[2] - 0.9).abs() < 0.01, "expected b~0.9, got {}", c[2]);
+        }
+
+        // Verify raw fill layer strokes/buffers are 100% UNCHANGED (non-destructive)
+        for c in &ls.layers[0].color_buffer {
+            assert!((c[0] - 0.8).abs() < 1e-5);
+            assert!((c[1] - 0.2).abs() < 1e-5);
+            assert!((c[2] - 0.1).abs() < 1e-5);
+        }
+
+        // Disable adjustment layer visibility -> baseline look is restored immediately
+        ls.layers[1].visible = false;
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+        for c in &ls.composite_color {
+            assert!((c[0] - 0.8).abs() < 0.01);
+            assert!((c[1] - 0.2).abs() < 0.01);
+            assert!((c[2] - 0.1).abs() < 0.01);
+        }
+    }
+
+    #[test]
+    fn test_adjustment_layer_with_mask() {
+        let mut ls = LayerStack::new(4, 4);
+        ls.layers.clear();
+
+        let base_col = [0.8, 0.2, 0.1, 1.0];
+        let fill = Layer::new_fill(1, "Base Fill", base_col, 0.0, 0.5, 4, 4);
+        ls.layers.push(fill);
+
+        let mut adj = Layer::new_adjustment(
+            2,
+            "Invert Masked",
+            FilterEffect::Invert {
+                channel: FilterTargetChannel::All,
+            },
+            4,
+            4,
+        );
+
+        // Mask: left 2 columns (x=0,1) unmasked (1.0), right 2 columns (x=2,3) masked (0.0)
+        let mut mask = LayerMask::new(MaskType::Black, 4, 4);
+        for y in 0..4 {
+            for x in 0..2 {
+                mask.buffer[y * 4 + x] = 1.0;
+            }
+        }
+        adj.mask = Some(mask);
+        ls.layers.push(adj);
+
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Left side is inverted
+        for y in 0..4 {
+            for x in 0..2 {
+                let c = ls.composite_color[y * 4 + x];
+                assert!((c[0] - 0.2).abs() < 0.01, "left side should be inverted");
+                assert!((c[1] - 0.8).abs() < 0.01);
+            }
+        }
+
+        // Right side is untouched
+        for y in 0..4 {
+            for x in 2..4 {
+                let c = ls.composite_color[y * 4 + x];
+                assert!(
+                    (c[0] - 0.8).abs() < 0.01,
+                    "right side should remain original"
+                );
+                assert!((c[1] - 0.2).abs() < 0.01);
+            }
+        }
+    }
+
+    #[test]
+    fn test_adjustment_layer_blur_spatial() {
+        let mut ls = LayerStack::new(8, 8);
+        ls.layers.clear();
+
+        // Layer with sharp white left half, black right half
+        let mut paint = Layer::new_paint(1, "Step", 8, 8);
+        for y in 0..8 {
+            for x in 0..4 {
+                paint.color_buffer[y * 8 + x] = [1.0, 1.0, 1.0, 1.0];
+            }
+            for x in 4..8 {
+                paint.color_buffer[y * 8 + x] = [0.0, 0.0, 0.0, 1.0];
+            }
+        }
+        ls.layers.push(paint);
+
+        let blur_adj = Layer::new_adjustment(
+            2,
+            "Blur Adjustment",
+            FilterEffect::Blur {
+                radius: 2.0,
+                channel: FilterTargetChannel::All,
+            },
+            8,
+            8,
+        );
+        ls.layers.push(blur_adj);
+
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // The step transition at x=3 and x=4 should now be smoothly blurred
+        let c3 = ls.composite_color[4 * 8 + 3][0];
+        let c4 = ls.composite_color[4 * 8 + 4][0];
+        assert!(
+            c3 < 0.99 && c3 > 0.01,
+            "pixel at border should be blurred, got {}",
+            c3
+        );
+        assert!(
+            c4 < 0.99 && c4 > 0.01,
+            "pixel at border should be blurred, got {}",
+            c4
+        );
+    }
+
+    #[test]
+    fn test_adjustment_layer_height_blend_normal_not_doubled() {
+        let mut ls = LayerStack::new(4, 4);
+        ls.layers.clear();
+
+        // Base layer with 0.35 height
+        let mut fill = Layer::new_fill(1, "Base Bump", [0.5, 0.5, 0.5, 1.0], 0.0, 0.5, 4, 4);
+        fill.fill_height = 0.35;
+        fill.update_fill();
+        ls.layers.push(fill);
+
+        // Add Invert Adjustment layer targeting BaseColor only
+        let adj = Layer::new_adjustment(
+            2,
+            "Invert Color Only",
+            FilterEffect::Invert {
+                channel: FilterTargetChannel::BaseColor,
+            },
+            4,
+            4,
+        );
+        ls.layers.push(adj);
+
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // Underlying height must remain exactly 0.35, not doubled to 0.70 via Add blend!
+        for h in &ls.composite_height {
+            assert!(
+                (h - 0.35).abs() < 1e-4,
+                "adjustment layer must not double underlying height, expected 0.35 got {}",
+                h
+            );
+        }
     }
 }

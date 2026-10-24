@@ -211,6 +211,7 @@ impl ProjectManager {
                 LayerType::Paint => "Paint",
                 LayerType::Fill => "Fill",
                 LayerType::Folder => "Folder",
+                LayerType::Adjustment => "Adjustment",
             };
             let blend_str = match layer.blend_mode {
                 BlendMode::Normal => "Normal",
@@ -524,6 +525,7 @@ impl ProjectManager {
             let layer_type = match lm.layer_type.as_str() {
                 "Fill" => LayerType::Fill,
                 "Folder" => LayerType::Folder,
+                "Adjustment" => LayerType::Adjustment,
                 _ => LayerType::Paint,
             };
             let blend_mode = match lm.blend_mode.as_str() {
@@ -579,7 +581,11 @@ impl ProjectManager {
                 channel_metallic_blend: BlendMode::Normal,
                 channel_roughness_blend: BlendMode::Normal,
                 channel_normal_blend: BlendMode::Normal,
-                channel_height_blend: BlendMode::Add,
+                channel_height_blend: if layer_type == LayerType::Adjustment {
+                    BlendMode::Normal
+                } else {
+                    BlendMode::Add
+                },
 
                 channel_color_opacity: 1.0,
                 channel_metallic_opacity: 1.0,
@@ -816,6 +822,7 @@ impl ProjectManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::painting::FilterTargetChannel;
 
     #[test]
     fn test_project_manifest_roundtrip() {
@@ -999,6 +1006,63 @@ mod tests {
         let half =
             crate::baker::engine::half_bits_to_f32(crate::baker::engine::f32_to_half_bits(0.5));
         assert_eq!(ao[0], half, "0.5 must survive the f16 round-trip exactly");
+
+        let _ = fs::remove_file(project_path);
+        let _ = fs::remove_dir(temp_dir);
+    }
+
+    #[test]
+    fn test_adjustment_layer_project_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("remoainter_adj_test");
+        let _ = fs::create_dir_all(&temp_dir);
+        let project_path = temp_dir.join("test_adj.rmp");
+
+        let mesh = Mesh::create_material_sphere(8, 8);
+        let mut layer_stack = LayerStack::new(4, 4);
+        layer_stack.layers.clear();
+
+        let fill = Layer::new_fill(1, "Base", [0.5, 0.5, 0.5, 1.0], 0.0, 0.5, 4, 4);
+        let adj = Layer::new_adjustment(
+            2,
+            "Levels Adjustment",
+            FilterEffect::Levels {
+                min_in: 0.1,
+                max_in: 0.9,
+                gamma: 1.2,
+                min_out: 0.0,
+                max_out: 1.0,
+                channel: FilterTargetChannel::All,
+            },
+            4,
+            4,
+        );
+        layer_stack.layers.push(fill);
+        layer_stack.layers.push(adj);
+
+        let baked_maps = BakedMaps::default();
+        let baker_options = BakerOptions::default();
+
+        let save_res = ProjectManager::save_project(
+            &project_path,
+            "AdjProject",
+            &mesh,
+            None,
+            &layer_stack,
+            &baked_maps,
+            &baker_options,
+            (0.0, 0.0, 2.0),
+            (0.0, 1.0, 0.0, 0),
+        );
+        assert!(save_res.is_ok(), "save failed: {:?}", save_res.err());
+
+        let load_res = ProjectManager::load_project(&project_path);
+        assert!(load_res.is_ok(), "load failed: {:?}", load_res.err());
+        let (manifest, _, loaded_stack, _, _) = load_res.unwrap();
+
+        assert_eq!(manifest.layers.len(), 2);
+        assert_eq!(manifest.layers[1].layer_type, "Adjustment");
+        assert_eq!(loaded_stack.layers[1].layer_type, LayerType::Adjustment);
+        assert_eq!(loaded_stack.layers[1].effects.len(), 1);
 
         let _ = fs::remove_file(project_path);
         let _ = fs::remove_dir(temp_dir);

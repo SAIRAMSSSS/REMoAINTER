@@ -63,6 +63,14 @@ impl FilterEffect {
             FilterEffect::GradientMap { .. } => "Gradient Map",
         }
     }
+
+    #[inline]
+    pub fn is_spatial(&self) -> bool {
+        matches!(
+            self,
+            FilterEffect::Blur { .. } | FilterEffect::Sharpen { .. }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +89,122 @@ pub fn apply_levels_scalar(
     let norm = ((v - min_in) / range_in).clamp(0.0, 1.0);
     let g = norm.powf(1.0 / gamma.max(0.01));
     (min_out + g * (max_out - min_out)).clamp(0.0, 1.0)
+}
+
+pub fn apply_levels_rgba(
+    c: [f32; 4],
+    min_in: f32,
+    max_in: f32,
+    gamma: f32,
+    min_out: f32,
+    max_out: f32,
+) -> [f32; 4] {
+    [
+        apply_levels_scalar(c[0], min_in, max_in, gamma, min_out, max_out),
+        apply_levels_scalar(c[1], min_in, max_in, gamma, min_out, max_out),
+        apply_levels_scalar(c[2], min_in, max_in, gamma, min_out, max_out),
+        c[3],
+    ]
+}
+
+pub fn apply_hsl_rgba(c: [f32; 4], hue_shift: f32, sat_mult: f32, light_offset: f32) -> [f32; 4] {
+    let (mut h, mut s, mut l) = rgb_to_hsl(c[0], c[1], c[2]);
+    h = (h + hue_shift).rem_euclid(360.0);
+    s = (s * sat_mult).clamp(0.0, 1.0);
+    l = (l + light_offset).clamp(0.0, 1.0);
+    let (r, g, b) = hsl_to_rgb(h, s, l);
+    [r, g, b, c[3]]
+}
+
+pub fn apply_invert_scalar(v: f32) -> f32 {
+    (1.0 - v).clamp(0.0, 1.0)
+}
+
+pub fn apply_invert_rgba(c: [f32; 4]) -> [f32; 4] {
+    [
+        (1.0 - c[0]).clamp(0.0, 1.0),
+        (1.0 - c[1]).clamp(0.0, 1.0),
+        (1.0 - c[2]).clamp(0.0, 1.0),
+        c[3],
+    ]
+}
+
+pub fn apply_gradient_map_rgba(
+    c: [f32; 4],
+    color_start: [f32; 4],
+    color_end: [f32; 4],
+) -> [f32; 4] {
+    let lum = (c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722).clamp(0.0, 1.0);
+    [
+        color_start[0] + lum * (color_end[0] - color_start[0]),
+        color_start[1] + lum * (color_end[1] - color_start[1]),
+        color_start[2] + lum * (color_end[2] - color_start[2]),
+        c[3],
+    ]
+}
+
+#[inline]
+pub fn apply_point_effect_pixel(
+    effect: &FilterEffect,
+    color: &mut [f32; 4],
+    metallic: &mut f32,
+    roughness: &mut f32,
+    height: &mut f32,
+) {
+    match effect {
+        FilterEffect::Levels {
+            min_in,
+            max_in,
+            gamma,
+            min_out,
+            max_out,
+            channel,
+        } => {
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                *color = apply_levels_rgba(*color, *min_in, *max_in, *gamma, *min_out, *max_out);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                *metallic =
+                    apply_levels_scalar(*metallic, *min_in, *max_in, *gamma, *min_out, *max_out);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                *roughness =
+                    apply_levels_scalar(*roughness, *min_in, *max_in, *gamma, *min_out, *max_out);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                *height =
+                    apply_levels_scalar(*height, *min_in, *max_in, *gamma, *min_out, *max_out);
+            }
+        }
+        FilterEffect::HSL {
+            hue_shift,
+            sat_mult,
+            light_offset,
+        } => {
+            *color = apply_hsl_rgba(*color, *hue_shift, *sat_mult, *light_offset);
+        }
+        FilterEffect::Invert { channel } => {
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::BaseColor {
+                *color = apply_invert_rgba(*color);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Metallic {
+                *metallic = apply_invert_scalar(*metallic);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Roughness {
+                *roughness = apply_invert_scalar(*roughness);
+            }
+            if *channel == FilterTargetChannel::All || *channel == FilterTargetChannel::Height {
+                *height = -*height;
+            }
+        }
+        FilterEffect::GradientMap {
+            color_start,
+            color_end,
+        } => {
+            *color = apply_gradient_map_rgba(*color, *color_start, *color_end);
+        }
+        FilterEffect::Blur { .. } | FilterEffect::Sharpen { .. } => {}
+    }
 }
 
 pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {

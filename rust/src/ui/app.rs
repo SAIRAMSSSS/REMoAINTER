@@ -1267,15 +1267,30 @@ impl RemoainterApp {
         );
         self.texture_needs_update = true;
 
+        let has_spatial = self.layer_stack.layers.iter().any(|l| {
+            l.visible
+                && l.layer_type == LayerType::Adjustment
+                && l.effects.iter().any(|e| e.is_spatial())
+        });
+
         if let Some(ref vp_mutex) = self.viewport_wgpu {
             if let Some(ref queue) = self.wgpu_queue {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    let upload_bbox = [
-                        (bbox[0] - 1).max(0),
-                        (bbox[1] - 1).max(0),
-                        (bbox[2] + 1).min(self.layer_stack.width as i32 - 1),
-                        (bbox[3] + 1).min(self.layer_stack.height as i32 - 1),
-                    ];
+                    let upload_bbox = if has_spatial {
+                        [
+                            0,
+                            0,
+                            self.layer_stack.width as i32 - 1,
+                            self.layer_stack.height as i32 - 1,
+                        ]
+                    } else {
+                        [
+                            (bbox[0] - 1).max(0),
+                            (bbox[1] - 1).max(0),
+                            (bbox[2] + 1).min(self.layer_stack.width as i32 - 1),
+                            (bbox[3] + 1).min(self.layer_stack.height as i32 - 1),
+                        ]
+                    };
                     vp.upload_dirty(queue, &self.layer_stack, upload_bbox);
                 }
             }
@@ -6093,6 +6108,123 @@ impl RemoainterApp {
                 self.recompute_composite();
                 self.status_message = "Added Folder".into();
             }
+            ui.menu_button("+ Adjustment", |ui| {
+                let id = self.layer_stack.layers.len() + 1;
+                let w = self.layer_stack.width;
+                let h = self.layer_stack.height;
+                if ui.button("📊 Levels").clicked() {
+                    let eff = FilterEffect::Levels {
+                        min_in: 0.0,
+                        max_in: 1.0,
+                        gamma: 1.0,
+                        min_out: 0.0,
+                        max_out: 1.0,
+                        channel: FilterTargetChannel::All,
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("Levels {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Levels Adjustment Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("💧 Gaussian Blur").clicked() {
+                    let eff = FilterEffect::Blur {
+                        radius: 3.0,
+                        channel: FilterTargetChannel::All,
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("Blur {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Blur Adjustment Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🔪 Sharpen").clicked() {
+                    let eff = FilterEffect::Sharpen {
+                        strength: 1.5,
+                        channel: FilterTargetChannel::All,
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("Sharpen {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Sharpen Adjustment Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🌈 HSL Adjustment").clicked() {
+                    let eff = FilterEffect::HSL {
+                        hue_shift: 0.0,
+                        sat_mult: 1.0,
+                        light_offset: 0.0,
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("HSL {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added HSL Adjustment Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🔄 Invert").clicked() {
+                    let eff = FilterEffect::Invert {
+                        channel: FilterTargetChannel::All,
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("Invert {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Invert Adjustment Layer".into();
+                    ui.close_menu();
+                }
+                if ui.button("🎨 Gradient Map").clicked() {
+                    let eff = FilterEffect::GradientMap {
+                        color_start: [0.0, 0.0, 0.0, 1.0],
+                        color_end: [1.0, 1.0, 1.0, 1.0],
+                    };
+                    self.layer_stack.layers.push(Layer::new_adjustment(
+                        id,
+                        format!("Gradient Map {}", id),
+                        eff,
+                        w,
+                        h,
+                    ));
+                    self.layer_stack.active_layer_index = self.layer_stack.layers.len() - 1;
+                    self.paint_target_mask = false;
+                    self.recompute_composite();
+                    self.status_message = "Added Gradient Map Adjustment Layer".into();
+                    ui.close_menu();
+                }
+            });
             if ui
                 .small_button("+ Black Mask")
                 .on_hover_text("Add Black Mask with Sub-Stack")
@@ -6135,7 +6267,9 @@ impl RemoainterApp {
                             max_out: 1.0,
                             channel: FilterTargetChannel::All,
                         });
-                        active.apply_effects();
+                        if active.layer_type == LayerType::Fill {
+                            active.update_fill();
+                        }
                     }
                     self.recompute_composite();
                     ui.close_menu();
@@ -6146,7 +6280,9 @@ impl RemoainterApp {
                             radius: 3.0,
                             channel: FilterTargetChannel::All,
                         });
-                        active.apply_effects();
+                        if active.layer_type == LayerType::Fill {
+                            active.update_fill();
+                        }
                     }
                     self.recompute_composite();
                     ui.close_menu();
@@ -6157,7 +6293,9 @@ impl RemoainterApp {
                             strength: 1.5,
                             channel: FilterTargetChannel::All,
                         });
-                        active.apply_effects();
+                        if active.layer_type == LayerType::Fill {
+                            active.update_fill();
+                        }
                     }
                     self.recompute_composite();
                     ui.close_menu();
@@ -6169,7 +6307,9 @@ impl RemoainterApp {
                             sat_mult: 1.0,
                             light_offset: 0.0,
                         });
-                        active.apply_effects();
+                        if active.layer_type == LayerType::Fill {
+                            active.update_fill();
+                        }
                     }
                     self.recompute_composite();
                     ui.close_menu();
@@ -6179,7 +6319,9 @@ impl RemoainterApp {
                         active.effects.push(FilterEffect::Invert {
                             channel: FilterTargetChannel::All,
                         });
-                        active.apply_effects();
+                        if active.layer_type == LayerType::Fill {
+                            active.update_fill();
+                        }
                     }
                     self.recompute_composite();
                     ui.close_menu();
@@ -6236,6 +6378,7 @@ impl RemoainterApp {
             AddPaintLayer,
             AddFillLayer,
             AddFolder,
+            AddAdjustmentLayer(FilterEffect),
             Cut(usize),
             Copy(usize),
             Paste,
@@ -6345,6 +6488,7 @@ impl RemoainterApp {
                         LayerType::Paint => ("P", Color32::from_rgb(100, 200, 255)),
                         LayerType::Fill => ("F", SMART_MAT_ORANGE),
                         LayerType::Folder => ("D", Color32::from_rgb(255, 215, 0)),
+                        LayerType::Adjustment => ("A", Color32::from_rgb(180, 100, 255)),
                     };
                     ui.painter()
                         .rect_filled(mat_thumb_rect, 2.0, Color32::from_rgb(35, 35, 40));
@@ -6670,65 +6814,67 @@ impl RemoainterApp {
                                 ui.close_menu();
                             }
                         });
-                        ui.menu_button("🔮 Add filter", |ui| {
-                            if ui.button("Levels").clicked() {
-                                list_action = Some(LayerListAction::AddFilter(
-                                    i,
-                                    FilterEffect::Levels {
-                                        min_in: 0.0,
-                                        max_in: 1.0,
-                                        gamma: 1.0,
-                                        min_out: 0.0,
-                                        max_out: 1.0,
-                                        channel: FilterTargetChannel::All,
-                                    },
-                                ));
+                        if layer_type == LayerType::Adjustment {
+                            ui.menu_button("🔮 Add filter", |ui| {
+                                if ui.button("Levels").clicked() {
+                                    list_action = Some(LayerListAction::AddFilter(
+                                        i,
+                                        FilterEffect::Levels {
+                                            min_in: 0.0,
+                                            max_in: 1.0,
+                                            gamma: 1.0,
+                                            min_out: 0.0,
+                                            max_out: 1.0,
+                                            channel: FilterTargetChannel::All,
+                                        },
+                                    ));
+                                    ui.close_menu();
+                                }
+                                if ui.button("Gaussian Blur").clicked() {
+                                    list_action = Some(LayerListAction::AddFilter(
+                                        i,
+                                        FilterEffect::Blur {
+                                            radius: 3.0,
+                                            channel: FilterTargetChannel::All,
+                                        },
+                                    ));
+                                    ui.close_menu();
+                                }
+                                if ui.button("Sharpen").clicked() {
+                                    list_action = Some(LayerListAction::AddFilter(
+                                        i,
+                                        FilterEffect::Sharpen {
+                                            strength: 1.5,
+                                            channel: FilterTargetChannel::All,
+                                        },
+                                    ));
+                                    ui.close_menu();
+                                }
+                                if ui.button("HSL Adjustment").clicked() {
+                                    list_action = Some(LayerListAction::AddFilter(
+                                        i,
+                                        FilterEffect::HSL {
+                                            hue_shift: 0.0,
+                                            sat_mult: 1.0,
+                                            light_offset: 0.0,
+                                        },
+                                    ));
+                                    ui.close_menu();
+                                }
+                                if ui.button("Invert").clicked() {
+                                    list_action = Some(LayerListAction::AddFilter(
+                                        i,
+                                        FilterEffect::Invert {
+                                            channel: FilterTargetChannel::All,
+                                        },
+                                    ));
+                                    ui.close_menu();
+                                }
+                            });
+                            if ui.button("📊 Add levels").clicked() {
+                                list_action = Some(LayerListAction::AddLevels(i));
                                 ui.close_menu();
                             }
-                            if ui.button("Gaussian Blur").clicked() {
-                                list_action = Some(LayerListAction::AddFilter(
-                                    i,
-                                    FilterEffect::Blur {
-                                        radius: 3.0,
-                                        channel: FilterTargetChannel::All,
-                                    },
-                                ));
-                                ui.close_menu();
-                            }
-                            if ui.button("Sharpen").clicked() {
-                                list_action = Some(LayerListAction::AddFilter(
-                                    i,
-                                    FilterEffect::Sharpen {
-                                        strength: 1.5,
-                                        channel: FilterTargetChannel::All,
-                                    },
-                                ));
-                                ui.close_menu();
-                            }
-                            if ui.button("HSL Adjustment").clicked() {
-                                list_action = Some(LayerListAction::AddFilter(
-                                    i,
-                                    FilterEffect::HSL {
-                                        hue_shift: 0.0,
-                                        sat_mult: 1.0,
-                                        light_offset: 0.0,
-                                    },
-                                ));
-                                ui.close_menu();
-                            }
-                            if ui.button("Invert").clicked() {
-                                list_action = Some(LayerListAction::AddFilter(
-                                    i,
-                                    FilterEffect::Invert {
-                                        channel: FilterTargetChannel::All,
-                                    },
-                                ));
-                                ui.close_menu();
-                            }
-                        });
-                        if ui.button("📊 Add levels").clicked() {
-                            list_action = Some(LayerListAction::AddLevels(i));
-                            ui.close_menu();
                         }
                         if ui.button("⚓ Add anchor point").clicked() {
                             list_action = Some(LayerListAction::AddAnchor(i));
@@ -6742,6 +6888,64 @@ impl RemoainterApp {
                             list_action = Some(LayerListAction::AddFillLayer);
                             ui.close_menu();
                         }
+                        ui.menu_button("✨ Add adjustment layer", |ui| {
+                            if ui.button("Levels").clicked() {
+                                list_action = Some(LayerListAction::AddAdjustmentLayer(
+                                    FilterEffect::Levels {
+                                        min_in: 0.0,
+                                        max_in: 1.0,
+                                        gamma: 1.0,
+                                        min_out: 0.0,
+                                        max_out: 1.0,
+                                        channel: FilterTargetChannel::All,
+                                    },
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("Gaussian Blur").clicked() {
+                                list_action =
+                                    Some(LayerListAction::AddAdjustmentLayer(FilterEffect::Blur {
+                                        radius: 3.0,
+                                        channel: FilterTargetChannel::All,
+                                    }));
+                                ui.close_menu();
+                            }
+                            if ui.button("Sharpen").clicked() {
+                                list_action = Some(LayerListAction::AddAdjustmentLayer(
+                                    FilterEffect::Sharpen {
+                                        strength: 1.5,
+                                        channel: FilterTargetChannel::All,
+                                    },
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("HSL Adjustment").clicked() {
+                                list_action =
+                                    Some(LayerListAction::AddAdjustmentLayer(FilterEffect::HSL {
+                                        hue_shift: 0.0,
+                                        sat_mult: 1.0,
+                                        light_offset: 0.0,
+                                    }));
+                                ui.close_menu();
+                            }
+                            if ui.button("Invert").clicked() {
+                                list_action = Some(LayerListAction::AddAdjustmentLayer(
+                                    FilterEffect::Invert {
+                                        channel: FilterTargetChannel::All,
+                                    },
+                                ));
+                                ui.close_menu();
+                            }
+                            if ui.button("Gradient Map").clicked() {
+                                list_action = Some(LayerListAction::AddAdjustmentLayer(
+                                    FilterEffect::GradientMap {
+                                        color_start: [0.0, 0.0, 0.0, 1.0],
+                                        color_end: [1.0, 1.0, 1.0, 1.0],
+                                    },
+                                ));
+                                ui.close_menu();
+                            }
+                        });
                         if layer_type == LayerType::Paint && ui.button("🧹 Clear layer").clicked()
                         {
                             list_action = Some(LayerListAction::ClearLayer(i));
@@ -6994,6 +7198,24 @@ impl RemoainterApp {
                     recomposite_needed = true;
                     self.status_message = format!("Added Folder {}", id);
                 }
+                LayerListAction::AddAdjustmentLayer(effect) => {
+                    let id = self.layer_stack.layers.len() + 1;
+                    let name = format!("{} {}", effect.name(), id);
+                    let adj = Layer::new_adjustment(
+                        id,
+                        name,
+                        effect,
+                        self.layer_stack.width,
+                        self.layer_stack.height,
+                    );
+                    let insert_at = (self.layer_stack.active_layer_index + 1)
+                        .min(self.layer_stack.layers.len());
+                    self.layer_stack.layers.insert(insert_at, adj);
+                    self.layer_stack.active_layer_index = insert_at;
+                    self.paint_target_mask = false;
+                    recomposite_needed = true;
+                    self.status_message = format!("Added Adjustment Layer {}", id);
+                }
                 LayerListAction::InvertMask(i) => {
                     if let Some(l) = self.layer_stack.layers.get_mut(i) {
                         if let Some(ref mut m) = l.mask {
@@ -7065,7 +7287,9 @@ impl RemoainterApp {
                 LayerListAction::AddFilter(i, effect) => {
                     if let Some(l) = self.layer_stack.layers.get_mut(i) {
                         l.effects.push(effect);
-                        l.apply_effects();
+                        if l.layer_type == LayerType::Fill {
+                            l.update_fill();
+                        }
                         recomposite_needed = true;
                         self.status_message = format!("Added Filter to {}", l.name);
                     }
@@ -7410,9 +7634,10 @@ impl RemoainterApp {
                     });
 
                     // Layer Filter & Effects Stack
-                    ui.collapsing(
-                        format!("FILTER & EFFECT STACK ({})", active_layer.effects.len()),
-                        |ui| {
+                    if active_layer.layer_type == LayerType::Adjustment {
+                        ui.collapsing(
+                            format!("FILTER & EFFECT STACK ({})", active_layer.effects.len()),
+                            |ui| {
                             ui.horizontal(|ui| {
                                 ui.menu_button("+ Add Filter...", |ui| {
                                     if ui.button("Levels").clicked() {
@@ -7424,7 +7649,9 @@ impl RemoainterApp {
                                             max_out: 1.0,
                                             channel: FilterTargetChannel::All,
                                         });
-                                        active_layer.apply_effects();
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
                                         recomposite_needed = true;
                                         ui.close_menu();
                                     }
@@ -7433,7 +7660,9 @@ impl RemoainterApp {
                                             radius: 3.0,
                                             channel: FilterTargetChannel::All,
                                         });
-                                        active_layer.apply_effects();
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
                                         recomposite_needed = true;
                                         ui.close_menu();
                                     }
@@ -7442,7 +7671,9 @@ impl RemoainterApp {
                                             strength: 1.5,
                                             channel: FilterTargetChannel::All,
                                         });
-                                        active_layer.apply_effects();
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
                                         recomposite_needed = true;
                                         ui.close_menu();
                                     }
@@ -7452,7 +7683,9 @@ impl RemoainterApp {
                                             sat_mult: 1.0,
                                             light_offset: 0.0,
                                         });
-                                        active_layer.apply_effects();
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
                                         recomposite_needed = true;
                                         ui.close_menu();
                                     }
@@ -7460,7 +7693,20 @@ impl RemoainterApp {
                                         active_layer.effects.push(FilterEffect::Invert {
                                             channel: FilterTargetChannel::All,
                                         });
-                                        active_layer.apply_effects();
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
+                                        recomposite_needed = true;
+                                        ui.close_menu();
+                                    }
+                                    if ui.button("Gradient Map").clicked() {
+                                        active_layer.effects.push(FilterEffect::GradientMap {
+                                            color_start: [0.0, 0.0, 0.0, 1.0],
+                                            color_end: [1.0, 1.0, 1.0, 1.0],
+                                        });
+                                        if active_layer.layer_type == LayerType::Fill {
+                                            active_layer.update_fill();
+                                        }
                                         recomposite_needed = true;
                                         ui.close_menu();
                                     }
@@ -7633,11 +7879,22 @@ impl RemoainterApp {
                             }
 
                             if effects_changed {
-                                active_layer.apply_effects();
+                                if active_layer.layer_type == LayerType::Fill {
+                                    active_layer.update_fill();
+                                }
                                 recomposite_needed = true;
                             }
                         },
                     );
+                } else {
+                    ui.collapsing("FILTER & EFFECT STACK", |ui| {
+                        ui.label(
+                            egui::RichText::new("💡 To filter or grade layers non-destructively, add an Adjustment Layer (+ Adjustment) in the Layers panel.")
+                                .italics()
+                                .color(egui::Color32::from_rgb(180, 180, 190)),
+                        );
+                    });
+                }
 
                     if active_layer.layer_type == LayerType::Fill {
                         ui.separator();
