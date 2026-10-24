@@ -82,6 +82,8 @@ pub struct RemoainterApp {
     pub baking_progress: Arc<AtomicUsize>,
     pub cancel_baking: Arc<AtomicBool>,
     pub baking_receiver: Option<std::sync::mpsc::Receiver<BakedMaps>>,
+    pub udim_baking_receiver:
+        Option<std::sync::mpsc::Receiver<std::collections::BTreeMap<u32, BakedMaps>>>,
     pub show_baker_dialog: bool,
     pub baker_selected_map: usize,
     pub baker_subsampling: usize,
@@ -735,6 +737,7 @@ impl Default for RemoainterApp {
             baking_progress: Arc::new(AtomicUsize::new(0)),
             cancel_baking: Arc::new(AtomicBool::new(false)),
             baking_receiver: None,
+            udim_baking_receiver: None,
             show_baker_dialog: false,
             baker_selected_map: 99, // Default to Common settings (High-Poly parameters & Output)
             baker_subsampling: 0,
@@ -1323,7 +1326,18 @@ impl RemoainterApp {
         if let Some(ref vp_mutex) = self.viewport_wgpu {
             if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    vp.upload_textures(device, queue, &self.layer_stack, &self.baked_maps);
+                    if self.texture_set_manager.is_udim_workflow {
+                        let cur_idx = self.texture_set_manager.active_index;
+                        if cur_idx < self.texture_set_manager.sets.len() {
+                            self.texture_set_manager.sets[cur_idx].layer_stack =
+                                self.layer_stack.clone();
+                            self.texture_set_manager.sets[cur_idx].baked_maps =
+                                self.baked_maps.clone();
+                        }
+                        vp.upload_udim_textures(device, queue, &self.texture_set_manager);
+                    } else {
+                        vp.upload_textures(device, queue, &self.layer_stack, &self.baked_maps);
+                    }
                 }
             }
         }
@@ -1366,7 +1380,12 @@ impl RemoainterApp {
                             (bbox[3] + 1).min(self.layer_stack.height as i32 - 1),
                         ]
                     };
-                    vp.upload_dirty(queue, &self.layer_stack, upload_bbox);
+                    if self.texture_set_manager.is_udim_workflow {
+                        let active_idx = self.texture_set_manager.active_index as u32;
+                        vp.upload_dirty_tile(queue, active_idx, &self.layer_stack, upload_bbox);
+                    } else {
+                        vp.upload_dirty(queue, &self.layer_stack, upload_bbox);
+                    }
                 }
             }
         }
@@ -1445,6 +1464,14 @@ impl RemoainterApp {
             2 => 4,
             _ => 1,
         };
+        self.baker_options.udim_tile = if self.texture_set_manager.is_udim_workflow {
+            self.texture_set_manager
+                .sets
+                .get(self.texture_set_manager.active_index)
+                .and_then(|s| s.udim_tile)
+        } else {
+            None
+        };
 
         let verts = self.mesh.vertices.clone();
         let norms = self.mesh.normals.clone();
@@ -1469,7 +1496,7 @@ impl RemoainterApp {
                 &inds,
                 &subms,
                 &opts,
-                Some(progress),
+                Some(progress.clone()),
                 Some(cancel),
                 hp_mesh.as_ref(),
             );
@@ -1486,6 +1513,85 @@ impl RemoainterApp {
             format!(
                 "Started background bake (res={}, AA={}x) for {}",
                 self.baker_options.resolution, self.baker_options.anti_aliasing, self.mesh.name
+            ),
+        ));
+    }
+
+    /// Asynchronously bakes all UDIM tiles in parallel across the mesh geometry.
+    pub fn bake_all_udim_tiles(&mut self) {
+        if self.is_baking {
+            return;
+        }
+        self.is_baking = true;
+        self.cancel_baking.store(false, Ordering::Relaxed);
+        self.baking_progress.store(0, Ordering::Relaxed);
+
+        let progress = Arc::clone(&self.baking_progress);
+
+        // Sync baker options from UI state
+        self.baker_options.max_frontal_distance = self.baker_frontal_dist;
+        self.baker_options.max_rear_distance = self.baker_rear_dist;
+        self.baker_options.low_poly_suffix = self.baker_low_suffix.clone();
+        self.baker_options.high_poly_suffix = self.baker_high_suffix.clone();
+        self.baker_options.relative_to_bbox = self.baker_relative_to_bbox;
+        self.baker_options.average_normals = self.baker_average_normals;
+        self.baker_options.ignore_backfaces = self.baker_ignore_backfaces;
+        self.baker_options.anti_aliasing = match self.baker_subsampling {
+            1 => 2,
+            2 => 4,
+            _ => 1,
+        };
+
+        let verts = self.mesh.vertices.clone();
+        let norms = self.mesh.normals.clone();
+        let uvs = self.mesh.uvs.clone();
+        let inds = self.mesh.indices.clone();
+        let subms = self.mesh.submeshes.clone();
+        let opts = self.baker_options.clone();
+        let cancel = Arc::clone(&self.cancel_baking);
+        let hp_mesh = if !self.baker_use_low_as_high {
+            self.baker_high_poly_mesh.clone()
+        } else {
+            None
+        };
+
+        let udim_tiles: Vec<u32> = self
+            .texture_set_manager
+            .sets
+            .iter()
+            .filter_map(|s| s.udim_tile)
+            .collect();
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.udim_baking_receiver = Some(rx);
+
+        std::thread::spawn(move || {
+            let result = BakerEngine::bake_all_udim(
+                &verts,
+                &norms,
+                &uvs,
+                &inds,
+                &subms,
+                &opts,
+                &udim_tiles,
+                Some(progress.clone()),
+                Some(cancel),
+                hp_mesh.as_ref(),
+            );
+            let _ = tx.send(result);
+            progress.store(100, Ordering::Relaxed);
+        });
+
+        self.status_message = format!(
+            "Baking all UDIM tiles ({}x{})...",
+            self.baker_options.resolution, self.baker_options.resolution
+        );
+        self.logs.push((
+            chrono::Local::now().format("%H:%M:%S").to_string(),
+            "INFO".into(),
+            format!(
+                "Started background multi-tile UDIM bake for {}",
+                self.mesh.name
             ),
         ));
     }
@@ -1715,6 +1821,36 @@ impl RemoainterApp {
 
                 self.texture_set_manager
                     .configure_from_mesh(&self.mesh, self.layer_stack.width);
+                if self.texture_set_manager.is_udim_workflow {
+                    let udim_tiles: Vec<u32> = self
+                        .texture_set_manager
+                        .sets
+                        .iter()
+                        .filter_map(|s| s.udim_tile)
+                        .collect();
+                    let tile_maps = BakerEngine::bake_all_udim(
+                        &self.mesh.vertices,
+                        &self.mesh.normals,
+                        &self.mesh.uvs,
+                        &self.mesh.indices,
+                        &self.mesh.submeshes,
+                        &self.baker_options,
+                        &udim_tiles,
+                        None,
+                        None,
+                        None,
+                    );
+                    for set in &mut self.texture_set_manager.sets {
+                        if let Some(tile_id) = set.udim_tile {
+                            if let Some(maps) = tile_maps.get(&tile_id) {
+                                set.baked_maps = maps.clone();
+                            }
+                        }
+                    }
+                    if let Some(set0) = self.texture_set_manager.sets.first() {
+                        self.baked_maps = set0.baked_maps.clone();
+                    }
+                }
                 self.recompute_composite();
                 self.status_message = format!(
                     "Loaded {} ({} vertices, {} triangles) with baked mesh maps",
@@ -2114,15 +2250,19 @@ impl RemoainterApp {
 
         // 2. Activate incoming set and load its layers & baked maps
         self.texture_set_manager.active_index = new_idx;
-        let incoming = &self.texture_set_manager.sets[new_idx];
-        self.layer_stack = incoming.layer_stack.clone();
-        self.baked_maps = incoming.baked_maps.clone();
+        let (incoming_name, incoming_id) = {
+            let incoming = &self.texture_set_manager.sets[new_idx];
+            self.layer_stack = incoming.layer_stack.clone();
+            self.baked_maps = incoming.baked_maps.clone();
+            (incoming.name.clone(), incoming.id)
+        };
         self.texture_needs_update = true;
+        self.recompute_composite();
 
         let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
         let log_msg = format!(
             "Switched active Texture Set to: {} (ID: {})",
-            incoming.name, incoming.id
+            incoming_name, incoming_id
         );
         self.status_message = log_msg.clone();
         self.logs.push((time_str, "INFO".into(), log_msg));
@@ -2719,7 +2859,11 @@ impl eframe::App for RemoainterApp {
                             "Mesh map baking cancelled by user".into(),
                         ));
                     } else {
-                        self.baked_maps = baked;
+                        self.baked_maps = baked.clone();
+                        let cur_idx = self.texture_set_manager.active_index;
+                        if cur_idx < self.texture_set_manager.sets.len() {
+                            self.texture_set_manager.sets[cur_idx].baked_maps = baked;
+                        }
                         self.status_message = format!(
                             "Successfully baked mesh maps at {}×{}",
                             self.baker_options.resolution, self.baker_options.resolution
@@ -2727,7 +2871,54 @@ impl eframe::App for RemoainterApp {
                         self.logs.push((
                             chrono::Local::now().format("%H:%M:%S").to_string(),
                             "INFO".into(),
-                            format!("Completed mesh map bake (AO, Curvature, Normals, Position, Thickness) for {}", self.mesh.name),
+                            format!(
+                                "Completed mesh map bake (AO, Curvature, Normals, Position, Thickness) for {}",
+                                self.mesh.name
+                            ),
+                        ));
+                        self.recompute_composite();
+                    }
+                }
+            }
+
+            if let Some(ref rx) = self.udim_baking_receiver {
+                if let Ok(tile_maps) = rx.try_recv() {
+                    self.is_baking = false;
+                    self.udim_baking_receiver = None;
+                    let was_cancelled = tile_maps.values().any(|m| m.is_cancelled);
+                    if was_cancelled {
+                        self.status_message = "Multi-tile UDIM bake cancelled by user".to_string();
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "WARN".into(),
+                            "Multi-tile UDIM bake cancelled by user".into(),
+                        ));
+                    } else {
+                        for set in &mut self.texture_set_manager.sets {
+                            if let Some(tile_id) = set.udim_tile {
+                                if let Some(maps) = tile_maps.get(&tile_id) {
+                                    set.baked_maps = maps.clone();
+                                }
+                            }
+                        }
+                        let cur_idx = self.texture_set_manager.active_index;
+                        if let Some(active_set) = self.texture_set_manager.sets.get(cur_idx) {
+                            self.baked_maps = active_set.baked_maps.clone();
+                        }
+                        self.status_message = format!(
+                            "Successfully baked all UDIM tiles ({} tiles) at {}×{}",
+                            tile_maps.len(),
+                            self.baker_options.resolution,
+                            self.baker_options.resolution
+                        );
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "INFO".into(),
+                            format!(
+                                "Completed UDIM multi-tile bake ({} tiles) for {}",
+                                tile_maps.len(),
+                                self.mesh.name
+                            ),
                         ));
                         self.recompute_composite();
                     }
@@ -5177,6 +5368,19 @@ impl RemoainterApp {
         // 1. Rust & Vulkan / wgpu Hardware PBR 3D Render Callback (24-bit Depth Test + Per-Fragment GGX + ACES)
         if let Some(ref vp_mutex) = self.viewport_wgpu {
             let aspect = view_bounds.width() / view_bounds.height().max(1.0);
+            let is_udim = self.texture_set_manager.is_udim_workflow;
+            let udim_tile_count = if is_udim {
+                self.texture_set_manager.sets.len().min(16)
+            } else {
+                0
+            };
+            let mut udim_tile_ids = [1001u32; 16];
+            if is_udim {
+                for (idx, set) in self.texture_set_manager.sets.iter().enumerate().take(16) {
+                    udim_tile_ids[idx] = set.udim_tile.unwrap_or(1001 + idx as u32);
+                }
+            }
+
             let params = ViewportPaintParams {
                 yaw: self.camera_yaw,
                 pitch: self.camera_pitch,
@@ -5200,6 +5404,9 @@ impl RemoainterApp {
                 dof_focal_distance: self.dof_focal_distance,
                 dof_aperture: self.dof_aperture,
                 color_management_mode: self.color_management_mode,
+                is_udim,
+                udim_tile_count,
+                udim_tile_ids,
             };
 
             struct ViewportWgpuCallback {
@@ -5481,24 +5688,34 @@ impl RemoainterApp {
                                 }
                             };
                             let on_mask = self.paint_target_mask;
-                            let mut b = self.layer_stack.paint_3d_projection_at(
+                            let active_udim = if self.texture_set_manager.is_udim_workflow {
+                                self.texture_set_manager
+                                    .sets
+                                    .get(self.texture_set_manager.active_index)
+                                    .and_then(|s| s.udim_tile)
+                            } else {
+                                None
+                            };
+                            let mut b = self.layer_stack.paint_3d_projection_at_udim(
                                 &self.mesh,
                                 &screen_alpha,
                                 &self.brush,
                                 false,
                                 on_mask,
                                 Some(&mut self.history_manager),
+                                active_udim,
                             );
                             if self.symmetry_x {
                                 let sym_alpha =
                                     |p3: [f32; 3]| -> f32 { screen_alpha([-p3[0], p3[1], p3[2]]) };
-                                let b_sym = self.layer_stack.paint_3d_projection_at(
+                                let b_sym = self.layer_stack.paint_3d_projection_at_udim(
                                     &self.mesh,
                                     &sym_alpha,
                                     &self.brush,
                                     false,
                                     on_mask,
                                     Some(&mut self.history_manager),
+                                    active_udim,
                                 );
                                 b[0] = b[0].min(b_sym[0]);
                                 b[1] = b[1].min(b_sym[1]);
@@ -5516,10 +5733,18 @@ impl RemoainterApp {
                         decal_brush.angle = self.decal_angle;
                         decal_brush.size = (self.brush.size * self.decal_scale.max(0.05)).max(2.0);
                         let decal_radius_3d = (decal_brush.size / 200.0) * mesh_radius;
+                        let active_udim = if self.texture_set_manager.is_udim_workflow {
+                            self.texture_set_manager
+                                .sets
+                                .get(self.texture_set_manager.active_index)
+                                .and_then(|s| s.udim_tile)
+                        } else {
+                            None
+                        };
                         let mut b = if let Some(active_layer) =
                             self.layer_stack.layers.get_mut(active_idx)
                         {
-                            active_layer.paint_3d_surface(
+                            active_layer.paint_3d_surface_udim(
                                 &self.mesh,
                                 hit.pos,
                                 hit.normal,
@@ -5528,6 +5753,7 @@ impl RemoainterApp {
                                 false,
                                 self.paint_target_mask,
                                 Some(&mut self.history_manager),
+                                active_udim,
                             )
                         } else {
                             [0, 0, 0, 0]
@@ -5537,7 +5763,7 @@ impl RemoainterApp {
                             let sym_norm = [-hit.normal[0], hit.normal[1], hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
                             {
-                                let b_sym = active_layer.paint_3d_surface(
+                                let b_sym = active_layer.paint_3d_surface_udim(
                                     &self.mesh,
                                     sym_pos,
                                     sym_norm,
@@ -5546,6 +5772,7 @@ impl RemoainterApp {
                                     false,
                                     self.paint_target_mask,
                                     Some(&mut self.history_manager),
+                                    active_udim,
                                 );
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
@@ -5560,10 +5787,18 @@ impl RemoainterApp {
                         // Paint (1), Eraser (2), Projection (3)
                         let is_eraser = self.active_tool == ToolMode::Eraser;
                         let on_mask = self.paint_target_mask;
+                        let active_udim = if self.texture_set_manager.is_udim_workflow {
+                            self.texture_set_manager
+                                .sets
+                                .get(self.texture_set_manager.active_index)
+                                .and_then(|s| s.udim_tile)
+                        } else {
+                            None
+                        };
                         let mut b = if let Some(active_layer) =
                             self.layer_stack.layers.get_mut(active_idx)
                         {
-                            active_layer.paint_3d_surface(
+                            active_layer.paint_3d_surface_udim(
                                 &self.mesh,
                                 hit.pos,
                                 hit.normal,
@@ -5572,6 +5807,7 @@ impl RemoainterApp {
                                 is_eraser,
                                 on_mask,
                                 Some(&mut self.history_manager),
+                                active_udim,
                             )
                         } else {
                             [0, 0, 0, 0]
@@ -5581,7 +5817,7 @@ impl RemoainterApp {
                             let sym_norm = [-hit.normal[0], hit.normal[1], hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
                             {
-                                let b_sym = active_layer.paint_3d_surface(
+                                let b_sym = active_layer.paint_3d_surface_udim(
                                     &self.mesh,
                                     sym_pos,
                                     sym_norm,
@@ -5590,6 +5826,7 @@ impl RemoainterApp {
                                     is_eraser,
                                     on_mask,
                                     Some(&mut self.history_manager),
+                                    active_udim,
                                 );
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
@@ -5604,7 +5841,7 @@ impl RemoainterApp {
                             let sym_norm = [hit.normal[0], -hit.normal[1], hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
                             {
-                                let b_sym = active_layer.paint_3d_surface(
+                                let b_sym = active_layer.paint_3d_surface_udim(
                                     &self.mesh,
                                     sym_pos,
                                     sym_norm,
@@ -5613,6 +5850,7 @@ impl RemoainterApp {
                                     is_eraser,
                                     on_mask,
                                     Some(&mut self.history_manager),
+                                    active_udim,
                                 );
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
@@ -5627,7 +5865,7 @@ impl RemoainterApp {
                             let sym_norm = [hit.normal[0], hit.normal[1], -hit.normal[2]];
                             if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
                             {
-                                let b_sym = active_layer.paint_3d_surface(
+                                let b_sym = active_layer.paint_3d_surface_udim(
                                     &self.mesh,
                                     sym_pos,
                                     sym_norm,
@@ -5636,6 +5874,7 @@ impl RemoainterApp {
                                     is_eraser,
                                     on_mask,
                                     Some(&mut self.history_manager),
+                                    active_udim,
                                 );
                                 if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
                                     b[0] = b[0].min(b_sym[0]);
@@ -10361,9 +10600,11 @@ Res: {}×{}",
             );
 
             // Floating Action Bar (bottom-right)
+            let is_udim = self.texture_set_manager.is_udim_workflow;
+            let action_width = if is_udim { 630.0 } else { 420.0 };
             let action_rect = Rect::from_min_size(
-                pos2(rect.right() - 440.0, rect.bottom() - 46.0),
-                vec2(420.0, 36.0),
+                pos2(rect.right() - action_width - 20.0, rect.bottom() - 46.0),
+                vec2(action_width, 36.0),
             );
             painter.rect_filled(action_rect, 4.0, Color32::from_black_alpha(230));
             painter.rect_stroke(
@@ -10372,19 +10613,43 @@ Res: {}×{}",
                 Stroke::new(1.0_f32, Color32::from_rgb(65, 65, 75)),
             );
 
-            let bake_btn_rect = Rect::from_min_size(
-                pos2(action_rect.left() + 6.0, action_rect.top() + 4.0),
-                vec2(210.0, 28.0),
-            );
-            let return_btn_rect = Rect::from_min_size(
-                pos2(action_rect.left() + 224.0, action_rect.top() + 4.0),
-                vec2(190.0, 28.0),
-            );
+            let (bake_btn_rect, bake_all_rect, return_btn_rect) = if is_udim {
+                (
+                    Rect::from_min_size(
+                        pos2(action_rect.left() + 6.0, action_rect.top() + 4.0),
+                        vec2(196.0, 28.0),
+                    ),
+                    Some(Rect::from_min_size(
+                        pos2(action_rect.left() + 208.0, action_rect.top() + 4.0),
+                        vec2(216.0, 28.0),
+                    )),
+                    Rect::from_min_size(
+                        pos2(action_rect.left() + 430.0, action_rect.top() + 4.0),
+                        vec2(190.0, 28.0),
+                    ),
+                )
+            } else {
+                (
+                    Rect::from_min_size(
+                        pos2(action_rect.left() + 6.0, action_rect.top() + 4.0),
+                        vec2(210.0, 28.0),
+                    ),
+                    None,
+                    Rect::from_min_size(
+                        pos2(action_rect.left() + 224.0, action_rect.top() + 4.0),
+                        vec2(190.0, 28.0),
+                    ),
+                )
+            };
 
             let mut bake_hovered = false;
+            let mut bake_all_hovered = false;
             let mut return_hovered = false;
             if let Some(pos) = ctx.pointer_hover_pos() {
                 bake_hovered = bake_btn_rect.contains(pos);
+                if let Some(ref r) = bake_all_rect {
+                    bake_all_hovered = r.contains(pos);
+                }
                 return_hovered = return_btn_rect.contains(pos);
             }
 
@@ -10404,6 +10669,25 @@ Res: {}×{}",
             };
 
             painter.rect_filled(bake_btn_rect, 3.0, bake_fill);
+
+            if let Some(ref r) = bake_all_rect {
+                let all_fill = if is_baking {
+                    Color32::from_rgb(70, 70, 75)
+                } else if bake_all_hovered {
+                    Color32::from_rgb(45, 175, 110)
+                } else {
+                    Color32::from_rgb(35, 145, 90)
+                };
+                painter.rect_filled(*r, 3.0, all_fill);
+                painter.text(
+                    r.center(),
+                    Align2::CENTER_CENTER,
+                    "⚡ Bake All UDIM Tiles",
+                    egui::FontId::proportional(12.0),
+                    Color32::WHITE,
+                );
+            }
+
             painter.rect_filled(
                 return_btn_rect,
                 3.0,
@@ -10416,6 +10700,8 @@ Res: {}×{}",
 
             let bake_label = if is_baking {
                 format!("⏹ Cancel Bake ({}%)", current_prog)
+            } else if is_udim {
+                "⚡ Bake Active Tile".to_string()
             } else {
                 "⚡ Bake Selected Textures".to_string()
             };
@@ -10441,6 +10727,10 @@ Res: {}×{}",
                             self.cancel_baking.store(true, Ordering::Relaxed);
                         } else {
                             self.bake_mesh_maps();
+                        }
+                    } else if let Some(ref r) = bake_all_rect {
+                        if r.contains(pos) && !is_baking {
+                            self.bake_all_udim_tiles();
                         }
                     } else if return_btn_rect.contains(pos) {
                         self.show_baker_dialog = false;

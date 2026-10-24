@@ -236,6 +236,50 @@ impl TextureSetManager {
             self.active_index = 0;
         }
     }
+
+    /// Dispatches 3D surface painting across all active UDIM texture sets.
+    ///
+    /// For meshes utilizing UDIM workflows, paints onto the corresponding tile's layer stack
+    /// where triangles intersect the brush volume and returns dirty bounding boxes per texture set index.
+    pub fn paint_3d_surface_multi_tile(
+        &mut self,
+        mesh: &Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        radius_3d: f32,
+        brush: &crate::painting::brush::Brush,
+        is_eraser: bool,
+        on_mask: bool,
+    ) -> Vec<(usize, [i32; 4])> {
+        let mut results = Vec::new();
+        for (idx, set) in self.sets.iter_mut().enumerate() {
+            if !set.visible {
+                continue;
+            }
+            if set.layer_stack.layers.is_empty() {
+                continue;
+            }
+            let active_li = set
+                .layer_stack
+                .active_layer_index
+                .min(set.layer_stack.layers.len() - 1);
+            let bbox = set.layer_stack.layers[active_li].paint_3d_surface_udim(
+                mesh,
+                hit_pos,
+                hit_normal,
+                radius_3d,
+                brush,
+                is_eraser,
+                on_mask,
+                None,
+                set.udim_tile,
+            );
+            if bbox[2] >= bbox[0] && bbox[3] >= bbox[1] {
+                results.push((idx, bbox));
+            }
+        }
+        results
+    }
 }
 
 /// Detects all UDIM tiles occupied by the mesh UVs
@@ -342,5 +386,69 @@ mod tests {
         let removed = mgr.remove_set(dup_idx);
         assert!(removed);
         assert_eq!(mgr.sets.len(), 2);
+    }
+
+    #[test]
+    fn test_texture_set_multi_tile_3d_painting() {
+        use crate::painting::brush::Brush;
+        use crate::painting::layer::Layer;
+
+        let mut mesh = Mesh::default();
+        // Quad 1 in tile 1001 (x in [-1, 1], z in [-1, 1], y=0, u in [0.2, 0.8], v in [0.2, 0.8])
+        mesh.vertices.push([-1.0, 0.0, -1.0]);
+        mesh.vertices.push([1.0, 0.0, -1.0]);
+        mesh.vertices.push([1.0, 0.0, 1.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 3]);
+        mesh.uvs.push([0.2, 0.2]);
+        mesh.uvs.push([0.8, 0.2]);
+        mesh.uvs.push([0.8, 0.8]);
+        mesh.indices.extend_from_slice(&[0, 1, 2]);
+
+        // Quad 2 in tile 1002 (adjacent at x in [1, 3], z in [-1, 1], y=0, u in [1.2, 1.8], v in [0.2, 0.8])
+        mesh.vertices.push([1.0, 0.0, -1.0]);
+        mesh.vertices.push([3.0, 0.0, -1.0]);
+        mesh.vertices.push([3.0, 0.0, 1.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 3]);
+        mesh.uvs.push([1.2, 0.2]);
+        mesh.uvs.push([1.8, 0.2]);
+        mesh.uvs.push([1.8, 0.8]);
+        mesh.indices.extend_from_slice(&[3, 4, 5]);
+
+        let mut mgr = TextureSetManager::new(32);
+        mgr.configure_from_mesh(&mesh, 32);
+        assert!(mgr.is_udim_workflow);
+        assert_eq!(mgr.sets.len(), 2);
+
+        // Add paint layer to both sets
+        for set in &mut mgr.sets {
+            set.layer_stack
+                .layers
+                .push(Layer::new_paint(1, "Paint", 32, 32));
+            set.layer_stack.active_layer_index = 0;
+        }
+
+        let mut brush = Brush::default();
+        brush.size = 30.0;
+        brush.color = [1.0, 1.0, 0.0, 1.0];
+
+        // Paint centered at x=1.0 (the boundary between Quad 1 on tile 1001 and Quad 2 on tile 1002)
+        let painted = mgr.paint_3d_surface_multi_tile(
+            &mesh,
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            2.0,
+            &brush,
+            false,
+            false,
+        );
+
+        // Both tile 1001 (index 0) and tile 1002 (index 1) must be painted!
+        assert_eq!(
+            painted.len(),
+            2,
+            "Multi-tile 3D painting must touch both UDIM sets across seam"
+        );
+        assert_eq!(painted[0].0, 0);
+        assert_eq!(painted[1].0, 1);
     }
 }

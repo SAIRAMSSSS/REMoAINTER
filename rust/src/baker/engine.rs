@@ -56,6 +56,10 @@ pub struct BakerOptions {
     /// shell, pair it with the nearest high-poly shell by world-space AABB
     /// distance instead of risking cross-shell hits via the global BVH.
     pub match_by_shell: bool,
+    /// Target UDIM UV tile (e.g. Some(1001), Some(1002), Some(1011)).
+    /// When specified, mesh UVs are shifted so that the tile's coordinates map into [0, 1]x[0, 1]
+    /// and triangles outside this tile footprint are culled.
+    pub udim_tile: Option<u32>,
 }
 
 /// External skew texture: RGB image loaded by the App, R/G decoded to [-1, 1] shear offsets.
@@ -109,6 +113,7 @@ impl Default for BakerOptions {
             ignore_backfaces: false,
             map_format: BakedMapFormat::F32,
             match_by_shell: false,
+            udim_tile: None,
         }
     }
 }
@@ -444,6 +449,25 @@ pub struct AdvancedBakeOptions {
     /// (within one ray span) instead of falling back to the global BVH. Prevents
     /// cross-shell false correspondences when names diverge.
     pub match_by_shell: bool,
+    /// Target UDIM UV tile (e.g. Some(1001), Some(1002)).
+    pub udim_tile: Option<u32>,
+}
+
+/// Calculates the normalized (u, v) tile coordinate offset for a UDIM tile ID.
+/// - Tile 1001 -> [0.0, 0.0]
+/// - Tile 1002 -> [1.0, 0.0]
+/// - Tile 1011 -> [0.0, 1.0]
+/// - Tile 1012 -> [1.0, 1.0]
+#[inline]
+pub fn udim_tile_uv_offset(tile: u32) -> [f32; 2] {
+    if tile < 1001 {
+        [0.0, 0.0]
+    } else {
+        let idx = tile - 1001;
+        let u = (idx % 10) as f32;
+        let v = (idx / 10) as f32;
+        [u, v]
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -835,11 +859,69 @@ impl BakerEngine {
             map_format: options.map_format,
             ray_offset_map: None,
             match_by_shell: options.match_by_shell,
+            udim_tile: options.udim_tile,
         };
         Self::bake_all_advanced(
             vertices, normals, uvs, indices, submeshes, options, &advanced, progress, cancel,
             high_poly,
         )
+    }
+
+    /// Bakes mesh maps across multiple UDIM tiles.
+    ///
+    /// For each tile in `udim_tiles`, rasterizes only geometry mapped to that tile's
+    /// UV range and returns a mapping from tile ID to finished [`BakedMaps`].
+    pub fn bake_all_udim(
+        vertices: &[[f32; 3]],
+        normals: &[[f32; 3]],
+        uvs: &[[f32; 2]],
+        indices: &[u32],
+        submeshes: &[crate::graphics::mesh::SubMesh],
+        options: &BakerOptions,
+        udim_tiles: &[u32],
+        progress: Option<Arc<AtomicUsize>>,
+        cancel: Option<Arc<AtomicBool>>,
+        high_poly: Option<&crate::graphics::mesh::Mesh>,
+    ) -> std::collections::BTreeMap<u32, BakedMaps> {
+        let mut results = std::collections::BTreeMap::new();
+        let total_tiles = udim_tiles.len().max(1);
+
+        for (i, &tile) in udim_tiles.iter().enumerate() {
+            if let Some(ref c) = cancel {
+                if c.load(Ordering::Relaxed) {
+                    break;
+                }
+            }
+
+            let mut tile_options = options.clone();
+            tile_options.udim_tile = Some(tile);
+
+            let tile_prog = progress.as_ref().map(|p| {
+                let base = (i * 100) / total_tiles;
+                let _ = base;
+                Arc::clone(p)
+            });
+
+            let maps = Self::bake_all(
+                vertices,
+                normals,
+                uvs,
+                indices,
+                submeshes,
+                &tile_options,
+                tile_prog,
+                cancel.clone(),
+                high_poly,
+            );
+
+            if let Some(ref p) = progress {
+                p.store(((i + 1) * 100) / total_tiles, Ordering::Relaxed);
+            }
+
+            results.insert(tile, maps);
+        }
+
+        results
     }
 
     /// Bake with [`AdvancedBakeOptions`] intents and emit the finished maps already
@@ -1162,6 +1244,13 @@ impl BakerEngine {
         }
 
         // 5. Forward UV Triangle Rasterization
+        let (u_off, v_off) = if let Some(tile) = options.udim_tile.or(advanced.udim_tile) {
+            let off = udim_tile_uv_offset(tile);
+            (off[0], off[1])
+        } else {
+            (0.0, 0.0)
+        };
+
         for t in 0..num_tris {
             // Check cancellation request every 64 triangles
             if (t & 63) == 0 {
@@ -1194,19 +1283,28 @@ impl BakerEngine {
                 continue;
             }
 
-            let uv0 = uvs[i0];
-            let uv1 = uvs[i1];
-            let uv2 = uvs[i2];
+            let uv0_raw = uvs[i0];
+            let uv1_raw = uvs[i1];
+            let uv2_raw = uvs[i2];
 
-            let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
-            let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
-            let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
-            let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
+            let uv0 = [uv0_raw[0] - u_off, uv0_raw[1] - v_off];
+            let uv1 = [uv1_raw[0] - u_off, uv1_raw[1] - v_off];
+            let uv2 = [uv2_raw[0] - u_off, uv2_raw[1] - v_off];
 
-            let x0 = (min_u * res_f).floor() as usize;
-            let x1 = ((max_u * res_f).ceil() as usize).min(res - 1);
-            let y0 = (min_v * res_f).floor() as usize;
-            let y1 = ((max_v * res_f).ceil() as usize).min(res - 1);
+            let min_u = uv0[0].min(uv1[0]).min(uv2[0]);
+            let max_u = uv0[0].max(uv1[0]).max(uv2[0]);
+            let min_v = uv0[1].min(uv1[1]).min(uv2[1]);
+            let max_v = uv0[1].max(uv1[1]).max(uv2[1]);
+
+            // Cull triangles outside the target [0, 1]x[0, 1] tile bounds
+            if max_u < 0.0 || min_u > 1.0 || max_v < 0.0 || min_v > 1.0 {
+                continue;
+            }
+
+            let x0 = (min_u.max(0.0) * res_f).floor() as usize;
+            let x1 = ((max_u.min(1.0) * res_f).ceil() as usize).min(res - 1);
+            let y0 = (min_v.max(0.0) * res_f).floor() as usize;
+            let y1 = ((max_v.min(1.0) * res_f).ceil() as usize).min(res - 1);
 
             // Signed 2x UV area of this triangle (identical to the `det` computed below
             // for handedness). Either sign is valid for the barycentric formulas —
@@ -2189,5 +2287,115 @@ mod tests {
             Some(&high),
         );
         assert!(baked2.normal.is_some(), "global fallback still bakes");
+    }
+
+    #[test]
+    fn test_udim_tile_uv_offset_decoding() {
+        assert_eq!(udim_tile_uv_offset(1001), [0.0, 0.0]);
+        assert_eq!(udim_tile_uv_offset(1002), [1.0, 0.0]);
+        assert_eq!(udim_tile_uv_offset(1003), [2.0, 0.0]);
+        assert_eq!(udim_tile_uv_offset(1010), [9.0, 0.0]);
+        assert_eq!(udim_tile_uv_offset(1011), [0.0, 1.0]);
+        assert_eq!(udim_tile_uv_offset(1012), [1.0, 1.0]);
+        assert_eq!(udim_tile_uv_offset(1021), [0.0, 2.0]);
+        assert_eq!(udim_tile_uv_offset(999), [0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_baker_udim_culling_and_rasterization() {
+        let mut mesh = Mesh::default();
+        // Quad 1 in tile 1001: UV in [0.2, 0.8] x [0.2, 0.8]
+        mesh.vertices.push([-1.0, 0.0, -1.0]);
+        mesh.vertices.push([1.0, 0.0, -1.0]);
+        mesh.vertices.push([1.0, 0.0, 1.0]);
+        mesh.vertices.push([-1.0, 0.0, 1.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
+        mesh.uvs.push([0.2, 0.2]);
+        mesh.uvs.push([0.8, 0.2]);
+        mesh.uvs.push([0.8, 0.8]);
+        mesh.uvs.push([0.2, 0.8]);
+        mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
+
+        // Quad 2 in tile 1002: UV in [1.2, 1.8] x [0.2, 0.8]
+        let base = mesh.vertices.len() as u32;
+        mesh.vertices.push([10.0, 0.0, -1.0]);
+        mesh.vertices.push([12.0, 0.0, -1.0]);
+        mesh.vertices.push([12.0, 0.0, 1.0]);
+        mesh.vertices.push([10.0, 0.0, 1.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 1.0, 0.0]; 4]);
+        mesh.uvs.push([1.2, 0.2]);
+        mesh.uvs.push([1.8, 0.2]);
+        mesh.uvs.push([1.8, 0.8]);
+        mesh.uvs.push([1.2, 0.8]);
+        mesh.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+
+        let mut opts = BakerOptions::default();
+        opts.resolution = 32;
+        opts.bake_ao = false;
+        opts.bake_curvature = false;
+        opts.bake_normal = false;
+        opts.bake_world_space_normal = false;
+        opts.bake_position = true;
+
+        // Bake tile 1001
+        opts.udim_tile = Some(1001);
+        let baked_1001 = BakerEngine::bake_all(
+            &mesh.vertices,
+            &mesh.normals,
+            &mesh.uvs,
+            &mesh.indices,
+            &mesh.submeshes,
+            &opts,
+            None,
+            None,
+            None,
+        );
+        let pos_1001 = baked_1001.position.expect("position baked");
+        // Center pixel (16, 16) corresponds to uv (0.5, 0.5) which is inside Quad 1 (-1 to +1 x)
+        // Normalized position: (-1 to 1) mapped into [-1, 12] -> ~0.077 (< 0.2)
+        let mid_px = (16 * 32 + 16) as usize;
+        assert!(
+            pos_1001[mid_px][0] < 0.2,
+            "Tile 1001 contains Quad 1 around x ~ 0.077"
+        );
+
+        // Bake tile 1002
+        opts.udim_tile = Some(1002);
+        let baked_1002 = BakerEngine::bake_all(
+            &mesh.vertices,
+            &mesh.normals,
+            &mesh.uvs,
+            &mesh.indices,
+            &mesh.submeshes,
+            &opts,
+            None,
+            None,
+            None,
+        );
+        let pos_1002 = baked_1002.position.expect("position baked");
+        // Center pixel (16, 16) on tile 1002 corresponds to local uv (0.5, 0.5) -> Quad 2 (10 to 12 x)
+        // Normalized position: (10 to 12) mapped into [-1, 12] -> ~0.923 (> 0.8)
+        assert!(
+            pos_1002[mid_px][0] > 0.8,
+            "Tile 1002 contains Quad 2 around x ~ 0.923"
+        );
+
+        // Multi-tile batch bake
+        let udim_results = BakerEngine::bake_all_udim(
+            &mesh.vertices,
+            &mesh.normals,
+            &mesh.uvs,
+            &mesh.indices,
+            &mesh.submeshes,
+            &opts,
+            &[1001, 1002],
+            None,
+            None,
+            None,
+        );
+        assert_eq!(udim_results.len(), 2);
+        assert!(udim_results.contains_key(&1001));
+        assert!(udim_results.contains_key(&1002));
     }
 }

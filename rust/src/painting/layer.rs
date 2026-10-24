@@ -1659,8 +1659,11 @@ impl Layer {
             hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
         }
 
-        let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-            .max(1e-7);
+        let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+        if !det.is_finite() || det.abs() < 1e-9 {
+            return [0, 0, 0, 0];
+        }
+        let denom = det;
 
         for py in py_min..=py_max {
             let v_px = py as f32 / (h_f - 1.0);
@@ -1709,7 +1712,25 @@ impl Layer {
         brush: &Brush,
         is_eraser: bool,
         on_mask: bool,
+        history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        self.paint_3d_surface_udim(
+            mesh, hit_pos, hit_normal, radius_3d, brush, is_eraser, on_mask, history, None,
+        )
+    }
+
+    /// 3D Surface Projection Painting with UDIM Tile offset support.
+    pub fn paint_3d_surface_udim(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        hit_pos: [f32; 3],
+        hit_normal: [f32; 3],
+        radius_3d: f32,
+        brush: &Brush,
+        is_eraser: bool,
+        on_mask: bool,
         mut history: Option<&mut HistoryManager>,
+        udim_tile: Option<u32>,
     ) -> [i32; 4] {
         if !on_mask
             && (self.layer_type == LayerType::Folder
@@ -1729,6 +1750,17 @@ impl Layer {
         // stencils and brush angle in 3D (previously 3D painting used a plain distance falloff)
         let (tan_v, bin_v) = tangent_basis(hit_normal);
         let angle_rad = brush.angle.to_radians();
+
+        let (u_off, v_off) = if let Some(tile) = udim_tile {
+            if tile >= 1001 {
+                let idx = tile - 1001;
+                ((idx % 10) as f32, (idx / 10) as f32)
+            } else {
+                (0.0, 0.0)
+            }
+        } else {
+            (0.0, 0.0)
+        };
 
         let mut bbox = [w, h, 0, 0];
         let mut any_painted = false;
@@ -1783,23 +1815,34 @@ impl Layer {
                 continue;
             }
 
-            let uv0 = mesh.uvs[i0];
-            let uv1 = mesh.uvs[i1];
-            let uv2 = mesh.uvs[i2];
+            let uv0_raw = mesh.uvs[i0];
+            let uv1_raw = mesh.uvs[i1];
+            let uv2_raw = mesh.uvs[i2];
 
-            let min_u = uv0[0].min(uv1[0]).min(uv2[0]).clamp(0.0, 1.0);
-            let max_u = uv0[0].max(uv1[0]).max(uv2[0]).clamp(0.0, 1.0);
-            let min_v = uv0[1].min(uv1[1]).min(uv2[1]).clamp(0.0, 1.0);
-            let max_v = uv0[1].max(uv1[1]).max(uv2[1]).clamp(0.0, 1.0);
+            let uv0 = [uv0_raw[0] - u_off, uv0_raw[1] - v_off];
+            let uv1 = [uv1_raw[0] - u_off, uv1_raw[1] - v_off];
+            let uv2 = [uv2_raw[0] - u_off, uv2_raw[1] - v_off];
 
-            let px_min = ((min_u * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
-            let px_max = ((max_u * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
-            let py_min = ((min_v * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
-            let py_max = ((max_v * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+            let min_u = uv0[0].min(uv1[0]).min(uv2[0]);
+            let max_u = uv0[0].max(uv1[0]).max(uv2[0]);
+            let min_v = uv0[1].min(uv1[1]).min(uv2[1]);
+            let max_v = uv0[1].max(uv1[1]).max(uv2[1]);
 
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-                .max(1e-7);
+            // Cull triangle if completely outside this UDIM tile
+            if max_u < 0.0 || min_u > 1.0 || max_v < 0.0 || min_v > 1.0 {
+                continue;
+            }
+
+            let px_min = ((min_u.max(0.0) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max = ((max_u.min(1.0) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min = ((min_v.max(0.0) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max = ((max_v.min(1.0) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            if !det.is_finite() || det.abs() < 1e-9 {
+                continue;
+            }
+            let denom = det;
 
             if let Some(ref mut hist) = history {
                 hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
@@ -2341,9 +2384,11 @@ impl LayerStack {
                 ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
             let py_max =
                 ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-                .max(1e-7);
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            if !det.is_finite() || det.abs() < 1e-9 {
+                continue;
+            }
+            let denom = det;
 
             for py in py_min..=py_max {
                 let v_px = py as f32 / (h_f - 1.0);
@@ -2640,9 +2685,11 @@ impl LayerStack {
                 ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
             let py_max =
                 ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-                .max(1e-7);
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            if !det.is_finite() || det.abs() < 1e-9 {
+                continue;
+            }
+            let denom = det;
 
             for py in py_min..=py_max {
                 let v_px = py as f32 / (h_f - 1.0);
@@ -2725,7 +2772,29 @@ impl LayerStack {
         brush: &Brush,
         is_eraser: bool,
         on_mask: bool,
+        history: Option<&mut HistoryManager>,
+    ) -> [i32; 4] {
+        self.paint_3d_projection_at_udim(
+            mesh,
+            screen_alpha,
+            brush,
+            is_eraser,
+            on_mask,
+            history,
+            None,
+        )
+    }
+
+    /// Screen-space projection painting with UDIM tile support.
+    pub fn paint_3d_projection_at_udim(
+        &mut self,
+        mesh: &crate::graphics::mesh::Mesh,
+        screen_alpha: &dyn Fn([f32; 3]) -> f32,
+        brush: &Brush,
+        is_eraser: bool,
+        on_mask: bool,
         mut history: Option<&mut HistoryManager>,
+        udim_tile: Option<u32>,
     ) -> [i32; 4] {
         if self.layers.is_empty() {
             return [0, 0, 0, 0];
@@ -2743,6 +2812,17 @@ impl LayerStack {
         let w_f = self.width as f32;
         let h_f = self.height as f32;
         let num_tris = mesh.indices.len() / 3;
+
+        let (u_off, v_off) = if let Some(tile) = udim_tile {
+            if tile >= 1001 {
+                let idx = tile - 1001;
+                ((idx % 10) as f32, (idx / 10) as f32)
+            } else {
+                (0.0, 0.0)
+            }
+        } else {
+            (0.0, 0.0)
+        };
 
         struct ProjOp {
             idx: usize,
@@ -2764,9 +2844,14 @@ impl LayerStack {
             let v0 = mesh.vertices[i0];
             let v1 = mesh.vertices[i1];
             let v2 = mesh.vertices[i2];
-            let uv0 = mesh.uvs[i0];
-            let uv1 = mesh.uvs[i1];
-            let uv2 = mesh.uvs[i2];
+
+            let uv0_raw = mesh.uvs[i0];
+            let uv1_raw = mesh.uvs[i1];
+            let uv2_raw = mesh.uvs[i2];
+
+            let uv0 = [uv0_raw[0] - u_off, uv0_raw[1] - v_off];
+            let uv1 = [uv1_raw[0] - u_off, uv1_raw[1] - v_off];
+            let uv2 = [uv2_raw[0] - u_off, uv2_raw[1] - v_off];
 
             // Cheap screen-space culling: skip triangles that project fully outside the stamp
             let a0 = screen_alpha(v0);
@@ -2776,17 +2861,24 @@ impl LayerStack {
                 continue;
             }
 
-            let px_min =
-                ((uv0[0].min(uv1[0]).min(uv2[0]) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
-            let px_max =
-                ((uv0[0].max(uv1[0]).max(uv2[0]) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
-            let py_min =
-                ((uv0[1].min(uv1[1]).min(uv2[1]) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
-            let py_max =
-                ((uv0[1].max(uv1[1]).max(uv2[1]) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
-            let denom = ((uv1[1] - uv2[1]) * (uv0[0] - uv2[0])
-                + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]))
-                .max(1e-7);
+            let min_u = uv0[0].min(uv1[0]).min(uv2[0]);
+            let max_u = uv0[0].max(uv1[0]).max(uv2[0]);
+            let min_v = uv0[1].min(uv1[1]).min(uv2[1]);
+            let max_v = uv0[1].max(uv1[1]).max(uv2[1]);
+
+            if max_u < 0.0 || min_u > 1.0 || max_v < 0.0 || min_v > 1.0 {
+                continue;
+            }
+
+            let px_min = ((min_u.max(0.0) * (w_f - 1.0)).floor() as i32).clamp(0, w - 1);
+            let px_max = ((max_u.min(1.0) * (w_f - 1.0)).ceil() as i32).clamp(0, w - 1);
+            let py_min = ((min_v.max(0.0) * (h_f - 1.0)).floor() as i32).clamp(0, h - 1);
+            let py_max = ((max_v.min(1.0) * (h_f - 1.0)).ceil() as i32).clamp(0, h - 1);
+            let det = (uv1[1] - uv2[1]) * (uv0[0] - uv2[0]) + (uv2[0] - uv1[0]) * (uv0[1] - uv2[1]);
+            if !det.is_finite() || det.abs() < 1e-9 {
+                continue;
+            }
+            let denom = det;
 
             for py in py_min..=py_max {
                 let v_px = py as f32 / (h_f - 1.0);
@@ -4901,6 +4993,97 @@ mod tests {
         assert!(
             mask.buffer[0] > mask.buffer[1],
             "Edge wear mask must be higher at convex edge than flat surface"
+        );
+    }
+
+    #[test]
+    fn test_paint_3d_surface_udim_tile_offset() {
+        use crate::graphics::mesh::Mesh;
+        let mut mesh = Mesh::default();
+        // Triangle on tile 1002 (u in [1.2, 1.8], v in [0.2, 0.8])
+        mesh.vertices.push([0.0, 0.0, 0.0]);
+        mesh.vertices.push([2.0, 0.0, 0.0]);
+        mesh.vertices.push([0.0, 2.0, 0.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 0.0, 1.0]; 3]);
+        mesh.uvs.push([1.2, 0.2]);
+        mesh.uvs.push([1.8, 0.2]);
+        mesh.uvs.push([1.2, 0.8]);
+        mesh.indices.extend_from_slice(&[0, 1, 2]);
+
+        let mut layer = Layer::new_paint(1, "Paint", 32, 32);
+        let mut brush = Brush::default();
+        brush.color = [1.0, 0.0, 0.0, 1.0];
+        brush.size = 20.0;
+
+        // Painting with udim_tile 1001: triangle is culled (on tile 1002)
+        let bbox_1001 = layer.paint_3d_surface_udim(
+            &mesh,
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, 1.0],
+            1.5,
+            &brush,
+            false,
+            false,
+            None,
+            Some(1001),
+        );
+        assert_eq!(
+            bbox_1001,
+            [0, 0, 0, 0],
+            "Tile 1001 must cull tile 1002 triangle"
+        );
+
+        // Painting with udim_tile 1002: triangle is rasterized!
+        let bbox_1002 = layer.paint_3d_surface_udim(
+            &mesh,
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, 1.0],
+            1.5,
+            &brush,
+            false,
+            false,
+            None,
+            Some(1002),
+        );
+        assert!(
+            bbox_1002[2] >= bbox_1002[0] && bbox_1002[3] >= bbox_1002[1],
+            "Tile 1002 paints successfully"
+        );
+    }
+
+    #[test]
+    fn test_paint_3d_surface_mirrored_uv_triangle() {
+        use crate::graphics::mesh::Mesh;
+        let mut mesh = Mesh::default();
+        // Symmetrical mirrored UV island with clockwise winding in UV space (det < 0)
+        mesh.vertices.push([0.0, 0.0, 0.0]);
+        mesh.vertices.push([1.0, 0.0, 0.0]);
+        mesh.vertices.push([0.0, 1.0, 0.0]);
+        mesh.normals.extend_from_slice(&[[0.0, 0.0, 1.0]; 3]);
+        // Clockwise in UV space
+        mesh.uvs.push([0.2, 0.2]);
+        mesh.uvs.push([0.2, 0.8]);
+        mesh.uvs.push([0.8, 0.2]);
+        mesh.indices.extend_from_slice(&[0, 1, 2]);
+
+        let mut layer = Layer::new_paint(1, "Paint", 32, 32);
+        let mut brush = Brush::default();
+        brush.color = [0.0, 1.0, 0.0, 1.0];
+        brush.size = 15.0;
+
+        let bbox = layer.paint_3d_surface(
+            &mesh,
+            [0.2, 0.2, 0.0],
+            [0.0, 0.0, 1.0],
+            0.5,
+            &brush,
+            false,
+            false,
+            None,
+        );
+        assert!(
+            bbox[2] >= bbox[0] && bbox[3] >= bbox[1],
+            "Mirrored clockwise UV triangle must rasterize paint"
         );
     }
 }

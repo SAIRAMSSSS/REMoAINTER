@@ -89,6 +89,14 @@ pub struct PbrUniforms {
     pub dof_aperture: f32,
     /// Color management transfer mode (0 = ACES Filmic + sRGB, 1 = Raw Linear, 2 = Reinhard).
     pub color_management_mode: i32,
+    /// 1 if UDIM multi-tile workflow is active, 0 for standard repeat sampling.
+    pub is_udim: i32,
+    /// Number of active UDIM tiles loaded into the 2D texture array (up to 16).
+    pub udim_tile_count: i32,
+    pub _pad0: i32,
+    pub _pad1: i32,
+    /// UDIM tile IDs mapped to array layers 0..15 (packed as 4 x vec4<i32>).
+    pub udim_tile_ids: [[i32; 4]; 4],
 }
 
 /// Uniform block for the skybox equirectangular background pass (80 bytes).
@@ -340,28 +348,30 @@ impl GpuGrid {
 // =========================================================================
 
 /// Holds the active composite PBR textures on the GPU.
+/// Uses 2D Texture Arrays (`texture_2d_array<f32>`) supporting both single material sets
+/// and multi-tile UDIM meshes (up to 16 tiles) seamlessly.
 pub struct GpuTextures {
-    /// Base color / albedo map (RGBA8 Unorm).
+    /// Base color / albedo map (RGBA8 Unorm, 2D array view).
     pub base_color: wgpu::Texture,
     pub base_color_view: wgpu::TextureView,
 
-    /// Metallic map (R8 Unorm).
+    /// Metallic map (R8 Unorm, 2D array view).
     pub metallic: wgpu::Texture,
     pub metallic_view: wgpu::TextureView,
 
-    /// Roughness map (R8 Unorm).
+    /// Roughness map (R8 Unorm, 2D array view).
     pub roughness: wgpu::Texture,
     pub roughness_view: wgpu::TextureView,
 
-    /// Tangent-space normal map (RGBA8 Unorm).
+    /// Tangent-space normal map (RGBA8 Unorm, 2D array view).
     pub normal: wgpu::Texture,
     pub normal_view: wgpu::TextureView,
 
-    /// Ambient occlusion map (R8 Unorm).
+    /// Ambient occlusion map (R8 Unorm, 2D array view).
     pub ao: wgpu::Texture,
     pub ao_view: wgpu::TextureView,
 
-    /// Curvature map (R8 Unorm).
+    /// Curvature map (R8 Unorm, 2D array view).
     pub curvature: wgpu::Texture,
     pub curvature_view: wgpu::TextureView,
 
@@ -369,15 +379,21 @@ pub struct GpuTextures {
     pub width: u32,
     /// Current texture resolution height.
     pub height: u32,
+    /// Number of 2D array layers allocated on the GPU.
+    pub layers: u32,
+    /// Tracked UDIM tile IDs corresponding to each layer index.
+    pub udim_tiles: Vec<u32>,
 }
 
 impl GpuTextures {
-    /// Creates a new `GpuTextures` set allocated for the given dimensions.
-    pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
+    /// Creates a new `GpuTextures` set allocated for the given dimensions and layer count.
+    pub fn new(device: &wgpu::Device, width: u32, height: u32, layers: u32) -> Self {
+        let n_layers = layers.max(1);
         let (base_color, base_color_view) = Self::create_tex(
             device,
             width,
             height,
+            n_layers,
             wgpu::TextureFormat::Rgba8Unorm,
             "BaseColor",
         );
@@ -385,6 +401,7 @@ impl GpuTextures {
             device,
             width,
             height,
+            n_layers,
             wgpu::TextureFormat::R8Unorm,
             "Metallic",
         );
@@ -392,6 +409,7 @@ impl GpuTextures {
             device,
             width,
             height,
+            n_layers,
             wgpu::TextureFormat::R8Unorm,
             "Roughness",
         );
@@ -399,15 +417,23 @@ impl GpuTextures {
             device,
             width,
             height,
+            n_layers,
             wgpu::TextureFormat::Rgba8Unorm,
             "Normal",
         );
-        let (ao, ao_view) =
-            Self::create_tex(device, width, height, wgpu::TextureFormat::R8Unorm, "AO");
+        let (ao, ao_view) = Self::create_tex(
+            device,
+            width,
+            height,
+            n_layers,
+            wgpu::TextureFormat::R8Unorm,
+            "AO",
+        );
         let (curvature, curvature_view) = Self::create_tex(
             device,
             width,
             height,
+            n_layers,
             wgpu::TextureFormat::R8Unorm,
             "Curvature",
         );
@@ -427,24 +453,26 @@ impl GpuTextures {
             curvature_view,
             width,
             height,
+            layers: n_layers,
+            udim_tiles: vec![1001],
         }
     }
 
-    /// Uploads full texture channel data from [`LayerStack`] and [`BakedMaps`].
-    pub fn upload_all(
+    /// Uploads a single texture tile layer from [`LayerStack`] and [`BakedMaps`].
+    pub fn upload_tile(
         &mut self,
-        device: &wgpu::Device,
         queue: &wgpu::Queue,
+        layer_idx: u32,
         stack: &LayerStack,
         baked: &BakedMaps,
     ) {
-        let w = stack.width;
-        let h = stack.height;
-        let total = (w * h) as usize;
-
-        if w != self.width || h != self.height {
-            *self = Self::new(device, w, h);
+        if layer_idx >= self.layers {
+            return;
         }
+
+        let w = self.width;
+        let h = self.height;
+        let total = (w * h) as usize;
 
         let mut bc_bytes = Vec::with_capacity(total * 4);
         let mut met_bytes = Vec::with_capacity(total);
@@ -495,17 +523,68 @@ impl GpuTextures {
             vec![128u8; total]
         };
 
-        Self::write_full_tex(queue, &self.base_color, w, h, 4, &bc_bytes);
-        Self::write_full_tex(queue, &self.metallic, w, h, 1, &met_bytes);
-        Self::write_full_tex(queue, &self.roughness, w, h, 1, &rgh_bytes);
-        Self::write_full_tex(queue, &self.normal, w, h, 4, &nrm_bytes);
-        Self::write_full_tex(queue, &self.ao, w, h, 1, &ao_bytes);
-        Self::write_full_tex(queue, &self.curvature, w, h, 1, &curv_bytes);
+        Self::write_full_tex(queue, &self.base_color, layer_idx, w, h, 4, &bc_bytes);
+        Self::write_full_tex(queue, &self.metallic, layer_idx, w, h, 1, &met_bytes);
+        Self::write_full_tex(queue, &self.roughness, layer_idx, w, h, 1, &rgh_bytes);
+        Self::write_full_tex(queue, &self.normal, layer_idx, w, h, 4, &nrm_bytes);
+        Self::write_full_tex(queue, &self.ao, layer_idx, w, h, 1, &ao_bytes);
+        Self::write_full_tex(queue, &self.curvature, layer_idx, w, h, 1, &curv_bytes);
     }
 
-    /// Uploads a dirty bounding box sub-rectangle after painting strokes.
-    pub fn upload_dirty(&mut self, queue: &wgpu::Queue, stack: &LayerStack, bbox: [i32; 4]) {
-        if self.width != stack.width || self.height != stack.height {
+    /// Uploads full texture channel data from [`LayerStack`] and [`BakedMaps`] to layer 0.
+    pub fn upload_all(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        stack: &LayerStack,
+        baked: &BakedMaps,
+    ) {
+        let w = stack.width;
+        let h = stack.height;
+
+        if w != self.width || h != self.height {
+            *self = Self::new(device, w, h, self.layers);
+        }
+
+        self.upload_tile(queue, 0, stack, baked);
+    }
+
+    /// Uploads all texture sets for UDIM multi-tile rendering across layers 0..N.
+    pub fn upload_all_udim(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        manager: &crate::painting::texture_set::TextureSetManager,
+    ) {
+        let req_layers = manager.sets.len().max(1) as u32;
+        let w = manager
+            .sets
+            .first()
+            .map(|s| s.resolution)
+            .unwrap_or(self.width);
+        let h = w;
+
+        if w != self.width || h != self.height || req_layers != self.layers {
+            *self = Self::new(device, w, h, req_layers);
+        }
+
+        self.udim_tiles.clear();
+        for (i, set) in manager.sets.iter().enumerate() {
+            let tile_id = set.udim_tile.unwrap_or(1001 + i as u32);
+            self.udim_tiles.push(tile_id);
+            self.upload_tile(queue, i as u32, &set.layer_stack, &set.baked_maps);
+        }
+    }
+
+    /// Uploads a dirty bounding box sub-rectangle on a specific UDIM tile layer.
+    pub fn upload_dirty_tile(
+        &mut self,
+        queue: &wgpu::Queue,
+        layer_idx: u32,
+        stack: &LayerStack,
+        bbox: [i32; 4],
+    ) {
+        if self.width != stack.width || self.height != stack.height || layer_idx >= self.layers {
             return;
         }
 
@@ -558,25 +637,72 @@ impl GpuTextures {
             }
         }
 
-        Self::write_sub_tex(queue, &self.base_color, x0, y0, sub_w, sub_h, 4, &bc_sub);
-        Self::write_sub_tex(queue, &self.metallic, x0, y0, sub_w, sub_h, 1, &met_sub);
-        Self::write_sub_tex(queue, &self.roughness, x0, y0, sub_w, sub_h, 1, &rgh_sub);
-        Self::write_sub_tex(queue, &self.normal, x0, y0, sub_w, sub_h, 4, &nrm_sub);
+        Self::write_sub_tex(
+            queue,
+            &self.base_color,
+            layer_idx,
+            x0,
+            y0,
+            sub_w,
+            sub_h,
+            4,
+            &bc_sub,
+        );
+        Self::write_sub_tex(
+            queue,
+            &self.metallic,
+            layer_idx,
+            x0,
+            y0,
+            sub_w,
+            sub_h,
+            1,
+            &met_sub,
+        );
+        Self::write_sub_tex(
+            queue,
+            &self.roughness,
+            layer_idx,
+            x0,
+            y0,
+            sub_w,
+            sub_h,
+            1,
+            &rgh_sub,
+        );
+        Self::write_sub_tex(
+            queue,
+            &self.normal,
+            layer_idx,
+            x0,
+            y0,
+            sub_w,
+            sub_h,
+            4,
+            &nrm_sub,
+        );
+    }
+
+    /// Uploads a dirty bounding box sub-rectangle after painting strokes on layer 0.
+    pub fn upload_dirty(&mut self, queue: &wgpu::Queue, stack: &LayerStack, bbox: [i32; 4]) {
+        self.upload_dirty_tile(queue, 0, stack, bbox);
     }
 
     fn create_tex(
         device: &wgpu::Device,
         width: u32,
         height: u32,
+        layers: u32,
         format: wgpu::TextureFormat,
         label: &str,
     ) -> (wgpu::Texture, wgpu::TextureView) {
+        let n_layers = layers.max(1);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
                 width,
                 height,
-                depth_or_array_layers: 1,
+                depth_or_array_layers: n_layers,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -585,13 +711,23 @@ impl GpuTextures {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some(label),
+            format: Some(format),
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: Some(1),
+            base_array_layer: 0,
+            array_layer_count: Some(n_layers),
+        });
         (texture, view)
     }
 
     fn write_full_tex(
         queue: &wgpu::Queue,
         texture: &wgpu::Texture,
+        layer: u32,
         width: u32,
         height: u32,
         bytes_per_pixel: u32,
@@ -601,7 +737,11 @@ impl GpuTextures {
             wgpu::ImageCopyTexture {
                 texture,
                 mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
+                origin: wgpu::Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: layer,
+                },
                 aspect: wgpu::TextureAspect::All,
             },
             data,
@@ -622,6 +762,7 @@ impl GpuTextures {
     fn write_sub_tex(
         queue: &wgpu::Queue,
         texture: &wgpu::Texture,
+        layer: u32,
         x: u32,
         y: u32,
         width: u32,
@@ -633,7 +774,7 @@ impl GpuTextures {
             wgpu::ImageCopyTexture {
                 texture,
                 mip_level: 0,
-                origin: wgpu::Origin3d { x, y, z: 0 },
+                origin: wgpu::Origin3d { x, y, z: layer },
                 aspect: wgpu::TextureAspect::All,
             },
             data,
@@ -678,18 +819,23 @@ struct PbrUniforms {
     dof_focal_distance: f32,
     dof_aperture: f32,
     color_management_mode: i32,
+    is_udim: i32,
+    udim_tile_count: i32,
+    _pad0: i32,
+    _pad1: i32,
+    udim_tile_ids: array<vec4<i32>, 4>,
 };
 
 @group(0) @binding(0) var<uniform> u: PbrUniforms;
 
 @group(1) @binding(0) var s_repeat: sampler;
 @group(1) @binding(1) var s_clamp: sampler;
-@group(1) @binding(2) var t_base_color: texture_2d<f32>;
-@group(1) @binding(3) var t_metallic: texture_2d<f32>;
-@group(1) @binding(4) var t_roughness: texture_2d<f32>;
-@group(1) @binding(5) var t_normal: texture_2d<f32>;
-@group(1) @binding(6) var t_ao: texture_2d<f32>;
-@group(1) @binding(7) var t_curvature: texture_2d<f32>;
+@group(1) @binding(2) var t_base_color: texture_2d_array<f32>;
+@group(1) @binding(3) var t_metallic: texture_2d_array<f32>;
+@group(1) @binding(4) var t_roughness: texture_2d_array<f32>;
+@group(1) @binding(5) var t_normal: texture_2d_array<f32>;
+@group(1) @binding(6) var t_ao: texture_2d_array<f32>;
+@group(1) @binding(7) var t_curvature: texture_2d_array<f32>;
 @group(1) @binding(8) var t_env_map: texture_2d<f32>;
 @group(1) @binding(9) var t_brdf_lut: texture_2d<f32>;
 
@@ -784,19 +930,50 @@ fn sample_equirectangular(dir: vec3<f32>, mip_level: f32) -> vec3<f32> {
     return textureSampleLevel(t_env_map, s_clamp, uv, mip_level).rgb;
 }
 
+fn resolve_udim_coords(raw_uv: vec2<f32>) -> vec3<f32> {
+    if (u.is_udim == 0) {
+        return vec3<f32>(raw_uv.x * u.uv_scale, raw_uv.y * u.uv_scale, 0.0);
+    }
+
+    let u_tile = i32(floor(raw_uv.x));
+    let v_tile = i32(floor(raw_uv.y));
+    let tile_id = 1001 + u_tile + 10 * v_tile;
+    let local_u = fract(raw_uv.x);
+    let local_v = fract(raw_uv.y);
+
+    var layer: i32 = 0;
+    for (var i: i32 = 0; i < u.udim_tile_count; i = i + 1) {
+        let v_idx = i / 4;
+        let c_idx = i % 4;
+        var id: i32 = 0;
+        if (c_idx == 0) { id = u.udim_tile_ids[v_idx].x; }
+        else if (c_idx == 1) { id = u.udim_tile_ids[v_idx].y; }
+        else if (c_idx == 2) { id = u.udim_tile_ids[v_idx].z; }
+        else { id = u.udim_tile_ids[v_idx].w; }
+
+        if (id == tile_id) {
+            layer = i;
+            break;
+        }
+    }
+    return vec3<f32>(local_u, local_v, f32(layer));
+}
+
 @fragment
 fn fs_main(in: VertexOutput, @builtin(front_facing) is_front: bool) -> @location(0) vec4<f32> {
-    let uv = in.uv * u.uv_scale;
+    let udim_res = resolve_udim_coords(in.uv);
+    let uv = udim_res.xy;
+    let tile_layer = i32(udim_res.z);
 
-    let base_sample = textureSample(t_base_color, s_repeat, uv);
+    let base_sample = textureSample(t_base_color, s_repeat, uv, tile_layer);
     let albedo = pow(base_sample.rgb, vec3<f32>(2.2));
-    let metallic = textureSample(t_metallic, s_repeat, uv).r;
-    let roughness = clamp(textureSample(t_roughness, s_repeat, uv).r, 0.04, 1.0);
-    let ao = textureSample(t_ao, s_repeat, in.uv).r;
-    let curvature = textureSample(t_curvature, s_repeat, in.uv).r;
+    let metallic = textureSample(t_metallic, s_repeat, uv, tile_layer).r;
+    let roughness = clamp(textureSample(t_roughness, s_repeat, uv, tile_layer).r, 0.04, 1.0);
+    let ao = textureSample(t_ao, s_repeat, uv, tile_layer).r;
+    let curvature = textureSample(t_curvature, s_repeat, uv, tile_layer).r;
 
     // Normal mapping with TBN frame
-    let n_ts = textureSample(t_normal, s_repeat, uv).rgb * 2.0 - 1.0;
+    let n_ts = textureSample(t_normal, s_repeat, uv, tile_layer).rgb * 2.0 - 1.0;
     let tbn = mat3x3<f32>(in.tangent, in.bitangent, in.normal);
     var N = normalize(tbn * n_ts);
     if (!is_front) {
@@ -1135,6 +1312,11 @@ impl GpuPipelines {
                 dof_focal_distance: 2.5,
                 dof_aperture: 0.08,
                 color_management_mode: 0,
+                is_udim: 0,
+                udim_tile_count: 0,
+                _pad0: 0,
+                _pad1: 0,
+                udim_tile_ids: [[0; 4]; 4],
             }]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
@@ -1187,7 +1369,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1198,7 +1380,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1209,7 +1391,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1220,7 +1402,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1231,7 +1413,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1242,7 +1424,7 @@ impl GpuPipelines {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
+                            view_dimension: wgpu::TextureViewDimension::D2Array,
                             multisampled: false,
                         },
                         count: None,
@@ -1707,6 +1889,12 @@ pub struct ViewportPaintParams {
     pub dof_focal_distance: f32,
     pub dof_aperture: f32,
     pub color_management_mode: usize,
+    /// Whether UDIM multi-tile rendering is active.
+    pub is_udim: bool,
+    /// Number of active UDIM tiles (up to 16).
+    pub udim_tile_count: usize,
+    /// UDIM tile IDs corresponding to array layers 0..15.
+    pub udim_tile_ids: [u32; 16],
 }
 
 /// The core Rust & Vulkan / wgpu 3D viewport state machine.
@@ -1744,7 +1932,7 @@ impl ViewportWgpu {
     ) -> Result<Self, String> {
         let gpu_mesh = GpuMesh::new(device, mesh);
         let grid = GpuGrid::new(device);
-        let mut textures = GpuTextures::new(device, stack.width, stack.height);
+        let mut textures = GpuTextures::new(device, stack.width, stack.height, 1);
         textures.upload_all(device, queue, stack, baked);
 
         // Precompute Karis 512x512 BRDF integration LUT
@@ -1784,6 +1972,9 @@ impl ViewportWgpu {
             dof_focal_distance: 2.5,
             dof_aperture: 0.08,
             color_management_mode: 0,
+            is_udim: false,
+            udim_tile_count: 0,
+            udim_tile_ids: [1001; 16],
         };
 
         let mut viewport = Self {
@@ -1854,6 +2045,46 @@ impl ViewportWgpu {
     /// Uploads a dirty tile region from active brush strokes.
     pub fn upload_dirty(&mut self, queue: &wgpu::Queue, stack: &LayerStack, bbox: [i32; 4]) {
         self.textures.upload_dirty(queue, stack, bbox);
+    }
+
+    /// Uploads multi-tile UDIM textures from a [`TextureSetManager`].
+    pub fn upload_udim_textures(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        manager: &crate::painting::texture_set::TextureSetManager,
+    ) {
+        let tile_count = manager.sets.len().max(1) as u32;
+        let w = manager
+            .sets
+            .first()
+            .map(|s| s.resolution)
+            .unwrap_or(self.textures.width);
+        let h = w;
+        let needs_realloc = self.textures.layers != tile_count
+            || self.textures.width != w
+            || self.textures.height != h;
+
+        if needs_realloc {
+            let mut new_tex = GpuTextures::new(device, w, h, tile_count);
+            new_tex.upload_all_udim(device, queue, manager);
+            self.textures = new_tex;
+            self.rebind_textures(device);
+        } else {
+            self.textures.upload_all_udim(device, queue, manager);
+        }
+    }
+
+    /// Uploads a dirty tile region for a specific UDIM layer index.
+    pub fn upload_dirty_tile(
+        &mut self,
+        queue: &wgpu::Queue,
+        layer_idx: u32,
+        stack: &LayerStack,
+        bbox: [i32; 4],
+    ) {
+        self.textures
+            .upload_dirty_tile(queue, layer_idx, stack, bbox);
     }
 
     /// Loads an HDR (`.exr`) or LDR image environment map.
@@ -1970,6 +2201,11 @@ impl ViewportWgpu {
         let inv_view_proj = view_proj.inverse();
 
         // 1. PBR Uniforms
+        let mut packed_tile_ids = [[0i32; 4]; 4];
+        for (i, tile_id) in params.udim_tile_ids.iter().enumerate().take(16) {
+            packed_tile_ids[i / 4][i % 4] = *tile_id as i32;
+        }
+
         let pbr_uniforms = PbrUniforms {
             model: glam::Mat4::IDENTITY.to_cols_array_2d(),
             view: view.to_cols_array_2d(),
@@ -1992,6 +2228,11 @@ impl ViewportWgpu {
             dof_focal_distance: params.dof_focal_distance,
             dof_aperture: params.dof_aperture,
             color_management_mode: params.color_management_mode as i32,
+            is_udim: if params.is_udim { 1 } else { 0 },
+            udim_tile_count: params.udim_tile_count.min(16) as i32,
+            _pad0: 0,
+            _pad1: 0,
+            udim_tile_ids: packed_tile_ids,
         };
 
         queue.write_buffer(
@@ -2437,5 +2678,11 @@ mod tests {
         assert_eq!(line_count, 42);
         let vert_count = line_count * 2;
         assert_eq!(vert_count, 84);
+    }
+
+    #[test]
+    fn test_pbr_uniforms_layout_and_size() {
+        assert_eq!(std::mem::size_of::<PbrUniforms>(), 416);
+        assert_eq!(std::mem::size_of::<PbrUniforms>() % 16, 0);
     }
 }

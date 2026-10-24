@@ -127,6 +127,9 @@ pub struct BakerOptionsManifest {
     /// Nearest-shell fallback when mesh-name matching fails to pair a shell.
     #[serde(default)]
     pub match_by_shell: bool,
+    /// Target UDIM UV tile (e.g. Some(1001), Some(1002)).
+    #[serde(default)]
+    pub udim_tile: Option<u32>,
 }
 
 pub fn default_skew_strength() -> f32 {
@@ -322,6 +325,7 @@ impl ProjectManager {
                 skew_strength: baker_options.skew_strength,
                 map_format: baker_options.map_format,
                 match_by_shell: baker_options.match_by_shell,
+                udim_tile: baker_options.udim_tile,
             },
             camera_yaw: camera.0,
             camera_pitch: camera.1,
@@ -799,6 +803,7 @@ impl ProjectManager {
             map_format: manifest.baker_options.map_format,
             match_by_shell: manifest.baker_options.match_by_shell,
             skew_map: None,
+            udim_tile: manifest.baker_options.udim_tile,
         };
 
         Ok((manifest, mesh, layer_stack, baked_maps, baker_options))
@@ -873,6 +878,7 @@ mod tests {
                 skew_strength: 0.6,
                 map_format: BakedMapFormat::F32,
                 match_by_shell: false,
+                udim_tile: None,
             },
             camera_yaw: 45.0,
             camera_pitch: 15.0,
