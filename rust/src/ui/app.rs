@@ -518,6 +518,131 @@ fn scan_shelf_assets() -> Vec<ShelfAsset> {
         .map(|a| (a.category, a.name.to_lowercase()))
         .collect();
 
+    // 2. Scan core bundled PBR materials from assets/materials/<name>
+    if let Some(materials_dir) = crate::paths::find_assets_subdir("materials") {
+        if let Ok(entries) = std::fs::read_dir(&materials_dir) {
+            let mut list: Vec<_> = entries.flatten().collect();
+            list.sort_by_key(|e| e.file_name());
+            for entry in list {
+                let p = entry.path();
+                if !p.is_dir() {
+                    continue;
+                }
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    continue;
+                }
+                let key = (2, name.to_lowercase());
+                if !seen.insert(key) {
+                    continue;
+                }
+                let (pbr_color, pbr_metallic, pbr_roughness) = infer_pbr(&name);
+                let thumb_path = p.join("base_color.png");
+                assets.push(ShelfAsset {
+                    name: name.clone(),
+                    category: 2, // Materials
+                    path: p.clone(),
+                    thumb_path: if thumb_path.exists() {
+                        thumb_path
+                    } else {
+                        p.clone()
+                    },
+                    badge: "MAT",
+                    badge_color: ACTIVE_BLUE,
+                    pbr_color,
+                    pbr_metallic,
+                    pbr_roughness,
+                    item_dir: Some(p),
+                    icon_kind: crate::painting::material_library::IconKind::Flat,
+                    search_text: format!("{} pbr material", name.to_lowercase()),
+                });
+            }
+        }
+    }
+
+    // 3. Bundled Starter Smart Materials (multi-layer PBR hierarchy with wear)
+    let starter_smart_mats = [
+        ("Steel Painted Worn", [0.18, 0.42, 0.22, 1.0], 0.1, 0.45),
+        ("Copper Patina", [0.22, 0.65, 0.55, 1.0], 0.2, 0.70),
+        ("Rusted Iron", [0.45, 0.22, 0.12, 1.0], 0.15, 0.85),
+        ("Gold Scratched", [1.0, 0.78, 0.28, 1.0], 1.0, 0.35),
+        ("Bronze Antique", [0.65, 0.45, 0.25, 1.0], 0.85, 0.40),
+        ("Aluminium Scratched", [0.85, 0.86, 0.88, 1.0], 0.95, 0.30),
+    ];
+    for (sm_name, col, met, rgh) in starter_smart_mats {
+        let key = (1, sm_name.to_lowercase());
+        if seen.insert(key) {
+            assets.push(ShelfAsset {
+                name: sm_name.to_string(),
+                category: 1, // Smart Materials
+                path: PathBuf::from(sm_name),
+                thumb_path: PathBuf::new(),
+                badge: "SMAT",
+                badge_color: SMART_MAT_ORANGE,
+                pbr_color: col,
+                pbr_metallic: met,
+                pbr_roughness: rgh,
+                item_dir: None,
+                icon_kind: crate::painting::material_library::IconKind::Flat,
+                search_text: format!("{} smart material worn wear", sm_name.to_lowercase()),
+            });
+        }
+    }
+
+    // 4. Bundled Starter Smart Masks (procedural curvature & AO generators)
+    let starter_smart_masks = [
+        "Metal Edge Wear",
+        "Dirt Crevices",
+        "Cavity Dust",
+        "Surface Scratches",
+    ];
+    for mask_name in starter_smart_masks {
+        let key = (3, mask_name.to_lowercase());
+        if seen.insert(key) {
+            assets.push(ShelfAsset {
+                name: mask_name.to_string(),
+                category: 3, // Smart Masks
+                path: PathBuf::from(mask_name),
+                thumb_path: PathBuf::new(),
+                badge: "MSK",
+                badge_color: Color32::from_rgb(160, 60, 220),
+                pbr_color: [1.0, 1.0, 1.0, 1.0],
+                pbr_metallic: 0.0,
+                pbr_roughness: 0.5,
+                item_dir: None,
+                icon_kind: crate::painting::material_library::IconKind::Flat,
+                search_text: format!("{} smart mask generator", mask_name.to_lowercase()),
+            });
+        }
+    }
+
+    // 5. Bundled Starter Alphas (procedural brush tips)
+    let starter_alphas = [
+        "Soft Round",
+        "Hard Square",
+        "Noise Splatter",
+        "Scratch Streak",
+    ];
+    for alpha_name in starter_alphas {
+        let key = (4, alpha_name.to_lowercase());
+        if seen.insert(key) {
+            assets.push(ShelfAsset {
+                name: alpha_name.to_string(),
+                category: 4, // Alphas
+                path: PathBuf::from(alpha_name),
+                thumb_path: PathBuf::new(),
+                badge: "ALPHA",
+                badge_color: Color32::from_rgb(46, 180, 110),
+                pbr_color: [1.0, 1.0, 1.0, 1.0],
+                pbr_metallic: 0.0,
+                pbr_roughness: 0.5,
+                item_dir: None,
+                icon_kind: crate::painting::material_library::IconKind::Flat,
+                search_text: format!("{} brush alpha procedural", alpha_name.to_lowercase()),
+            });
+        }
+    }
+
     // Legacy shelf sources: kept for anything the cache does not already cover.
     // `assets/materials` is deliberately OUT — those SP sphere-render previews are
     // forbidden as content and must never be interpreted as flat maps.
@@ -10665,5 +10790,36 @@ mod tests {
         assert_eq!(app.viewport_view_mode, 2);
         assert_eq!(app.camera_yaw, 35.0);
         assert_eq!(app.active_tool, ToolMode::Paint);
+    }
+
+    #[test]
+    fn test_shelf_assets_and_environments_are_discovered() {
+        let assets = scan_shelf_assets();
+        assert!(
+            !assets.is_empty(),
+            "shelf_assets must discover bundled materials"
+        );
+        assert!(
+            assets.iter().any(|a| a.category == 2),
+            "must have materials (cat 2)"
+        );
+        assert!(
+            assets.iter().any(|a| a.category == 1),
+            "must have smart materials (cat 1)"
+        );
+        assert!(
+            assets.iter().any(|a| a.category == 3),
+            "must have smart masks (cat 3)"
+        );
+        assert!(
+            assets.iter().any(|a| a.category == 4),
+            "must have alphas (cat 4)"
+        );
+
+        let envs = list_available_environments();
+        assert!(
+            !envs.is_empty(),
+            "environments must discover bundled HDR/PNG environments"
+        );
     }
 }

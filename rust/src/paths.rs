@@ -12,10 +12,10 @@ use std::path::PathBuf;
 pub fn assets_dir_candidates() -> Vec<PathBuf> {
     let mut candidates = vec![PathBuf::from("assets"), PathBuf::from("../assets")];
     if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            candidates.push(dir.join("assets"));
-            if let Some(parent) = dir.parent() {
-                candidates.push(parent.join("assets"));
+        for ancestor in exe.ancestors().skip(1).take(5) {
+            let cand = ancestor.join("assets");
+            if !candidates.contains(&cand) {
+                candidates.push(cand);
             }
         }
     }

@@ -420,7 +420,17 @@ pub fn build_fill_layer(
         height,
     );
 
-    // 1. Materials ship a flat UV-aligned fill map — the honest SP base-color parity.
+    // 1. Direct PBR texture set from folder (e.g. core assets/materials/<name>).
+    let direct_set = super::texture_importer::PbrTextureSet::from_folder(item_dir);
+    if direct_set.base_color.is_some()
+        || direct_set.normal.is_some()
+        || direct_set.roughness.is_some()
+    {
+        let _ = direct_set.load_into_layer(&mut layer, false);
+        return Ok((layer, ReferenceContentKind::LegacyTextureSet));
+    }
+
+    // 2. Materials ship a flat UV-aligned fill map — the honest SP base-color parity.
     let fill_map = item_dir.join("fill_map.png");
     if fill_map.exists() {
         let img = image::open(&fill_map)
@@ -430,7 +440,7 @@ pub fn build_fill_layer(
         return Ok((layer, ReferenceContentKind::FillMapBitmap));
     }
 
-    // 2. Smart materials: name-matched legacy assets/materials texture set.
+    // 3. Smart materials: name-matched legacy assets/materials texture set.
     if let Some(set_dir) = find_legacy_material_dir(&label) {
         let set = super::texture_importer::PbrTextureSet::from_folder(&set_dir);
         if let Some(ref base_color) = set.base_color {

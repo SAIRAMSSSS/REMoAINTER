@@ -93,45 +93,57 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 
 ---
 
+## Architecture & Implementation Status
+
+REMoAINTER is implemented in **100% safe Rust** using the `wgpu` ecosystem for native Vulkan (Linux/Windows), Metal (macOS), and DirectX 12 (Windows) hardware acceleration.
+
+### Implementation Status Matrix
+
+| Subsystem | Implemented Status | Details |
+| :--- | :---: | :--- |
+| **3D Hardware Viewport** | **WORKING** | Pure WGSL rendering pipelines (`wgpu`): Cook-Torrance GGX microfacet BRDF, Karis split-sum IBL with 512×512 LUT, equirectangular HDR skyboxes, 24-bit depth buffer, wireframe overlay, ground grid with RGB axes. |
+| **Multi-Channel Painting** | **WORKING** | Real-time painting into BaseColor, Metallic, Roughness, Normal, and Height buffers with UV seam wrapping, LazyMouse stabilizer, and symmetry. |
+| **Layer Stack & Blending** | **WORKING** | Non-destructive layers with blend modes (Normal, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, Color Dodge, Linear Dodge), opacity, folder hierarchies, and clipping masks. |
+| **Black Masks & Generators** | **WORKING** | Procedural mask generator effects driven by baked Curvature (edge wear) and Ambient Occlusion (crevices/dirt), plus Levels and Invert effects. |
+| **Mesh Maps Baking** | **WORKING** | Multi-threaded CPU raytracing baker via Rayon & BVH: AO (cosine-weighted hemispherical rays), Curvature (Laplacian normal variance), World Space Normals, Tangent Space Normals, Position, Thickness, and ID maps. |
+| **Asset Browser & Shelf** | **WORKING** | Live discovery of bundled PBR materials (`assets/materials/`), starter smart materials, procedural smart masks, brush alphas, and HDR environment probes. |
+| **Texture Import & Export** | **WORKING** | Drag-and-drop PBR texture sets with auto-channel matching (ambientCG / Poly Haven); presets for Unreal Engine (ORM), Unity (HDRP/URP MaskMap), and glTF 2.0 with UV gutter dilation. |
+| **Project Persistence** | **WORKING** | Complete save/load of `.rmp` project archives containing JSON manifests, layer channel PNGs, and baked maps. |
+| **Procedural Texture Graph** | **PARTIAL** | Core node graph engine (`painting/graph.rs`) with noise, gradients, and blend math; integrated in procedural material dialog. |
+| **SBSAR / SPSM Import** | **PARTIAL** | Package archive parsing and preset extraction via `sbsar.rs` and `sevenz-rust`; batch procedural graph rendering delegates to `tools/export_sbsar.py`. |
+| **UDIM Multi-Tile Workflow** | **EXPERIMENTAL** | UDIM tile coordinate math and detection implemented; active editing currently operates on primary tile. |
+| **GPU Compute Baking** | **PLANNED** | Hardware compute shader baking pipeline planned for future milestone. |
+
+---
+
 ## Directory Structure
 
 ```
 REMoAINTER/
-├── assets/
-│   ├── branding/           # REMoAINTER logos and icons
-│   ├── materials/          # Real PBR materials with 1024/2048 texture maps
-│   ├── shelf/              # Shelf assets (thumbnails, smart materials, alphas)
-│   └── test_models/        # Test assets (lantern.obj, radio.obj)
-├── tools/
-│   ├── export_sbsar.py     # SBSAR & SPSM batch exporter CLI
-│   └── generate_core_pbr_materials.py # Starter PBR material generator
-├── docs/
-│   └── v0.2_ARCHITECTURE.md # Full architecture specification
-├── rust/                   # Rust v0.2 implementation
-│   ├── Cargo.toml
+├── assets/                 # Shipped application assets
+│   ├── branding/           # Logos and application icons
+│   ├── environments/       # Bundled HDR/PNG equirectangular environment maps
+│   ├── fonts/              # Bundled TrueType and OpenType fonts
+│   ├── materials/          # 10 core PBR materials with 1024x1024 texture maps
+│   └── test_models/        # Sample 3D meshes (lantern.obj, radio.obj, sphere.obj)
+├── docs/                   # Technical documentation
+│   ├── ARCHITECTURE.md     # Engineering architecture specification
+│   └── FEATURE_AUDIT.md    # Detailed capability audit
+├── rust/                   # Rust implementation (authoritative codebase)
+│   ├── Cargo.toml          # Rust dependencies and configuration
 │   └── src/
-│       ├── baker/          # Rayon multithreaded baking engine
-│       │   ├── engine.rs
-│       │   └── mod.rs
-│       ├── graphics/       # Native Vulkan (wgpu) viewport, mesh, tangents
-│       │   ├── mesh.rs
-│       │   ├── viewport_wgpu.rs
-│       │   └── mod.rs
-│       ├── painting/       # Layer stack, black masks, brush, anchors, importer
-│       │   ├── anchor.rs
-│       │   ├── brush.rs
-│       │   ├── layer.rs
-│       │   ├── mask.rs
-│       │   ├── material_gen.rs
-│       │   ├── texture_importer.rs
-│       │   └── mod.rs
-│       ├── ui/             # egui / wgpu Vulkan PBR painting UI
-│       │   ├── app.rs
-│       │   ├── theme.rs
-│       │   └── mod.rs
-│       └── main.rs
-├── src/                    # C++20 / Vulkan engine (v1.x legacy core)
-└── CMakeLists.txt
+│       ├── baker/          # Multithreaded CPU raytracing baking engine
+│       ├── graphics/       # Native Vulkan/wgpu viewport, WGSL shaders, mesh geometry
+│       ├── painting/       # Layer stack, black masks, brush engine, PBR texture sets
+│       ├── paths/          # Machine-independent asset discovery
+│       ├── project/        # .rmp project archive serialization & user config
+│       ├── render/         # Software path tracing look-dev verification engine
+│       ├── ui/             # egui-wgpu UI panels, tools, shelf browser, and theme
+│       ├── lib.rs          # Core library interface
+│       └── main.rs         # Desktop application entry point
+└── tools/
+    ├── export_sbsar.py     # SBSAR & SPSM batch exporter CLI
+    └── generate_core_pbr_materials.py # Starter PBR material generator
 ```
 
 ---

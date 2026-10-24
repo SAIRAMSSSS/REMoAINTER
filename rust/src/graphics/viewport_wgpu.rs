@@ -1800,11 +1800,15 @@ impl ViewportWgpu {
         };
 
         // Attempt to load Studio Tomoco default environment
-        let mut default_env_paths: Vec<PathBuf> = crate::paths::find_assets_dir()
-            .map(|a| vec![a.join("environments").join("Studio Tomoco.exr")])
-            .unwrap_or_default();
+        let mut default_env_paths: Vec<PathBuf> = Vec::new();
+        if let Some(assets_dir) = crate::paths::find_assets_dir() {
+            default_env_paths.push(assets_dir.join("environments").join("Studio Tomoco.exr"));
+            default_env_paths.push(assets_dir.join("environments").join("studio_tomoco.png"));
+            default_env_paths.push(assets_dir.join("environments").join("Autumn Forest.exr"));
+            default_env_paths.push(assets_dir.join("environments").join("autumn_forest.png"));
+        }
         default_env_paths.push(PathBuf::from("assets/environments/studio_tomoco.png"));
-        default_env_paths.retain(|p| p.exists());
+        default_env_paths.push(PathBuf::from("assets/environments/Studio Tomoco.exr"));
         for path in &default_env_paths {
             if path.exists() {
                 let _ = viewport.load_environment(device, queue, path);
@@ -2112,6 +2116,9 @@ pub fn list_available_environments() -> Vec<(String, PathBuf)> {
         if let Ok(entries) = std::fs::read_dir(d) {
             for entry in entries.flatten() {
                 let ep = entry.path();
+                if !ep.exists() {
+                    continue;
+                }
                 if let Some(ext) = ep.extension().and_then(|s| s.to_str()) {
                     let ext_lower = ext.to_lowercase();
                     if ext_lower == "exr"
@@ -2124,8 +2131,27 @@ pub fn list_available_environments() -> Vec<(String, PathBuf)> {
                             .and_then(|s| s.to_str())
                             .unwrap_or("")
                             .to_string();
-                        if !list.iter().any(|(s, _)| s == &stem) {
-                            list.push((stem, ep));
+                        let clean_stem = if stem.contains('_') {
+                            stem.split('_')
+                                .map(|w| {
+                                    let mut c = w.chars();
+                                    match c.next() {
+                                        None => String::new(),
+                                        Some(f) => {
+                                            f.to_uppercase().collect::<String>() + c.as_str()
+                                        }
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        } else {
+                            stem.clone()
+                        };
+                        if !list
+                            .iter()
+                            .any(|(s, _): &(String, PathBuf)| s.eq_ignore_ascii_case(&clean_stem))
+                        {
+                            list.push((clean_stem, ep));
                         }
                     }
                 }
