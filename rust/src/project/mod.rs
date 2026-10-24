@@ -58,7 +58,14 @@ pub struct ProjectManifest {
     pub env_rotation: f32,
     pub selected_env_idx: usize,
 
+    #[serde(default = "default_height_to_normal_scale")]
+    pub height_to_normal_scale: f32,
+
     pub layers: Vec<LayerManifest>,
+}
+
+fn default_height_to_normal_scale() -> f32 {
+    2.0
 }
 
 fn default_low_suffix() -> String {
@@ -316,6 +323,7 @@ impl ProjectManager {
             light_intensity: lighting.1,
             env_rotation: lighting.2,
             selected_env_idx: lighting.3,
+            height_to_normal_scale: layer_stack.height_to_normal_scale,
             layers: layer_manifests,
         };
 
@@ -509,6 +517,7 @@ impl ProjectManager {
         let h = manifest.height;
         let total_pixels = (w * h) as usize;
         let mut layer_stack = LayerStack::new(w, h);
+        layer_stack.height_to_normal_scale = manifest.height_to_normal_scale;
         layer_stack.layers.clear();
 
         for (i, lm) in manifest.layers.iter().enumerate() {
@@ -857,6 +866,7 @@ mod tests {
             light_intensity: 1.0,
             env_rotation: 0.0,
             selected_env_idx: 0,
+            height_to_normal_scale: 2.0,
             layers: vec![],
         };
 

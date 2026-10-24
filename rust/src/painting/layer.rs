@@ -456,6 +456,57 @@ pub fn blend_normal_channels(base: [f32; 3], top: [f32; 3], mode: BlendMode) -> 
     }
 }
 
+/// Computes tangent-space normal from a height field at (x, y) using a 3x3 Sobel gradient operator.
+/// Returns tangent-space normal encoded in [0.0, 1.0] color space (where [0.5, 0.5, 1.0] is flat neutral).
+#[inline]
+pub fn normal_from_height_at(
+    heights: &[f32],
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    strength: f32,
+) -> [f32; 3] {
+    if strength <= 0.0001 || heights.is_empty() || w <= 0 || h <= 0 {
+        return [0.5, 0.5, 1.0];
+    }
+    let get_h = |px: i32, py: i32| -> f32 {
+        let cx = px.rem_euclid(w) as usize;
+        let cy = py.rem_euclid(h) as usize;
+        let idx = cy * w as usize + cx;
+        heights.get(idx).copied().unwrap_or(0.0)
+    };
+
+    let tl = get_h(x - 1, y - 1);
+    let l = get_h(x - 1, y);
+    let bl = get_h(x - 1, y + 1);
+    let tr = get_h(x + 1, y - 1);
+    let r = get_h(x + 1, y);
+    let br = get_h(x + 1, y + 1);
+    let t = get_h(x, y - 1);
+    let b = get_h(x, y + 1);
+
+    // dx: horizontal gradient (right - left)
+    let dx = (tr + 2.0 * r + br) - (tl + 2.0 * l + bl);
+    // dy: vertical gradient (top - bottom for OpenGL Y+ up tangent space)
+    let dy = (tl + 2.0 * t + tr) - (bl + 2.0 * b + br);
+
+    if dx.abs() < 1e-6 && dy.abs() < 1e-6 {
+        return [0.5, 0.5, 1.0];
+    }
+
+    let nx = -dx * strength * 0.125;
+    let ny = dy * strength * 0.125;
+    let nz = 1.0f32;
+    let len = (nx * nx + ny * ny + nz * nz).sqrt().max(1e-6);
+
+    [
+        (nx / len) * 0.5 + 0.5,
+        (ny / len) * 0.5 + 0.5,
+        (nz / len) * 0.5 + 0.5,
+    ]
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Layer {
     pub id: usize,
@@ -1570,6 +1621,7 @@ pub struct LayerStack {
     pub composite_normal: Vec<[f32; 3]>,
     pub composite_height: Vec<f32>,
     pub composite_lit: Vec<[f32; 4]>,
+    pub height_to_normal_scale: f32,
 }
 
 impl LayerStack {
@@ -2453,6 +2505,7 @@ impl LayerStack {
             composite_normal: vec![[0.5, 0.5, 1.0]; total],
             composite_height: vec![0.0; total],
             composite_lit: vec![[0.4, 0.4, 0.45, 1.0]; total],
+            height_to_normal_scale: 2.0,
         };
 
         // Initialize with authentic procedural PBR base layer
@@ -2735,6 +2788,27 @@ impl LayerStack {
             }
         }
 
+        // Dynamic Height-to-Normal Relief Pass (Substance Painter Parity)
+        // Evaluates 3x3 Sobel height gradient and blends onto composite_normal via RNM
+        if self.height_to_normal_scale > 0.0001 && !self.composite_height.is_empty() {
+            let w = self.width as i32;
+            let h = self.height as i32;
+            let scale = self.height_to_normal_scale;
+            let heights = &self.composite_height;
+
+            self.composite_normal
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(i, norm)| {
+                    let x = (i % w as usize) as i32;
+                    let y = (i / w as usize) as i32;
+                    let h_norm = normal_from_height_at(heights, x, y, w, h, scale);
+                    if h_norm != [0.5, 0.5, 1.0] {
+                        *norm = blend_normal_channels(*norm, h_norm, BlendMode::RNM);
+                    }
+                });
+        }
+
         // Rayon Multi-threaded Cook-Torrance GGX PBR Global Illumination pass
         if self.composite_lit.len() != total {
             self.composite_lit.resize(total, [0.0, 0.0, 0.0, 1.0]);
@@ -2793,25 +2867,16 @@ impl LayerStack {
     }
 
     #[inline(always)]
-    pub fn composite_pixel_at(
+    pub fn composite_channels_at(
         &mut self,
         i: usize,
-        baked_ao: Option<&[f32]>,
-        env_preset: EnvironmentPreset,
-        env_rotation_rad: f32,
-        light_intensity: f32,
+        layers_meta: &[(usize, bool, f32, Option<usize>)],
     ) {
         let mut base_c = [0.15f32, 0.15, 0.16, 1.0];
         let mut base_met = 0.0f32;
         let mut base_rough = 0.5f32;
         let mut base_norm = [0.5f32, 0.5, 1.0];
         let mut base_height = 0.0f32;
-
-        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
-            .layers
-            .iter()
-            .map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id))
-            .collect();
 
         for layer in &self.layers {
             if layer.layer_type == LayerType::Folder || !layer.visible {
@@ -2923,10 +2988,44 @@ impl LayerStack {
         self.composite_color[i] = base_c;
         self.composite_metallic[i] = base_met;
         self.composite_roughness[i] = base_rough;
-        self.composite_normal[i] = base_norm;
         if self.composite_height.len() > i {
             self.composite_height[i] = base_height;
         }
+        self.composite_normal[i] = base_norm;
+    }
+
+    pub fn composite_pixel_lighting_at(
+        &mut self,
+        i: usize,
+        baked_ao: Option<&[f32]>,
+        env_preset: EnvironmentPreset,
+        env_rotation_rad: f32,
+        light_intensity: f32,
+    ) {
+        let mut base_norm = self.composite_normal[i];
+
+        if self.height_to_normal_scale > 0.0001 && !self.composite_height.is_empty() {
+            let w = self.width as i32;
+            let h = self.height as i32;
+            let x = (i % w as usize) as i32;
+            let y = (i / w as usize) as i32;
+            let h_norm = normal_from_height_at(
+                &self.composite_height,
+                x,
+                y,
+                w,
+                h,
+                self.height_to_normal_scale,
+            );
+            if h_norm != [0.5, 0.5, 1.0] {
+                base_norm = blend_normal_channels(base_norm, h_norm, BlendMode::RNM);
+                self.composite_normal[i] = base_norm;
+            }
+        }
+
+        let base_c = self.composite_color[i];
+        let base_met = self.composite_metallic[i];
+        let base_rough = self.composite_roughness[i];
 
         let nx = base_norm[0] * 2.0 - 1.0;
         let ny = base_norm[1] * 2.0 - 1.0;
@@ -2944,6 +3043,29 @@ impl LayerStack {
             n_vec,
             view_dir,
             ao,
+            env_preset,
+            env_rotation_rad,
+            light_intensity,
+        );
+    }
+
+    pub fn composite_pixel_at(
+        &mut self,
+        i: usize,
+        baked_ao: Option<&[f32]>,
+        env_preset: EnvironmentPreset,
+        env_rotation_rad: f32,
+        light_intensity: f32,
+    ) {
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
+            .layers
+            .iter()
+            .map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id))
+            .collect();
+        self.composite_channels_at(i, &layers_meta);
+        self.composite_pixel_lighting_at(
+            i,
+            baked_ao,
             env_preset,
             env_rotation_rad,
             light_intensity,
@@ -2978,15 +3100,30 @@ impl LayerStack {
             return;
         }
 
-        let x0 = bbox[0].clamp(0, w - 1) as usize;
-        let x1 = (bbox[2] + 1).clamp(0, w) as usize;
-        let y0 = bbox[1].clamp(0, h - 1) as usize;
-        let y1 = (bbox[3] + 1).clamp(0, h) as usize;
+        let x0 = (bbox[0] - 1).clamp(0, w - 1) as usize;
+        let x1 = (bbox[2] + 2).clamp(0, w) as usize;
+        let y0 = (bbox[1] - 1).clamp(0, h - 1) as usize;
+        let y1 = (bbox[3] + 2).clamp(0, h) as usize;
 
+        let layers_meta: Vec<(usize, bool, f32, Option<usize>)> = self
+            .layers
+            .iter()
+            .map(|l| (l.id, l.visible, l.opacity, l.parent_folder_id))
+            .collect();
+
+        // Pass 1: Composite base channels across entire expanded dirty footprint (guarantees valid height field)
         for y in y0..y1 {
             let row_offset = y * self.width as usize;
             for x in x0..x1 {
-                self.composite_pixel_at(
+                self.composite_channels_at(row_offset + x, &layers_meta);
+            }
+        }
+
+        // Pass 2: Spatial height-to-normal Sobel filter and PBR lighting (all neighbor heights are updated)
+        for y in y0..y1 {
+            let row_offset = y * self.width as usize;
+            for x in x0..x1 {
+                self.composite_pixel_lighting_at(
                     row_offset + x,
                     baked_ao,
                     env_preset,
@@ -3388,5 +3525,133 @@ mod tests {
         );
         // The corner texel inside the closure region is painted
         assert!(ls.layers[0].color_buffer[3 * 16 + 3][3] > 0.8);
+    }
+
+    #[test]
+    fn test_normal_from_height_flat_is_neutral() {
+        let w = 8;
+        let h = 8;
+        let heights = vec![0.5f32; (w * h) as usize];
+        let n = normal_from_height_at(&heights, 4, 4, w, h, 2.0);
+        assert!(
+            (n[0] - 0.5).abs() < 1e-4,
+            "flat nx should be 0.5, got {}",
+            n[0]
+        );
+        assert!(
+            (n[1] - 0.5).abs() < 1e-4,
+            "flat ny should be 0.5, got {}",
+            n[1]
+        );
+        assert!(
+            (n[2] - 1.0).abs() < 1e-4,
+            "flat nz should be 1.0, got {}",
+            n[2]
+        );
+    }
+
+    #[test]
+    fn test_normal_from_height_horizontal_ramp() {
+        let w = 8;
+        let h = 8;
+        // Height increases with x (slope facing left, normal tilts left: nx < 0.5)
+        let mut heights = vec![0.0f32; (w * h) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                heights[(y * w + x) as usize] = x as f32 * 0.1;
+            }
+        }
+        let n = normal_from_height_at(&heights, 4, 4, w, h, 2.0);
+        assert!(
+            n[0] < 0.49,
+            "nx should deflect negative (< 0.5), got {}",
+            n[0]
+        );
+        assert!(
+            (n[1] - 0.5).abs() < 1e-4,
+            "ny should remain neutral, got {}",
+            n[1]
+        );
+        assert!(n[2] > 0.5, "nz should point up, got {}", n[2]);
+    }
+
+    #[test]
+    fn test_normal_from_height_vertical_ramp() {
+        let w = 8;
+        let h = 8;
+        // Height decreases with y (top y=0 is high, bottom y=7 is low -> slopes towards bottom (+V) -> ny > 0.5)
+        let mut heights = vec![0.0f32; (w * h) as usize];
+        for y in 0..h {
+            for x in 0..w {
+                heights[(y * w + x) as usize] = (h - 1 - y) as f32 * 0.1;
+            }
+        }
+        let n = normal_from_height_at(&heights, 4, 4, w, h, 2.0);
+        assert!(
+            (n[0] - 0.5).abs() < 1e-4,
+            "nx should remain neutral, got {}",
+            n[0]
+        );
+        assert!(
+            n[1] > 0.51,
+            "ny should deflect positive (> 0.5) for OpenGL Y+, got {}",
+            n[1]
+        );
+        assert!(n[2] > 0.5, "nz should point up, got {}", n[2]);
+
+        // Zero / negative dimension guard test (must not panic)
+        let safe = normal_from_height_at(&heights, 0, 0, 0, 0, 1.0);
+        assert_eq!(safe, [0.5, 0.5, 1.0]);
+    }
+
+    #[test]
+    fn test_dynamic_height_to_normal_compositing() {
+        let mut ls = LayerStack::new(16, 16);
+        ls.layers.clear();
+        let mut layer = Layer::new_fill(
+            1,
+            "Height Bump Layer",
+            [0.5, 0.5, 0.5, 1.0],
+            0.0,
+            0.5,
+            16,
+            16,
+        );
+        // Paint a sharp height bump in the center
+        for y in 6..10 {
+            for x in 6..10 {
+                layer.height_buffer[y * 16 + x] = 1.0;
+            }
+        }
+        ls.layers.push(layer);
+        ls.height_to_normal_scale = 2.0;
+        ls.composite(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            EnvironmentPreset::StudioTomoco,
+            0.0,
+            1.0,
+        );
+
+        // At the edge of the bump (x=5, y=7), height steps up from 0 to 1 -> normal should deflect
+        let edge_norm = ls.composite_normal[7 * 16 + 5];
+        assert!(
+            edge_norm != [0.5, 0.5, 1.0],
+            "edge of height bump must deflect normal from neutral, got {:?}",
+            edge_norm
+        );
+        assert!(edge_norm[0] < 0.5, "slope facing left deflects nx negative");
+
+        // At flat center (x=8, y=8), heights are equal -> normal remains neutral
+        let center_norm = ls.composite_normal[8 * 16 + 8];
+        assert!(
+            (center_norm[0] - 0.5).abs() < 0.05 && (center_norm[1] - 0.5).abs() < 0.05,
+            "flat center must remain near neutral, got {:?}",
+            center_norm
+        );
     }
 }

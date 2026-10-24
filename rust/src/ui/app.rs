@@ -1270,7 +1270,13 @@ impl RemoainterApp {
         if let Some(ref vp_mutex) = self.viewport_wgpu {
             if let Some(ref queue) = self.wgpu_queue {
                 if let Ok(mut vp) = vp_mutex.lock() {
-                    vp.upload_dirty(queue, &self.layer_stack, bbox);
+                    let upload_bbox = [
+                        (bbox[0] - 1).max(0),
+                        (bbox[1] - 1).max(0),
+                        (bbox[2] + 1).min(self.layer_stack.width as i32 - 1),
+                        (bbox[3] + 1).min(self.layer_stack.height as i32 - 1),
+                    ];
+                    vp.upload_dirty(queue, &self.layer_stack, upload_bbox);
                 }
             }
         }
@@ -5828,6 +5834,23 @@ impl RemoainterApp {
                 format!("Resized Texture Set to {}×{}", cur_res, cur_res),
             ));
         }
+
+        ui.add_space(6.0);
+        ui.separator();
+
+        ui.strong("NORMAL RELIEF (DISPLACEMENT)");
+        ui.horizontal(|ui| {
+            ui.label("Height to Normal Scale:");
+            let mut scale = self.layer_stack.height_to_normal_scale;
+            if ui
+                .add(egui::Slider::new(&mut scale, 0.0..=5.0).step_by(0.1))
+                .on_hover_text("Strength of dynamic height-to-normal tangent space relief (0.0 disables relief)")
+                .changed()
+            {
+                self.layer_stack.height_to_normal_scale = scale;
+                self.recompute_composite();
+            }
+        });
 
         ui.add_space(6.0);
         ui.separator();
