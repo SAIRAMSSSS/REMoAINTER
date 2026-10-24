@@ -5,17 +5,7 @@ use std::path::PathBuf;
 
 /// Finds the directory containing real PBR materials
 pub fn find_materials_dir() -> PathBuf {
-    let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/materials"),
-        PathBuf::from("assets/materials"),
-        PathBuf::from("../assets/materials"),
-    ];
-    for c in &candidates {
-        if c.exists() {
-            return c.clone();
-        }
-    }
-    PathBuf::from("/mnt/shared/REMoAINTER/assets/materials")
+    crate::paths::find_assets_subdir("materials").unwrap_or_default()
 }
 
 /// Generates or loads a real PBR material
@@ -142,15 +132,16 @@ pub fn load_real_pbr_material(
 
     // 3. Fallback: check shelf materials/smart_materials preview images
     if !loaded {
-        let shelf_dirs = [
-            "/mnt/shared/REMoAINTER/assets/shelf/materials",
-            "/mnt/shared/REMoAINTER/assets/shelf/smart_materials",
-            "assets/shelf/materials",
-            "assets/shelf/smart_materials",
-        ];
+        let shelf_dirs: Vec<PathBuf> = [
+            "shelf/materials",
+            "shelf/smart_materials",
+        ]
+        .iter()
+        .filter_map(|sub| crate::paths::find_assets_subdir(sub))
+        .collect();
         for sdir in &shelf_dirs {
-            let p_png = std::path::Path::new(sdir).join(format!("{}.png", clean_name));
-            let p_webp = std::path::Path::new(sdir).join(format!("{}.webp", clean_name));
+            let p_png = sdir.join(format!("{}.png", clean_name));
+            let p_webp = sdir.join(format!("{}.webp", clean_name));
             let found = if p_png.exists() {
                 Some(p_png)
             } else if p_webp.exists() {

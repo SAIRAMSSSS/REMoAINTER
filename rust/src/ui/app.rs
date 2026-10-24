@@ -389,21 +389,7 @@ fn infer_pbr(name: &str) -> ([f32; 4], f32, f32) {
 }
 
 fn find_shelf_dir() -> PathBuf {
-    let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/shelf"),
-        PathBuf::from("assets/shelf"),
-        PathBuf::from("../assets/shelf"),
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.join("../assets/shelf")))
-            .unwrap_or_default(),
-    ];
-    for c in &candidates {
-        if c.exists() && c.join("smart_materials").exists() {
-            return c.clone();
-        }
-    }
-    PathBuf::from("/mnt/shared/REMoAINTER/assets/shelf")
+    crate::paths::find_assets_subdir("shelf").unwrap_or_default()
 }
 
 /// Old shelf sources (legacy previews + alphas), kept with dedupe against the
@@ -1349,12 +1335,13 @@ impl RemoainterApp {
                 self.status_message = "Loaded Material Sphere".to_string();
             }
             1 => {
-                let paths = [
-                    "/mnt/shared/REMoAINTER/assets/test_models/lantern.obj",
-                    "assets/test_models/lantern.obj",
+                let paths: Vec<PathBuf> = [
+                    "test_models/lantern.obj",
                     "../assets/test_models/lantern.obj",
-                    "/home/senju/Documents/env-port/lantern_low.obj",
-                ];
+                ]
+                .iter()
+                .filter_map(|sub| crate::paths::find_assets_subdir(sub))
+                .collect();
                 for p in &paths {
                     if let Ok(m) = Mesh::load_obj(p) {
                         self.mesh = m;
@@ -1364,12 +1351,13 @@ impl RemoainterApp {
                 }
             }
             2 => {
-                let paths = [
-                    "/mnt/shared/REMoAINTER/assets/test_models/radio.obj",
-                    "assets/test_models/radio.obj",
+                let paths: Vec<PathBuf> = [
+                    "test_models/radio.obj",
                     "../assets/test_models/radio.obj",
-                    "/home/senju/Pictures/radio-model/radio.obj",
-                ];
+                ]
+                .iter()
+                .filter_map(|sub| crate::paths::find_assets_subdir(sub))
+                .collect();
                 for p in &paths {
                     if let Ok(m) = Mesh::load_obj(p) {
                         self.mesh = m;

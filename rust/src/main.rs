@@ -1,17 +1,9 @@
-mod baker;
-mod graphics;
-mod painting;
-pub mod project;
-mod render;
-mod ui;
-
-use ui::RemoainterApp;
+use remoainter::ui::{self, RemoainterApp};
 
 fn main() -> eframe::Result<()> {
     println!("============================================================");
-    println!(" REMoAINTER v2.0.0 (Rust Edition)");
-    println!(" High-Performance 3D PBR Texture Painting Suite");
-    println!(" Architecture: Rayon Multithreaded Baker & Sub-Stack Engine");
+    println!(" REMoAINTER v2026.1 (Rust Core)");
+    println!(" 3D PBR Texture Painting Suite");
     println!("============================================================");
 
     let mut viewport = egui::ViewportBuilder::default()

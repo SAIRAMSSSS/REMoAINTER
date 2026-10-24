@@ -1193,11 +1193,11 @@ impl ViewportGl {
         };
 
         // Attempt to load Studio Tomoco by default
-        let default_env_paths = [
-            "/mnt/shared/referencePainter11/App/resources/starter_assets/environments/Studio/Studio Tomoco.exr",
-            "/mnt/shared/REMoAINTER/assets/environments/studio_tomoco.png",
-            "assets/environments/studio_tomoco.png",
-        ];
+        let mut default_env_paths: Vec<PathBuf> = crate::paths::find_assets_dir()
+            .map(|a| vec![a.join("environments").join("Studio Tomoco.exr")])
+            .unwrap_or_default();
+        default_env_paths.push(PathBuf::from("assets/environments/studio_tomoco.png"));
+        default_env_paths.retain(|p| p.exists());
         for path in &default_env_paths {
             if Path::new(path).exists() {
                 let _ = viewport.load_environment(gl, path);
@@ -1574,15 +1574,26 @@ impl ViewportGl {
 // =========================================================================
 
 pub fn list_available_environments() -> Vec<(String, PathBuf)> {
-    let dirs = [
-        "/mnt/shared/referencePainter11/App/resources/starter_assets/environments/Studio",
-        "/mnt/shared/REMoAINTER/assets/environments",
-        "assets/environments",
-    ];
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Some(env_dir) = crate::paths::find_assets_dir() {
+        dirs.push(env_dir.join("environments"));
+    }
+    dirs.push(PathBuf::from("assets/environments"));
+    // User-local environment pool, if populated.
+    if let Some(home) = std::env::var_os("HOME") {
+        if !home.is_empty() {
+            dirs.push(
+                PathBuf::from(home)
+                    .join(".remoainter")
+                    .join("assets")
+                    .join("environments"),
+            );
+        }
+    }
 
     let mut list = Vec::new();
     for d in &dirs {
-        let p = Path::new(d);
+        let p = d;
         if let Ok(entries) = std::fs::read_dir(p) {
             for entry in entries.flatten() {
                 let ep = entry.path();

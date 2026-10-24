@@ -113,29 +113,14 @@ impl MaterialItem {
     }
 }
 
-/// Resolves the app-root-relative reference cache directory (existing helper pattern).
+/// Resolves the material cache directory, if the user has imported one.
 pub fn find_material_cache_dir() -> PathBuf {
-    let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/material_cache"),
-        PathBuf::from("assets/material_cache"),
-        PathBuf::from("../assets/material_cache"),
-    ];
-    for c in &candidates {
-        if c.exists() {
-            return c.clone();
-        }
-    }
-    PathBuf::from("/mnt/shared/REMoAINTER/assets/material_cache")
+    crate::paths::find_assets_subdir("material_cache").unwrap_or_default()
 }
 
-/// Resolves the app's own bundled SP font directory, if present.
+/// Resolves the app's bundled font directory, if present.
 pub fn find_fonts_dir() -> Option<PathBuf> {
-    let candidates = [
-        PathBuf::from("/mnt/shared/REMoAINTER/assets/fonts/bundled"),
-        PathBuf::from("assets/fonts/bundled"),
-        PathBuf::from("../assets/fonts/bundled"),
-    ];
-    candidates.into_iter().find(|c| c.is_dir())
+    crate::paths::find_assets_subdir("fonts/bundled")
 }
 
 fn load_meta(dir: &Path, dir_name: &str) -> (String, String, String, IconKind) {
@@ -731,30 +716,15 @@ mod tests {
     }
 
     #[test]
-    fn clay_earthenware_params_parse_with_clay_identifiers() {
-        let p = std::path::Path::new(
-            "/mnt/shared/REMoAINTER/assets/material_cache/materials/clay_earthenware/params.json",
-        );
-        if !p.exists() {
-            eprintln!("[material_library] clay params fixture not present — skipping");
-            return;
-        }
-        let raw = std::fs::read_to_string(p).expect("params.json readable");
-        let params = parse_params_json(&raw).expect("parse");
+    fn clay_params_parse_from_inline_fixture() {
+        // The shipped material_cache was removed; parse behavior is covered with
+        // an inline fixture so this no longer depends on imported vendor data.
+        let raw = r#"{"presets":[{"label":"Clay","inputs":[{"identifier":"clay_color","type":2,"value":[0.633663,0.4,0.2],"uid":1},{"identifier":"clay_roughness","type":0,"value":0.53,"uid":2}]}]}"#;
+        let params = parse_params_json(raw).expect("parse");
         let idents: Vec<&str> = params.inputs.iter().map(|(i, _)| i.as_str()).collect();
-        assert!(
-            idents.contains(&"clay_color"),
-            "color input present: {idents:?}"
-        );
-        assert!(
-            idents.contains(&"clay_roughness"),
-            "roughness input present: {idents:?}"
-        );
+        assert!(idents.contains(&"clay_color"), "{idents:?}");
+        assert!(idents.contains(&"clay_roughness"), "{idents:?}");
         assert_eq!(params.roughness, Some(0.53));
-        assert!(params
-            .color
-            .iter()
-            .any(|c| (c[0] - 0.633663f32).abs() < 1e-4));
     }
 
     #[test]

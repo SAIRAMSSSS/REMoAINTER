@@ -438,14 +438,13 @@ fn parse_sbsdescription(xml: &[u8]) -> Result<Option<SbsarGraph>, String> {
 mod tests {
     use super::*;
 
-    /// Parse the sample smart material (mg_dust) when it is available on this
-    /// machine; robustly skipped elsewhere.
+    /// Parse the sample smart material (mg_dust) when a local fixture is
+    /// available. `#[ignore]d: the fixture is proprietary and not shipped, so
+    /// the test only ever skipped. Run it by providing tools/fixtures/mg_dust.sbsar.
     #[test]
+    #[ignore = "requires an .sbsar test fixture that is not part of the repo"]
     fn parses_sample_smart_material() {
-        let candidates = [
-            "/tmp/opencode/embedded.sbsar",
-            "/mnt/shared/test_spsm/embedded.sbsar",
-        ];
+        let candidates = ["tools/fixtures/mg_dust.sbsar", "test_spsm/embedded.sbsar"];
         let Some(path) = candidates.iter().find(|p| Path::new(p).exists()) else {
             eprintln!("sample .sbsar not present; skipping");
             return;

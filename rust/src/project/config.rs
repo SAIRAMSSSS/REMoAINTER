@@ -58,7 +58,9 @@ impl Default for AppConfig {
             autosave_interval_secs: 180,
             undo_depth: 64,
             ui_scale: 1.0,
-            default_export_dir: "/mnt/shared/REMoAINTER/exports".into(),
+            default_export_dir: crate::paths::default_export_dir()
+                .to_string_lossy()
+                .to_string(),
             default_bake_resolution: 2048,
             color_management_mode: 0,
             custom_hotkeys: hotkeys,
