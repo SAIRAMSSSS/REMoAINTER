@@ -128,7 +128,9 @@ REMoAINTER/
 │   └── test_models/        # Sample 3D meshes (lantern.obj, radio.obj, sphere.obj)
 ├── docs/                   # Technical documentation
 │   ├── ARCHITECTURE.md     # Engineering architecture specification
+│   ├── ENGINEERING_AUDIT.md # Comprehensive engineering audit & verification report
 │   └── FEATURE_AUDIT.md    # Detailed capability audit
+├── run.sh                  # One-click desktop launcher script (sets LC_ALL UTF-8)
 ├── rust/                   # Rust implementation (authoritative codebase)
 │   ├── Cargo.toml          # Rust dependencies and configuration
 │   └── src/
@@ -154,11 +156,18 @@ REMoAINTER/
 - Rust 1.80+ (with Cargo)
 - Wayland / X11 development headers (for Linux desktop display)
 
-### Quick Start (Rust v0.2)
+### Quick Start
 ```bash
+# 1. Build the release binary
 cd rust
 cargo build --release
-./target/release/remoainter
+cd ..
+
+# 2. Launch the application (launcher handles UTF-8 locale configuration)
+./run.sh
+
+# Or launch the compiled binary directly:
+LC_ALL=C.UTF-8 ./rust/target/release/remoainter
 ```
 
 ### Shortcuts
