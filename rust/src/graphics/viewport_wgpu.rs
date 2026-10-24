@@ -1871,7 +1871,13 @@ impl ViewportWgpu {
             load_ldr_image(path_ref)?
         };
 
-        // Create texture with float data
+        // Convert f32 HDR data to f16 (u16 bits) for universal filterability across all Vulkan/Metal/DX12 GPUs
+        let f16_data: Vec<u16> = rgba_data
+            .iter()
+            .map(|&v| half::f16::from_f32(v).to_bits())
+            .collect();
+
+        // Create texture with half-float (f16) data - universally filterable in WebGPU / Vulkan
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(stem),
             size: wgpu::Extent3d {
@@ -1882,7 +1888,7 @@ impl ViewportWgpu {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba32Float,
+            format: wgpu::TextureFormat::Rgba16Float,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
@@ -1894,10 +1900,10 @@ impl ViewportWgpu {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytemuck::cast_slice(&rgba_data),
+            bytemuck::cast_slice(&f16_data),
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(w * 16), // 4 floats * 4 bytes
+                bytes_per_row: Some(w * 8), // 4 half-floats * 2 bytes = 8 bytes per pixel
                 rows_per_image: Some(h),
             },
             wgpu::Extent3d {
@@ -2284,12 +2290,17 @@ fn create_default_env(
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba32Float,
+        format: wgpu::TextureFormat::Rgba16Float,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
 
-    let default_pixel: [f32; 4] = [0.2, 0.2, 0.22, 1.0];
+    let default_pixel: [u16; 4] = [
+        half::f16::from_f32(0.2).to_bits(),
+        half::f16::from_f32(0.2).to_bits(),
+        half::f16::from_f32(0.22).to_bits(),
+        half::f16::from_f32(1.0).to_bits(),
+    ];
     queue.write_texture(
         wgpu::ImageCopyTexture {
             texture: &texture,
@@ -2300,7 +2311,7 @@ fn create_default_env(
         bytemuck::cast_slice(&default_pixel),
         wgpu::ImageDataLayout {
             offset: 0,
-            bytes_per_row: Some(16),
+            bytes_per_row: Some(8),
             rows_per_image: Some(1),
         },
         wgpu::Extent3d {

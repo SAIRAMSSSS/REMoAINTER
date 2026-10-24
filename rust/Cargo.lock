@@ -2345,6 +2345,7 @@ dependencies = [
  "exr",
  "glam",
  "gltf",
+ "half",
  "image",
  "quick-xml 0.36.2",
  "rayon",
