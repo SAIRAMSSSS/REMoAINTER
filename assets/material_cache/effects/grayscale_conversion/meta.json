@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/grayscale_conversion.sbsar",
-  "label": "Grayscale Conversion",
-  "sp_category": "Filter",
-  "keywords": "color, desaturation, min, max",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

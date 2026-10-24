@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Tool/metal_welding.sbsar",
-  "label": "Metal Welding",
-  "sp_category": "Tool",
-  "keywords": "metal,joint,fuse,heat,weld,industrial,path,tool",
-  "graph_type": "material",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

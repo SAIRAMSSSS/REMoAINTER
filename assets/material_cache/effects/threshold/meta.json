@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/threshold.sbsar",
-  "label": "Threshold",
-  "sp_category": "Standard",
-  "keywords": "grayscale,",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

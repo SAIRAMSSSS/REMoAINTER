@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Leather/leather_skin.sbsar",
-  "label": "Leather Skin",
-  "sp_category": "Leather",
-  "keywords": "painter;base;material;leather;clothing;cloth;leathergood;leatherworking;bag;shoe;skin;upholstery;interior",
-  "graph_type": "material",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Paint/paint_spray.sbsar",
-  "label": "Paint Spray",
-  "sp_category": "Paint",
-  "keywords": "painter;base;material;paint;graphic;design;brush;broom",
-  "graph_type": "material",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

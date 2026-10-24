@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/posterize.sbsar",
-  "label": "Posterize",
-  "sp_category": "Standard",
-  "keywords": "color,step",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

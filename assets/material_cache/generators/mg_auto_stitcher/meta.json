@@ -1,9 +1,0 @@
-{
-  "source_file": "generators/mg_auto_stitcher.sbsar",
-  "label": "Auto Stitcher",
-  "sp_category": "Generator",
-  "keywords": "stitch,stitches",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

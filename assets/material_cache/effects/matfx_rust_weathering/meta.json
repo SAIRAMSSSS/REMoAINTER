@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/MatFX/matfx_rust_weathering.sbsar",
-  "label": "MatFx Rust Weathering",
-  "sp_category": "Effect",
-  "keywords": "rust,fx,material,mat,weathering",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

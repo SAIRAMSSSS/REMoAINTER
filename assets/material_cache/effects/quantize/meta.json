@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Advanced/quantize.sbsar",
-  "label": "Quantize",
-  "sp_category": "Filter",
-  "keywords": "quantize,color",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

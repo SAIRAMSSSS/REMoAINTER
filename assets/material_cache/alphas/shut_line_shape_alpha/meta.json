@@ -1,9 +1,0 @@
-{
-  "source_file": "alphas/Dynamic/shut_line_shape_alpha.sbsar",
-  "label": "Shut Line Shape Alpha",
-  "sp_category": "Alpha",
-  "keywords": "automotive,shut,line,shutline,parting,shape,oval",
-  "graph_type": "texture_generator",
-  "author": "Adobe - Vincent GAULT",
-  "icon_kind": "flat"
-}

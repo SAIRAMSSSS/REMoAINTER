@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Lighting/baked_lighting_stylized.sbsar",
-  "label": "Baked Lighting Stylized",
-  "sp_category": "Filter",
-  "keywords": "stylized,light,color",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

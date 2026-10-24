@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/gradient_dynamic.sbsar",
-  "label": "Gradient Dynamic",
-  "sp_category": "Standard",
-  "keywords": "gradient,grayscale,remap",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

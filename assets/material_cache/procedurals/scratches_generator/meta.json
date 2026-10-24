@@ -1,9 +1,0 @@
-{
-  "source_file": "procedurals/Patterns/scratches_generator.sbsar",
-  "label": "Scratches Generator",
-  "sp_category": "Pattern",
-  "keywords": "pattern,tiling,scratches,details",
-  "graph_type": "texture_generator",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

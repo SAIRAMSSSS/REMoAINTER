@@ -1,9 +1,0 @@
-{
-  "source_file": "generators/mg_mask_editor.sbsar",
-  "label": "Mask Editor",
-  "sp_category": "generators",
-  "keywords": "mask,generator,grayscale",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

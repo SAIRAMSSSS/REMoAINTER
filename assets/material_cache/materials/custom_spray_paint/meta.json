@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Tool/custom_spray_paint.sbsar",
-  "label": "Custom Spray Paint",
-  "sp_category": "Prints - Paint",
-  "keywords": "decals;paint;street;brush;wall;tag;spray",
-  "graph_type": "decal_material",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

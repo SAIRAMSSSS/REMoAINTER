@@ -1,9 +1,0 @@
-{
-  "source_file": "generators/mg_uv_border_distance.sbsar",
-  "label": "UV Border Distance",
-  "sp_category": "Generators",
-  "keywords": "mesh,uv,distance",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/smoothstep.sbsar",
-  "label": "Smoothstep",
-  "sp_category": "Standard",
-  "keywords": "grayscale,step",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

@@ -1,9 +1,0 @@
-{
-  "source_file": "generators/uv_random_color.sbsar",
-  "label": "UV Random Color",
-  "sp_category": "Generator",
-  "keywords": "utility, mask",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

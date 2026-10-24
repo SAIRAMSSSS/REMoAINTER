@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Tool/graphic_to_material.sbsar",
-  "label": "Graphic to Material",
-  "sp_category": "Tool",
-  "keywords": "svg",
-  "graph_type": "decal_material",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

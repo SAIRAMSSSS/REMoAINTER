@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Advanced/pbr_validate.sbsar",
-  "label": "PBR Validate (Metallic Roughness)",
-  "sp_category": "Advanced",
-  "keywords": "PBR,metallic,roughness",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

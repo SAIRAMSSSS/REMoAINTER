@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/fill_area_mask.sbsar",
-  "label": "Fill Area Mask",
-  "sp_category": "Effect",
-  "keywords": "fill, shape, outline, grayscale",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

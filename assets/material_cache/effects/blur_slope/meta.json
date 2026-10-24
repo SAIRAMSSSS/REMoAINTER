@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/blur_slope.sbsar",
-  "label": "Blur Slope",
-  "sp_category": "Filter",
-  "keywords": "grayscale,blur",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

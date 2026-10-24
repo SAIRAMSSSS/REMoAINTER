@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/MatFX/matfx_edge_damages.sbsar",
-  "label": "MatFx Edge Damages",
-  "sp_category": "MatFX",
-  "keywords": "weathering,edge,damage",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

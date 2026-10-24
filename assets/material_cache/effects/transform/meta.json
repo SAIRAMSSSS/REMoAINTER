@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Standard/transform.sbsar",
-  "label": "Transform",
-  "sp_category": "Filter",
-  "keywords": "Transformation",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "sphere"
-}

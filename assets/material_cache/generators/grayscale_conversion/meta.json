@@ -1,9 +1,0 @@
-{
-  "source_file": "generators/grayscale_conversion.sbsar",
-  "label": "Grayscale Conversion",
-  "sp_category": "",
-  "keywords": "generator,grayscale,color",
-  "graph_type": "",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

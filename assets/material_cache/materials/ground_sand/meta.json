@@ -1,9 +1,0 @@
-{
-  "source_file": "materials/Ground/ground_sand.sbsar",
-  "label": "Ground Sand",
-  "sp_category": "Ground",
-  "keywords": "painter;base;material;ground;natural;sand:outdoor;exterior;environment",
-  "graph_type": "material",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}

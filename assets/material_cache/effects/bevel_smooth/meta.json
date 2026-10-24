@@ -1,9 +1,0 @@
-{
-  "source_file": "effects/Advanced/bevel_smooth.sbsar",
-  "label": "Bevel Smooth",
-  "sp_category": "Filter",
-  "keywords": "bevel,smooth,distance,grayscale",
-  "graph_type": "filter",
-  "author": "Adobe",
-  "icon_kind": "flat"
-}
