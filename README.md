@@ -4,9 +4,9 @@
   <img src="https://raw.githubusercontent.com/SAIRAMSSSS/REMoAINTER/master/assets/branding/logo.png" alt="REMoAINTER Logo" width="180"/>
 </p>
 
-<h3 align="center">Next-Generation Open-Source 3D PBR Texture Painting Suite</h3>
+<h3 align="center">Open-Source 3D PBR Texture Painting Suite</h3>
 <p align="center">
-  <b>Version 0.2 (Rust High-Performance Core)</b> • Industry-Standard PBR Painting Workflow • Raytraced Baking • Black Masks • Anchor Points
+  <b>Version 0.2 </b> • Industry-Standard PBR Painting Workflow • Raytraced Baking • Black Masks • Anchor Points
 </p>
 
 ---
