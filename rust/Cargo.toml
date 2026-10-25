@@ -1,6 +1,6 @@
 [package]
 name = "remoainter"
-version = "2.0.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Sairam <https://github.com/SAIRAMSSSS>"]
 description = "Next-Gen Open-Source 3D PBR Texture Painting Suite (Substance Painter Architecture in Rust)"

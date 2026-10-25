@@ -23,7 +23,7 @@ pub use config::AppConfig;
 /// Magic bytes for REMoAINTER Project archives
 pub const RMP_MAGIC: &str = "REMOAINTER_PROJECT_V1";
 pub const CURRENT_FORMAT_VERSION: u32 = 1;
-pub const CURRENT_APP_VERSION: &str = "2026.1.0";
+pub const CURRENT_APP_VERSION: &str = "0.2.0";
 
 /// Snapshot information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -842,7 +842,7 @@ mod tests {
         let manifest = ProjectManifest {
             magic: RMP_MAGIC.to_string(),
             format_version: 1,
-            app_version: "2026.1.0".to_string(),
+            app_version: "0.2.0".to_string(),
             project_name: "TestProject".to_string(),
             created_at: "2026-10-21T00:00:00Z".to_string(),
             modified_at: "2026-10-21T00:00:00Z".to_string(),

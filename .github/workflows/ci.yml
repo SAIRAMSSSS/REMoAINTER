@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Cache cargo registry + target
         uses: actions/cache@v4
@@ -35,21 +37,18 @@ jobs:
           key: cargo-${{ matrix.os }}-${{ hashFiles('rust/Cargo.lock') }}
           restore-keys: cargo-${{ matrix.os }}-
 
+      - name: Code formatting check (rustfmt)
+        working-directory: rust
+        run: cargo fmt --check
+
+      - name: Linter check (clippy)
+        working-directory: rust
+        run: cargo clippy --all-targets -- -D warnings
+
       - name: Check (release profile)
         working-directory: rust
         run: cargo check --release
 
-      - name: Test suite (lib)
+      - name: Test suite (all targets)
         working-directory: rust
-        run: cargo test --release --lib
-
-      # Headless runners have no GPU/Vulkan adapter; the GPU compositor tests
-      # self-skip by design (graphics::gpu::compositor::tests). Her we prove that
-      # explicitly so a skip is never confused with a silent regression.
-      - name: GPU test skip audit (Linux, headless CI)
-        if: runner.os == 'Linux'
-        working-directory: rust
-        shell: bash
-        run: |
-          output=$(cargo test --release --lib graphics::gpu 2>&1 || true)
-          echo "$output" | tail -8
+        run: cargo test --release --all-targets

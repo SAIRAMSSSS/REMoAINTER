@@ -2,14 +2,14 @@ use remoainter::ui::{self, RemoainterApp};
 
 fn main() -> eframe::Result<()> {
     println!("============================================================");
-    println!(" REMoAINTER v2026.1 (Rust Core)");
+    println!(" REMoAINTER v0.2 (Rust Core)");
     println!(" 3D PBR Texture Painting Suite");
     println!("============================================================");
 
     let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([1600.0, 960.0])
         .with_min_inner_size([1024.0, 700.0])
-        .with_title("REMoAINTER 2026.1 (v2.0.0) - [PBR Metal-Roughness]");
+        .with_title("REMoAINTER v0.2 - [PBR Metal-Roughness]");
 
     let logo_bytes = include_bytes!("../../assets/logo_icon.png");
     if let Ok(img) = image::load_from_memory(logo_bytes) {

@@ -805,7 +805,7 @@ impl Default for RemoainterApp {
                 (
                     "09:00:01".into(),
                     "INFO".into(),
-                    "REMoAINTER v2.0.0 (High-Performance Rust Core) initialized.".into(),
+                    "REMoAINTER v0.2 (High-Performance Rust Core) initialized.".into(),
                 ),
                 (
                     "09:00:02".into(),
@@ -3676,7 +3676,7 @@ impl eframe::App for RemoainterApp {
                         }
                         ui.separator();
                         if ui.button("About REMoAINTER...").clicked() {
-                            self.status_message = "REMoAINTER v2.0.0 (Rust Core)".into();
+                            self.status_message = "REMoAINTER v0.2 (Rust Core)".into();
                             ui.close_menu();
                         }
                     });
@@ -4104,7 +4104,7 @@ impl eframe::App for RemoainterApp {
                     self.status_message
                 ));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Disk Cache: 42% | REMoAINTER v2.0.0 (Rust Core)");
+                    ui.label("Disk Cache: 42% | REMoAINTER v0.2 (Rust Core)");
                 });
             });
         });
@@ -11587,7 +11587,7 @@ Res: {}×{}",
     fn ui_preferences_modal(&mut self, ctx: &egui::Context) {
         let mut show = self.show_preferences_dialog;
         let mut close_dialog = false;
-        egui::Window::new("⚙ Preferences — REMoAINTER 2026.1")
+        egui::Window::new("⚙ Preferences — REMoAINTER v0.2")
             .open(&mut show)
             .resizable(false)
             .default_width(480.0)
@@ -11791,7 +11791,7 @@ Res: {}×{}",
             .default_height(480.0)
             .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.heading("REMoAINTER 2026.1 SHORTCUT CHEATSHEET");
+                ui.heading("REMoAINTER v0.2 SHORTCUT CHEATSHEET");
                 ui.separator();
 
                 egui::ScrollArea::vertical().show(ui, |ui| {

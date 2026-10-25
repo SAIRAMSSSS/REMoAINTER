@@ -1,6 +1,6 @@
-# REMoAINTER 2026.1 (v2.0.0) — Architecture Specification
+# REMoAINTER v0.2 — Architecture Specification
 
-This document details the internal architecture, memory models, data structures, and execution pipelines of **REMoAINTER 2026.1 (v2.0.0)**.
+This document details the internal architecture, memory models, data structures, and execution pipelines of **REMoAINTER v0.2**.
 
 ---
 
@@ -142,36 +142,36 @@ sequenceDiagram
     participant User as User (Mouse / Stylus)
     participant App as RemoainterApp (egui CentralPanel)
     participant Layer as LayerStack (CPU Buffers)
-    participant TexMgr as TextureManager (GL Context)
-    participant Viewport as PBR Fragment Shader (GPU)
+    participant Viewport as ViewportWgpu (wgpu Queue & Textures)
+    participant GPU as WGSL PBR Shader (GPU Pipeline)
     
     User->>App: Pointer Drag (Screen X, Y)
     App->>App: Raycast Screen Pixel -> 3D Mesh Surface
     Note over App: Hits point P_hit in R^3, Normal N_hit, UV
     App->>App: Distance-based spacing interpolation
-    App->>Layer: paint_stroke_euclidean(P_hit, N_hit, Brush)
-    Note over Layer: Find triangles within Radius R.<br/>Barycentric interpolate 3D pos P(u, v).<br/>Falloff = smoothstep(R, R*hardness, ||P - P_hit||).<br/>Blit into Color, Metal, Rough, Normal buffers.
-    Layer->>Layer: recompute_composite() (Blend all layers bottom-to-top)
-    App->>TexMgr: update_layer_textures(gl, composite_buffers)
-    TexMgr->>Viewport: glTexSubImage2D(GL_TEXTURE0..3)
-    Viewport->>User: Render Frame with Cook-Torrance GGX Shading
+    App->>Layer: paint_3d_surface(P_hit, N_hit, Brush)
+    Note over Layer: Find triangles within Radius R.<br/>Barycentric interpolate 3D pos P(u, v).<br/>Falloff = smoothstep(R, R*hardness, ||P - P_hit||).<br/>Blit into Color, Metal, Rough, Normal, Height buffers.
+    Layer->>Layer: composite_dirty() (Two-pass channel & Sobel height relief)
+    App->>Viewport: upload_dirty_tile(queue, tile_id, dirty_bbox)
+    Viewport->>GPU: queue.write_texture(dirty_subregion)
+    GPU->>User: Render Frame with Cook-Torrance GGX & Karis IBL
 ```
 
 ### Detailed Execution Steps:
 1. **Raycast Hit Detection**:
    When painting in the 3D viewport, camera ray $\vec{R}(t) = \vec{O} + t \vec{D}$ is intersected against all triangles of `Mesh`. The nearest valid intersection yields hit position $P_{\text{hit}}$, surface normal $N_{\text{hit}}$, and barycentric UV.
 2. **Spacing & Stroke Smoothing**:
-   If distance from previous stamp $\ge \text{brush.size} \times \text{brush.spacing}$, intermediate stamps are generated via linear interpolation.
+   If distance from previous stamp $\ge \text{brush.size} \times \text{brush.spacing}$, intermediate stamps are generated via linear interpolation. LazyMouse stabilizer filters high-frequency jitter.
 3. **3D Euclidean Surface Projection**:
-   Instead of naively stamping in 2D UV space (which tears across seams and pinches at poles), `LayerStack::paint_stroke_euclidean` marches over all triangles whose 3D bounding sphere overlaps $(P_{\text{hit}}, R_{\text{brush}})$. For every texel in those triangles, its real 3D coordinate $P(u, v)$ is calculated. Texels within $R_{\text{brush}}$ receive paint proportional to distance and surface normal angle falloff.
+   Instead of naively stamping in 2D UV space (which tears across seams and pinches at poles), `LayerStack::paint_3d_surface` marches over all triangles whose 3D bounding sphere overlaps $(P_{\text{hit}}, R_{\text{brush}})$. For every texel in those triangles, its real 3D coordinate $P(u, v)$ is calculated. Texels within $R_{\text{brush}}$ receive paint proportional to distance and surface normal angle falloff. Signed determinant checks ensure mirrored UV islands receive paint with correct winding.
 4. **Channel Blitting**:
    The active `Layer`'s pixel buffers (`color_buffer`, `roughness_buffer`, etc.) are updated based on active brush channel switches (`paint_color`, `paint_roughness`, etc.).
 5. **Compositing**:
-   `recompute_composite()` iterates over visible layers, applying blend modes and masks into `composite_color`, `composite_roughness`, `composite_metallic`, `composite_normal`.
+   `composite_dirty()` evaluates channel modifications within the dirty region, dynamically calculates 3×3 Sobel tangent-space relief from height displacements, and blends onto base normals using Reoriented Normal Mapping (RNM).
 6. **GPU Texture Upload**:
-   `texture_needs_update` is flagged. `TextureManager::update_layer_textures` invokes `glTexSubImage2D` on OpenGL texture IDs.
+   `upload_dirty_tile()` invokes `queue.write_texture()` on the allocated `wgpu::Texture` 2D array layers, uploading only the modified bounding box sub-rectangle.
 7. **Viewport Draw**:
-   `PbrShader` binds the updated textures to texture units 0..3 and executes Cook-Torrance GGX fragment shading.
+   `ViewportWgpu` binds the texture array bind group and executes Cook-Torrance GGX and Karis split-sum IBL shading in WGSL.
 
 ---
 
@@ -196,118 +196,113 @@ flowchart TD
     LowSelf --> Rayon
     
     PassAO & PassCurv & PassNorm & PassWSN & PassPos & PassThick & PassID --> BakedMaps[BakedMaps Struct]
-    BakedMaps --> PushViewport[Upload to GL Viewport Textures]
+    BakedMaps --> PushViewport[Upload to wgpu Texture Arrays]
     BakedMaps --> PushSmartMasks[Expose to Mask Generators & Edge Wear]
 ```
 
 ### Baking Engine Internals:
 - **Parallel Rasterization**: Uses `rayon` to divide the UV height into parallel chunks.
+- **GPU Compute Baker**: Native `wgpu` compute shader pipeline (`GpuBakerCompute`) executing WGSL compute kernels (`@compute @workgroup_size(8, 8, 1)`) for high-throughput map generation.
 - **MikkTSpace Parity**: Tangents and bitangents computed per vertex. High-poly normals are rotated into the low-poly tangent frame and packed into $16$-bit normal buffers.
-- **AO Solver**: Generates stratified cosine-weighted hemisphere rays, tests ray intersections against geometry, and integrates unoccluded radiance.
+- **AO Solver**: Generates stratified cosine-weighted hemisphere rays, tests ray intersections against geometry BVH, and integrates unoccluded radiance.
 - **Curvature Solver**: Evaluates divergence of the normal field across adjacent texels to isolate sharp convex ridges ($> 0.5$) from concave crevices ($< 0.5$).
+- **UDIM Batch Baking**: `BakerEngine::bake_all_udim` culls triangles per UV tile offset ($1001 + u + 10v$) and bakes multi-tile sets concurrently.
 - **DirectX / OpenGL Normal Orientation**: Inverts the Green channel if `invert_normal_y` is checked.
 
 ---
 
-## 5. History & Undo/Redo System
+## 5. History & Undo/Redo System (`painting::history`)
 
-### Current Implementation (Stub)
-Currently, `RemoainterApp::history` is a `Vec<String>` that logs human-readable descriptions of operations (e.g. `"Stroke applied"`, `"Added Fill Layer"`). `Ctrl+Z` and `Ctrl+Y` only update the status bar text.
-
-### Target Architecture (reference PBR suite Parity)
-To deliver non-destructive undo/redo without excessive RAM consumption:
+### Implemented Architecture
+To deliver non-destructive undo/redo without excessive RAM consumption, REMoAINTER implements a tile-based sparse delta history manager:
 
 ```mermaid
 classDiagram
-    class HistoryStack {
-        +Vec~Box~dyn UndoCommand~~ commands
-        +usize cursor
-        +usize max_memory_bytes
-        +undo()
-        +redo()
-        +push(command)
+    class HistoryManager {
+        +Vec~HistoryStep~ undo_stack
+        +Vec~HistoryStep~ redo_stack
+        +usize max_steps
+        +undo(stack: &mut LayerStack)
+        +redo(stack: &mut LayerStack)
+        +push_step(step: HistoryStep)
+        +capture_pre_stroke(layer: &Layer)
+        +commit_stroke(layer: &Layer, bbox: [u32; 4])
     }
     
-    class UndoCommand {
-        <<interface>>
-        +apply(app: &mut RemoainterApp)
-        +revert(app: &mut RemoainterApp)
-        +memory_size() usize
-    }
-    
-    class StrokeCommand {
+    class HistoryStep {
+        +String description
         +usize layer_id
-        +Vec~TileDelta~ dirty_tiles
-        +apply()
-        +revert()
+        +Vec~HistoryTile~ tiles
+        +Option~LayerMaskBackup~ mask_backup
     }
     
-    class LayerParamCommand {
-        +usize layer_id
-        +LayerProperty old_val
-        +LayerProperty new_val
-        +apply()
-        +revert()
+    class HistoryTile {
+        +u32 tile_x
+        +u32 tile_y
+        +Vec~[f32; 4]~ color
+        +Vec~f32~ metallic
+        +Vec~f32~ roughness
+        +Vec~[f32; 3]~ normal
+        +Vec~f32~ height
     }
     
-    class LayerTopologyCommand {
-        +usize index
-        +LayerAction action
-        +apply()
-        +revert()
-    }
-    
-    HistoryStack o-- UndoCommand
-    UndoCommand <|.. StrokeCommand
-    UndoCommand <|.. LayerParamCommand
-    UndoCommand <|.. LayerTopologyCommand
+    HistoryManager o-- HistoryStep
+    HistoryStep o-- HistoryTile
 ```
 
 #### Key Architecture Principles:
 1. **Tile-Based Sparse Channel Storage**:
-   - 2K/4K channels are partitioned into $64 \times 64$ texel tiles.
-   - Brush strokes only copy the pre-stroke state of modified tiles into `TileDelta`.
-   - Reverting a stroke copies back only the touched tiles, reducing stroke history memory from $\sim 64\text{MB}$ to $< 500\text{KB}$.
-2. **Atomic Transaction Batching**:
-   - Pointer down begins a transaction.
-   - Pointer move accumulates dirty tiles.
-   - Pointer up finalizes and commits the `StrokeCommand` to `HistoryStack`.
-3. **Bounded Memory Eviction**:
-   - The stack tracks cumulative memory size.
-   - When total memory exceeds the configured cache limit (e.g., 2 GB), oldest commands are evicted from the tail.
+   - 2K/4K channels are partitioned into $64 \times 64$ texel tiles (`TILE_SIZE = 64`).
+   - Brush strokes capture only the pre-stroke state of modified tiles intersecting the stroke bounding box into `HistoryTile`.
+   - Reverting a stroke copies back only the touched tiles across all 5 channels (`Color`, `Metallic`, `Roughness`, `Normal`, `Height`), reducing stroke history memory from $\sim 64\text{MB}$ to $< 500\text{KB}$.
+2. **Transaction Lifecycle**:
+   - Pointer down captures pre-stroke tile state for the layer and mask.
+   - Pointer move accumulates the dirty bounding box.
+   - Pointer up finalizes and commits the `HistoryStep` to `undo_stack` and clears `redo_stack`.
+3. **Interactive History Panel**:
+   - The UI displays an interactive timeline list of past actions with click-to-revert state restoration.
 
 ---
 
-## 6. Shaders & Viewport Rendering Core
+## 6. Shaders & Viewport Rendering Core (`graphics/viewport_wgpu.rs`)
 
-### A. OpenGL Shading Architecture (`viewport_gl.rs`)
-The viewport uses three custom GLSL 330 core shader programs managed via `glow`:
+### A. Native wgpu / Vulkan Hardware Shading Architecture
+The viewport utilizes custom WGSL shader pipelines executed via `wgpu 22.1` targeting Vulkan on Linux/Windows, Metal on macOS, and DX12 on Windows:
 
-1. **`PbrShader`**:
-   - **Vertex Shader**: Transforms vertex coordinates to world and clip space; constructs normalized tangent-bitangent-normal matrix $v_{\text{tbn}} = [T, B, N]$ using vertex tangents and bitangent signs ($A_{\text{tangent}}.w$).
+1. **`PbrShader` (WGSL)**:
+   - **Vertex Shader**: Transforms vertex coordinates to world and clip space using Vulkan depth conventions ($[0.0, 1.0]$); constructs normalized tangent-bitangent-normal matrix $v_{\text{tbn}} = [T, B, N]$ using vertex tangents and bitangent signs ($A_{\text{tangent}}.w$).
    - **Fragment Shader**:
      - Evaluates Cook-Torrance microfacet specular BRDF:
-       - NDF: $D_{\text{GGX}}(N \cdot H, \alpha)$
-       - Geometry: $G_{\text{Smith-Schlick}}(N \cdot V, N \cdot L, \alpha)$
-       - Fresnel: $F_{\text{Schlick}}(V \cdot H, F_0)$ modified by roughness for grazing angles.
+       - NDF: $D_{\text{GGX}}(N \cdot H, \alpha)$ (Trowbridge-Reitz)
+       - Geometry: $G_{\text{Smith-Schlick}}(N \cdot V, N \cdot L, \alpha)$ height-correlated
+       - Fresnel: $F_{\text{Schlick}}(V \cdot H, F_0)$ modified by roughness for grazing angles
      - Split-Sum IBL:
-       - Radiance: Sampled from prefiltered HDR cubemap (`GL_TEXTURE6`) with explicit roughness mip-level sampling.
-       - Environment BRDF: Looked up from precomputed $512 \times 512$ 2D BRDF LUT texture (`GL_TEXTURE7`).
-     - Tone Mapping: Standard ACES Filmic curve mapping high-dynamic-range radiance into linear range, followed by sRGB gamma encoding ($x^{1/2.2}$).
-2. **`SkyboxShader`**:
-   - Equirectangular or cubemap skybox environment sphere with adjustable rotational yaw, exposure, and blur factor.
-3. **`WireframeShader`**:
-   - Renders polygon edges over the lit geometry using `GL_POLYGON_OFFSET_LINE` and cyan color token (`#26bfe6`).
+       - Radiance: Sampled from equirectangular/cubemap HDR environment map (`t_env_map`) with explicit roughness mip-level sampling.
+       - Environment BRDF: Looked up from precomputed $512 \times 512$ 2D BRDF LUT texture (`t_brdf_lut`).
+     - Dynamic UDIM Multi-Tile Lookup (`resolve_udim_coords`):
+       - Samples 2D texture arrays (`texture_2d_array<f32>`) supporting up to 16 concurrent tiles.
+     - Tone Mapping & Post-Processing:
+       - SSAO contact shadowing and Bloom highlights extraction
+       - Standard ACES Filmic curve mapping high-dynamic-range radiance into linear range, followed by sRGB gamma encoding ($x^{1/2.2}$).
+2. **`SkyboxShader` (WGSL)**:
+   - Panoramic equirectangular skybox environment sphere with adjustable rotational yaw, exposure, and blur factor.
+3. **`WireframeShader` (WGSL)**:
+   - Renders polygon line index pairs over geometry using dedicated line topology and cyan color token (`#26bfe6`).
+4. **`GridPipeline` (WGSL)**:
+   - Renders dark slate ground plane grid lines and RGB XYZ world coordinate axes.
 
-### B. Texture Unit Allocations
+### B. Viewport Bind Group Allocations
 
-| Texture Unit | Binding Target | Description |
-| :--- | :--- | :--- |
-| `GL_TEXTURE0` | BaseColor Map | Composite linear RGB albedo |
-| `GL_TEXTURE1` | Metallic Map | Composite scalar metallic |
-| `GL_TEXTURE2` | Roughness Map | Composite scalar roughness |
-| `GL_TEXTURE3` | Normal Map | Composite tangent space normal |
-| `GL_TEXTURE4` | Baked AO Map | Ambient occlusion shadow contribution |
-| `GL_TEXTURE5` | Baked Curvature | Curvature visualization / solo mode |
-| `GL_TEXTURE6` | HDR Environment | Pre-filtered panoramic/cubemap radiance map |
-| `GL_TEXTURE7` | BRDF LUT | Pre-integrated 2D split-sum scale and bias LUT |
+| Group | Binding | Resource Type | Target / Description |
+| :---: | :---: | :--- | :--- |
+| `@group(0)` | `@binding(0)` | Uniform Buffer | `PbrUniforms` (416 bytes std140 layout: camera, model, lighting, post-processing) |
+| `@group(1)` | `@binding(0)` | Sampler | `s_repeat`: Linear filtering with repeat wrapping |
+| `@group(1)` | `@binding(1)` | Sampler | `s_clamp`: Linear filtering with clamp-to-edge |
+| `@group(1)` | `@binding(2)` | `texture_2d_array<f32>` | BaseColor 2D array texture |
+| `@group(1)` | `@binding(3)` | `texture_2d_array<f32>` | Metallic 2D array texture |
+| `@group(1)` | `@binding(4)` | `texture_2d_array<f32>` | Roughness 2D array texture |
+| `@group(1)` | `@binding(5)` | `texture_2d_array<f32>` | Tangent-space Normal 2D array texture |
+| `@group(1)` | `@binding(6)` | `texture_2d_array<f32>` | Baked Ambient Occlusion 2D array texture |
+| `@group(1)` | `@binding(7)` | `texture_2d_array<f32>` | Baked Curvature 2D array texture |
+| `@group(1)` | `@binding(8)` | `texture_2d<f32>` | HDR Environment Map (`Rgba16Float`) |
+| `@group(1)` | `@binding(9)` | `texture_2d<f32>` | Pre-integrated 2D split-sum BRDF LUT (`Rg16Float`) |

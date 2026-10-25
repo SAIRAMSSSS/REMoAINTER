@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# REMoAINTER v2.0.0 Launcher
+# REMoAINTER v0.2 Launcher
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
   DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
