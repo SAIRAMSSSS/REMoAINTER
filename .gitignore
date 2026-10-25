@@ -6,4 +6,5 @@ imgui.ini
 scratch/
 target/
 rust/target/
+dist/
 __pycache__/

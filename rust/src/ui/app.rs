@@ -1006,6 +1006,14 @@ impl RemoainterApp {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         let mut app = Self::default();
         if let Some(render_state) = &cc.wgpu_render_state {
+            let info = render_state.adapter.get_info();
+            println!("------------------------------------------------------------");
+            println!(" [GPU INITIALIZATION SUCCESSFUL]");
+            println!(" Device:   {}", info.name);
+            println!(" Backend:  {:?}", info.backend);
+            println!(" Type:     {:?}", info.device_type);
+            println!(" Driver:   {} ({})", info.driver, info.driver_info);
+            println!("------------------------------------------------------------");
             app.wgpu_device = Some(render_state.device.clone());
             app.wgpu_queue = Some(render_state.queue.clone());
             match ViewportWgpu::new(
@@ -1026,6 +1034,8 @@ impl RemoainterApp {
                     );
                 }
             }
+        } else {
+            eprintln!("[WARNING] No wgpu render state provided by eframe window manager.");
         }
         app
     }

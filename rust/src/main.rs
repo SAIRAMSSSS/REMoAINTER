@@ -22,9 +22,21 @@ fn main() -> eframe::Result<()> {
         });
     }
 
+    // Prioritize Vulkan on Linux and Windows, while allowing primary hardware backends (Vulkan, DX12, Metal)
+    let supported_backends =
+        wgpu::util::backend_bits_from_env().unwrap_or(if cfg!(target_os = "linux") {
+            wgpu::Backends::VULKAN
+        } else {
+            wgpu::Backends::VULKAN | wgpu::Backends::PRIMARY
+        });
+
     let native_options = eframe::NativeOptions {
         viewport,
         depth_buffer: 24,
+        wgpu_options: egui_wgpu::WgpuConfiguration {
+            supported_backends,
+            ..Default::default()
+        },
         ..Default::default()
     };
 
