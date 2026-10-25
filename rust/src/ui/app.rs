@@ -154,6 +154,8 @@ pub struct RemoainterApp {
     pub logs: Vec<(String, String, String)>, // time, level, text
 
     pub last_painted_uv: Option<[f32; 2]>,
+    pub last_painted_3d_pos: Option<[f32; 3]>,
+    pub last_painted_3d_norm: Option<[f32; 3]>,
     pub layer_clipboard: Option<Layer>,
 
     // Viewport GPU Texture & Multi-View Mode
@@ -824,6 +826,8 @@ impl Default for RemoainterApp {
                 ),
             ],
             last_painted_uv: None,
+            last_painted_3d_pos: None,
+            last_painted_3d_norm: None,
             paint_target_mask: false,
             layer_clipboard: None,
             texture_handle: None,
@@ -1402,7 +1406,51 @@ impl RemoainterApp {
     }
 
     pub fn perform_undo(&mut self) {
-        if let Some(desc) = self.history_manager.undo(&mut self.layer_stack) {
+        if self.texture_set_manager.is_udim_workflow {
+            let cur_idx = self.texture_set_manager.active_index;
+            if cur_idx < self.texture_set_manager.sets.len() {
+                self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            }
+            if let Some((desc, touched)) = self
+                .history_manager
+                .undo_texture_sets(&mut self.texture_set_manager)
+            {
+                if cur_idx < self.texture_set_manager.sets.len() {
+                    self.layer_stack = self.texture_set_manager.sets[cur_idx].layer_stack.clone();
+                }
+                self.recompute_composite();
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                    if let Some(ref queue) = self.wgpu_queue {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            for &s_idx in &touched {
+                                if let Some(set) = self.texture_set_manager.sets.get(s_idx) {
+                                    vp.upload_dirty_tile(
+                                        queue,
+                                        s_idx as u32,
+                                        &set.layer_stack,
+                                        [
+                                            0,
+                                            0,
+                                            set.layer_stack.width as i32,
+                                            set.layer_stack.height as i32,
+                                        ],
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                let msg = format!("Undo: {}", desc);
+                self.status_message = msg.clone();
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    msg,
+                ));
+            } else {
+                self.status_message = "Nothing to undo".into();
+            }
+        } else if let Some(desc) = self.history_manager.undo(&mut self.layer_stack) {
             self.recompute_composite();
             let msg = format!("Undo: {}", desc);
             self.status_message = msg.clone();
@@ -1417,7 +1465,51 @@ impl RemoainterApp {
     }
 
     pub fn perform_redo(&mut self) {
-        if let Some(desc) = self.history_manager.redo(&mut self.layer_stack) {
+        if self.texture_set_manager.is_udim_workflow {
+            let cur_idx = self.texture_set_manager.active_index;
+            if cur_idx < self.texture_set_manager.sets.len() {
+                self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            }
+            if let Some((desc, touched)) = self
+                .history_manager
+                .redo_texture_sets(&mut self.texture_set_manager)
+            {
+                if cur_idx < self.texture_set_manager.sets.len() {
+                    self.layer_stack = self.texture_set_manager.sets[cur_idx].layer_stack.clone();
+                }
+                self.recompute_composite();
+                if let Some(ref vp_mutex) = self.viewport_wgpu {
+                    if let Some(ref queue) = self.wgpu_queue {
+                        if let Ok(mut vp) = vp_mutex.lock() {
+                            for &s_idx in &touched {
+                                if let Some(set) = self.texture_set_manager.sets.get(s_idx) {
+                                    vp.upload_dirty_tile(
+                                        queue,
+                                        s_idx as u32,
+                                        &set.layer_stack,
+                                        [
+                                            0,
+                                            0,
+                                            set.layer_stack.width as i32,
+                                            set.layer_stack.height as i32,
+                                        ],
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                let msg = format!("Redo: {}", desc);
+                self.status_message = msg.clone();
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    msg,
+                ));
+            } else {
+                self.status_message = "Nothing to redo".into();
+            }
+        } else if let Some(desc) = self.history_manager.redo(&mut self.layer_stack) {
             self.recompute_composite();
             let msg = format!("Redo: {}", desc);
             self.status_message = msg.clone();
@@ -5794,107 +5886,297 @@ impl RemoainterApp {
                         }
                         b
                     } else {
-                        // Paint (1), Eraser (2), Projection (3)
+                        // Paint (1), Eraser (2)
                         let is_eraser = self.active_tool == ToolMode::Eraser;
                         let on_mask = self.paint_target_mask;
-                        let active_udim = if self.texture_set_manager.is_udim_workflow {
-                            self.texture_set_manager
-                                .sets
-                                .get(self.texture_set_manager.active_index)
-                                .and_then(|s| s.udim_tile)
-                        } else {
-                            None
-                        };
-                        let mut b = if let Some(active_layer) =
-                            self.layer_stack.layers.get_mut(active_idx)
-                        {
-                            active_layer.paint_3d_surface_udim(
-                                &self.mesh,
-                                hit.pos,
-                                hit.normal,
-                                radius_3d,
-                                &self.brush,
-                                is_eraser,
-                                on_mask,
-                                Some(&mut self.history_manager),
-                                active_udim,
-                            )
-                        } else {
+
+                        // 3D Stroke Interpolation: step along the 3D chord between previous hit
+                        // and current hit based on brush.spacing to guarantee smooth, continuous
+                        // strokes without gaps or dotted trails during fast drags.
+                        let step_size =
+                            (radius_3d * 2.0 * self.brush.spacing).max(radius_3d * 0.05);
+                        let mut should_update_3d_pos = false;
+
+                        let steps_to_paint: Vec<([f32; 3], [f32; 3])> =
+                            if let (Some(prev_p), Some(prev_n)) =
+                                (self.last_painted_3d_pos, self.last_painted_3d_norm)
+                            {
+                                let dx = hit.pos[0] - prev_p[0];
+                                let dy = hit.pos[1] - prev_p[1];
+                                let dz = hit.pos[2] - prev_p[2];
+                                let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+                                if dist >= step_size && dist < mesh_radius * 1.5 {
+                                    let num_steps = (dist / step_size).floor().min(32.0) as usize;
+                                    let num_steps = num_steps.max(1);
+                                    let mut pts = Vec::with_capacity(num_steps);
+                                    for s in 1..=num_steps {
+                                        let t = s as f32 / num_steps as f32;
+                                        let p = [
+                                            prev_p[0] + dx * t,
+                                            prev_p[1] + dy * t,
+                                            prev_p[2] + dz * t,
+                                        ];
+                                        let nx = prev_n[0] + (hit.normal[0] - prev_n[0]) * t;
+                                        let ny = prev_n[1] + (hit.normal[1] - prev_n[1]) * t;
+                                        let nz = prev_n[2] + (hit.normal[2] - prev_n[2]) * t;
+                                        let nl = (nx * nx + ny * ny + nz * nz).sqrt().max(1e-6);
+                                        pts.push((p, [nx / nl, ny / nl, nz / nl]));
+                                    }
+                                    should_update_3d_pos = true;
+                                    pts
+                                } else if dist >= mesh_radius * 1.5 {
+                                    should_update_3d_pos = true;
+                                    vec![(hit.pos, hit.normal)]
+                                } else {
+                                    Vec::new()
+                                }
+                            } else {
+                                should_update_3d_pos = true;
+                                vec![(hit.pos, hit.normal)]
+                            };
+
+                        if should_update_3d_pos {
+                            self.last_painted_3d_pos = Some(hit.pos);
+                            self.last_painted_3d_norm = Some(hit.normal);
+                        }
+
+                        if self.texture_set_manager.is_udim_workflow {
+                            // Multi-tile UDIM painting: synchronize active set, paint across all touched tiles,
+                            // accumulate dirty bounding boxes across all sub-steps, and stream dirty updates ONCE.
+                            let cur_set_idx = self.texture_set_manager.active_index;
+                            if cur_set_idx < self.texture_set_manager.sets.len() {
+                                self.texture_set_manager.sets[cur_set_idx].layer_stack =
+                                    self.layer_stack.clone();
+                            }
+
+                            let mut dirty_tiles: std::collections::HashMap<usize, [i32; 4]> =
+                                std::collections::HashMap::new();
+
+                            for (step_pos, step_norm) in steps_to_paint {
+                                let mut all_results =
+                                    self.texture_set_manager.paint_3d_surface_multi_tile(
+                                        &self.mesh,
+                                        step_pos,
+                                        step_norm,
+                                        radius_3d,
+                                        &self.brush,
+                                        is_eraser,
+                                        on_mask,
+                                        Some(&mut self.history_manager),
+                                    );
+
+                                if self.symmetry_x {
+                                    let sym_pos = [-step_pos[0], step_pos[1], step_pos[2]];
+                                    let sym_norm = [-step_norm[0], step_norm[1], step_norm[2]];
+                                    let sym_res =
+                                        self.texture_set_manager.paint_3d_surface_multi_tile(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                        );
+                                    all_results.extend(sym_res);
+                                }
+                                if self.symmetry_y {
+                                    let sym_pos = [step_pos[0], -step_pos[1], step_pos[2]];
+                                    let sym_norm = [step_norm[0], -step_norm[1], step_norm[2]];
+                                    let sym_res =
+                                        self.texture_set_manager.paint_3d_surface_multi_tile(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                        );
+                                    all_results.extend(sym_res);
+                                }
+                                if self.symmetry_z {
+                                    let sym_pos = [step_pos[0], step_pos[1], -step_pos[2]];
+                                    let sym_norm = [step_norm[0], step_norm[1], -step_norm[2]];
+                                    let sym_res =
+                                        self.texture_set_manager.paint_3d_surface_multi_tile(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                        );
+                                    all_results.extend(sym_res);
+                                }
+
+                                for (set_idx, tile_bbox) in all_results {
+                                    dirty_tiles
+                                        .entry(set_idx)
+                                        .and_modify(|b| {
+                                            b[0] = b[0].min(tile_bbox[0]);
+                                            b[1] = b[1].min(tile_bbox[1]);
+                                            b[2] = b[2].max(tile_bbox[2]);
+                                            b[3] = b[3].max(tile_bbox[3]);
+                                        })
+                                        .or_insert(tile_bbox);
+                                }
+                            }
+
+                            let preset = self.get_env_preset();
+                            let rot = self.env_rotation.to_radians();
+                            let intensity = self.light_intensity;
+
+                            for (set_idx, tile_bbox) in dirty_tiles {
+                                if set_idx < self.texture_set_manager.sets.len() {
+                                    let target_set = &mut self.texture_set_manager.sets[set_idx];
+                                    target_set.layer_stack.composite_dirty(
+                                        tile_bbox,
+                                        target_set.baked_maps.ambient_occlusion.as_deref(),
+                                        preset,
+                                        rot,
+                                        intensity,
+                                    );
+                                    if let Some(ref vp_mutex) = self.viewport_wgpu {
+                                        if let Some(ref queue) = self.wgpu_queue {
+                                            if let Ok(mut vp) = vp_mutex.lock() {
+                                                let upload_bbox = [
+                                                    (tile_bbox[0] - 1).max(0),
+                                                    (tile_bbox[1] - 1).max(0),
+                                                    (tile_bbox[2] + 1).min(
+                                                        target_set.layer_stack.width as i32 - 1,
+                                                    ),
+                                                    (tile_bbox[3] + 1).min(
+                                                        target_set.layer_stack.height as i32 - 1,
+                                                    ),
+                                                ];
+                                                vp.upload_dirty_tile(
+                                                    queue,
+                                                    set_idx as u32,
+                                                    &target_set.layer_stack,
+                                                    upload_bbox,
+                                                );
+                                            }
+                                        }
+                                    }
+                                    if set_idx == cur_set_idx {
+                                        self.layer_stack = target_set.layer_stack.clone();
+                                        self.texture_needs_update = true;
+                                    }
+                                }
+                            }
                             [0, 0, 0, 0]
-                        };
-                        if self.symmetry_x {
-                            let sym_pos = [-hit.pos[0], hit.pos[1], hit.pos[2]];
-                            let sym_norm = [-hit.normal[0], hit.normal[1], hit.normal[2]];
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
-                            {
-                                let b_sym = active_layer.paint_3d_surface_udim(
-                                    &self.mesh,
-                                    sym_pos,
-                                    sym_norm,
-                                    radius_3d,
-                                    &self.brush,
-                                    is_eraser,
-                                    on_mask,
-                                    Some(&mut self.history_manager),
-                                    active_udim,
-                                );
-                                if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
-                                    b[0] = b[0].min(b_sym[0]);
-                                    b[1] = b[1].min(b_sym[1]);
-                                    b[2] = b[2].max(b_sym[2]);
-                                    b[3] = b[3].max(b_sym[3]);
+                        } else {
+                            let mut accum_bbox = [
+                                self.layer_stack.width as i32,
+                                self.layer_stack.height as i32,
+                                0,
+                                0,
+                            ];
+                            for (step_pos, step_norm) in steps_to_paint {
+                                if let Some(active_layer) =
+                                    self.layer_stack.layers.get_mut(active_idx)
+                                {
+                                    let b = active_layer.paint_3d_surface_udim(
+                                        &self.mesh,
+                                        step_pos,
+                                        step_norm,
+                                        radius_3d,
+                                        &self.brush,
+                                        is_eraser,
+                                        on_mask,
+                                        Some(&mut self.history_manager),
+                                        None,
+                                    );
+                                    if b[2] >= b[0] && b[3] >= b[1] {
+                                        accum_bbox[0] = accum_bbox[0].min(b[0]);
+                                        accum_bbox[1] = accum_bbox[1].min(b[1]);
+                                        accum_bbox[2] = accum_bbox[2].max(b[2]);
+                                        accum_bbox[3] = accum_bbox[3].max(b[3]);
+                                    }
+                                }
+                                if self.symmetry_x {
+                                    let sym_pos = [-step_pos[0], step_pos[1], step_pos[2]];
+                                    let sym_norm = [-step_norm[0], step_norm[1], step_norm[2]];
+                                    if let Some(active_layer) =
+                                        self.layer_stack.layers.get_mut(active_idx)
+                                    {
+                                        let b_sym = active_layer.paint_3d_surface_udim(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                            None,
+                                        );
+                                        if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
+                                            accum_bbox[0] = accum_bbox[0].min(b_sym[0]);
+                                            accum_bbox[1] = accum_bbox[1].min(b_sym[1]);
+                                            accum_bbox[2] = accum_bbox[2].max(b_sym[2]);
+                                            accum_bbox[3] = accum_bbox[3].max(b_sym[3]);
+                                        }
+                                    }
+                                }
+                                if self.symmetry_y {
+                                    let sym_pos = [step_pos[0], -step_pos[1], step_pos[2]];
+                                    let sym_norm = [step_norm[0], -step_norm[1], step_norm[2]];
+                                    if let Some(active_layer) =
+                                        self.layer_stack.layers.get_mut(active_idx)
+                                    {
+                                        let b_sym = active_layer.paint_3d_surface_udim(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                            None,
+                                        );
+                                        if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
+                                            accum_bbox[0] = accum_bbox[0].min(b_sym[0]);
+                                            accum_bbox[1] = accum_bbox[1].min(b_sym[1]);
+                                            accum_bbox[2] = accum_bbox[2].max(b_sym[2]);
+                                            accum_bbox[3] = accum_bbox[3].max(b_sym[3]);
+                                        }
+                                    }
+                                }
+                                if self.symmetry_z {
+                                    let sym_pos = [step_pos[0], step_pos[1], -step_pos[2]];
+                                    let sym_norm = [step_norm[0], step_norm[1], -step_norm[2]];
+                                    if let Some(active_layer) =
+                                        self.layer_stack.layers.get_mut(active_idx)
+                                    {
+                                        let b_sym = active_layer.paint_3d_surface_udim(
+                                            &self.mesh,
+                                            sym_pos,
+                                            sym_norm,
+                                            radius_3d,
+                                            &self.brush,
+                                            is_eraser,
+                                            on_mask,
+                                            Some(&mut self.history_manager),
+                                            None,
+                                        );
+                                        if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
+                                            accum_bbox[0] = accum_bbox[0].min(b_sym[0]);
+                                            accum_bbox[1] = accum_bbox[1].min(b_sym[1]);
+                                            accum_bbox[2] = accum_bbox[2].max(b_sym[2]);
+                                            accum_bbox[3] = accum_bbox[3].max(b_sym[3]);
+                                        }
+                                    }
                                 }
                             }
+                            accum_bbox
                         }
-                        if self.symmetry_y {
-                            let sym_pos = [hit.pos[0], -hit.pos[1], hit.pos[2]];
-                            let sym_norm = [hit.normal[0], -hit.normal[1], hit.normal[2]];
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
-                            {
-                                let b_sym = active_layer.paint_3d_surface_udim(
-                                    &self.mesh,
-                                    sym_pos,
-                                    sym_norm,
-                                    radius_3d,
-                                    &self.brush,
-                                    is_eraser,
-                                    on_mask,
-                                    Some(&mut self.history_manager),
-                                    active_udim,
-                                );
-                                if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
-                                    b[0] = b[0].min(b_sym[0]);
-                                    b[1] = b[1].min(b_sym[1]);
-                                    b[2] = b[2].max(b_sym[2]);
-                                    b[3] = b[3].max(b_sym[3]);
-                                }
-                            }
-                        }
-                        if self.symmetry_z {
-                            let sym_pos = [hit.pos[0], hit.pos[1], -hit.pos[2]];
-                            let sym_norm = [hit.normal[0], hit.normal[1], -hit.normal[2]];
-                            if let Some(active_layer) = self.layer_stack.layers.get_mut(active_idx)
-                            {
-                                let b_sym = active_layer.paint_3d_surface_udim(
-                                    &self.mesh,
-                                    sym_pos,
-                                    sym_norm,
-                                    radius_3d,
-                                    &self.brush,
-                                    is_eraser,
-                                    on_mask,
-                                    Some(&mut self.history_manager),
-                                    active_udim,
-                                );
-                                if b_sym[2] >= b_sym[0] && b_sym[3] >= b_sym[1] {
-                                    b[0] = b[0].min(b_sym[0]);
-                                    b[1] = b[1].min(b_sym[1]);
-                                    b[2] = b[2].max(b_sym[2]);
-                                    b[3] = b[3].max(b_sym[3]);
-                                }
-                            }
-                        }
-                        b
                     };
                     self.last_painted_uv = Some(uv);
                     if bbox[2] > bbox[0] && bbox[3] > bbox[1] {
@@ -5904,6 +6186,8 @@ impl RemoainterApp {
             }
         } else {
             self.last_painted_uv = None;
+            self.last_painted_3d_pos = None;
+            self.last_painted_3d_norm = None;
             if self.is_in_stroke {
                 let tool_name = match self.active_tool {
                     ToolMode::Paint => "Paint 3D Surface",

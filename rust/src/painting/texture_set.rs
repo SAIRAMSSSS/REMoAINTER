@@ -250,6 +250,7 @@ impl TextureSetManager {
         brush: &crate::painting::brush::Brush,
         is_eraser: bool,
         on_mask: bool,
+        mut history: Option<&mut crate::painting::history::HistoryManager>,
     ) -> Vec<(usize, [i32; 4])> {
         let mut results = Vec::new();
         for (idx, set) in self.sets.iter_mut().enumerate() {
@@ -271,7 +272,7 @@ impl TextureSetManager {
                 brush,
                 is_eraser,
                 on_mask,
-                None,
+                history.as_deref_mut(),
                 set.udim_tile,
             );
             if bbox[2] >= bbox[0] && bbox[3] >= bbox[1] {
@@ -440,6 +441,7 @@ mod tests {
             &brush,
             false,
             false,
+            None,
         );
 
         // Both tile 1001 (index 0) and tile 1002 (index 1) must be painted!
@@ -450,5 +452,111 @@ mod tests {
         );
         assert_eq!(painted[0].0, 0);
         assert_eq!(painted[1].0, 1);
+    }
+
+    #[test]
+    fn test_texture_set_multi_tile_3d_painting_with_history() {
+        use crate::painting::brush::Brush;
+        use crate::painting::layer::Layer;
+
+        let mut mesh = Mesh::default();
+        mesh.vertices.push([0.0, 0.0, 0.0]);
+        mesh.vertices.push([1.0, 0.0, 0.0]);
+        mesh.vertices.push([1.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.uvs.push([0.1, 0.1]);
+        mesh.uvs.push([0.9, 0.1]);
+        mesh.uvs.push([0.9, 0.9]);
+        mesh.indices.extend_from_slice(&[0, 1, 2]);
+
+        mesh.vertices.push([1.0, 0.0, 0.0]);
+        mesh.vertices.push([2.0, 0.0, 0.0]);
+        mesh.vertices.push([2.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.uvs.push([1.1, 0.1]);
+        mesh.uvs.push([1.9, 0.1]);
+        mesh.uvs.push([1.9, 0.9]);
+        mesh.indices.extend_from_slice(&[3, 4, 5]);
+
+        let mut mgr = TextureSetManager::new(32);
+        mgr.configure_from_mesh(&mesh, 32);
+
+        for (i, set) in mgr.sets.iter_mut().enumerate() {
+            set.layer_stack
+                .layers
+                .push(Layer::new_paint(i + 10, "Paint", 32, 32));
+            set.layer_stack.active_layer_index = 1;
+        }
+
+        let mut history = crate::painting::history::HistoryManager::new(10);
+        history.begin_stroke();
+
+        let mut brush = Brush::default();
+        brush.size = 30.0;
+        brush.color = [0.2, 0.8, 1.0, 1.0];
+
+        let painted = mgr.paint_3d_surface_multi_tile(
+            &mesh,
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            2.0,
+            &brush,
+            false,
+            false,
+            Some(&mut history),
+        );
+
+        assert_eq!(painted.len(), 2);
+        assert!(mgr.sets[0].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
+        assert!(mgr.sets[1].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
+
+        history.commit_stroke("Paint UDIM Seam Stroke");
+        assert!(history.can_undo());
+
+        // Test multi-tile UDIM undo
+        let (desc, touched) = history
+            .undo_texture_sets(&mut mgr)
+            .expect("Undo must succeed");
+        assert_eq!(desc, "Paint UDIM Seam Stroke");
+        assert!(touched.contains(&0) && touched.contains(&1));
+
+        // Both sets must have their paint layer restored to unpainted state
+        assert!(!mgr.sets[0].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
+        assert!(!mgr.sets[1].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
+
+        assert!(history.can_redo());
+
+        // Test multi-tile UDIM redo
+        let (redo_desc, redo_touched) = history
+            .redo_texture_sets(&mut mgr)
+            .expect("Redo must succeed");
+        assert_eq!(redo_desc, "Paint UDIM Seam Stroke");
+        assert!(redo_touched.contains(&0) && redo_touched.contains(&1));
+
+        // Both sets must have their painted stroke re-applied
+        assert!(mgr.sets[0].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
+        assert!(mgr.sets[1].layer_stack.layers[1]
+            .color_buffer
+            .iter()
+            .any(|c| c[3] > 0.0));
     }
 }

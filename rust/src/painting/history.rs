@@ -15,6 +15,8 @@ pub const HISTORY_TILE_SIZE: u32 = 64;
 /// Backup of a single 64x64 pixel tile on a specific layer
 #[derive(Debug, Clone)]
 pub struct LayerTileBackup {
+    pub set_id: Option<usize>,
+    pub udim_tile: Option<u32>,
     pub layer_id: usize,
     pub tile_x: u32,
     pub tile_y: u32,
@@ -31,6 +33,22 @@ pub struct LayerTileBackup {
 impl LayerTileBackup {
     /// Captures a tile from a layer before modification
     pub fn capture(layer: &Layer, tile_x: u32, tile_y: u32) -> Self {
+        Self::capture_full(layer, tile_x, tile_y, None, None)
+    }
+
+    /// Captures a tile from a layer with UDIM tile metadata
+    pub fn capture_udim(layer: &Layer, tile_x: u32, tile_y: u32, udim_tile: Option<u32>) -> Self {
+        Self::capture_full(layer, tile_x, tile_y, None, udim_tile)
+    }
+
+    /// Captures a tile from a layer with full Texture Set and UDIM metadata
+    pub fn capture_full(
+        layer: &Layer,
+        tile_x: u32,
+        tile_y: u32,
+        set_id: Option<usize>,
+        udim_tile: Option<u32>,
+    ) -> Self {
         let tw = HISTORY_TILE_SIZE.min(layer.width.saturating_sub(tile_x * HISTORY_TILE_SIZE));
         let th = HISTORY_TILE_SIZE.min(layer.height.saturating_sub(tile_y * HISTORY_TILE_SIZE));
         let num_pixels = (tw * th) as usize;
@@ -84,6 +102,8 @@ impl LayerTileBackup {
         });
 
         Self {
+            set_id,
+            udim_tile,
             layer_id: layer.id,
             tile_x,
             tile_y,
@@ -160,12 +180,16 @@ pub struct UndoCommand {
     pub tile_backups: Vec<LayerTileBackup>,
 }
 
+/// Unique key identifying a tile across texture sets, UDIM tiles, layers, and coordinates:
+/// `(set_id, udim_tile, layer_id, tile_x, tile_y)`
+pub type TileHistoryKey = (Option<usize>, Option<u32>, usize, u32, u32);
+
 /// Manages undo and redo history with tile backups
 #[derive(Debug, Clone)]
 pub struct HistoryManager {
     pub undo_stack: Vec<UndoCommand>,
     pub redo_stack: Vec<UndoCommand>,
-    pub active_stroke_tiles: HashSet<(usize, u32, u32)>, // (layer_id, tile_x, tile_y)
+    pub active_stroke_tiles: HashSet<TileHistoryKey>,
     pub active_stroke_backups: Vec<LayerTileBackup>,
     pub max_undo_steps: usize,
 }
@@ -179,6 +203,20 @@ impl Default for HistoryManager {
             active_stroke_backups: Vec::new(),
             max_undo_steps: 64,
         }
+    }
+}
+
+fn find_backup_set_idx(
+    sets: &[crate::painting::texture_set::TextureSet],
+    active_index: usize,
+    backup: &LayerTileBackup,
+) -> Option<usize> {
+    if let Some(tile) = backup.udim_tile {
+        sets.iter().position(|s| s.udim_tile == Some(tile))
+    } else if let Some(sid) = backup.set_id {
+        sets.iter().position(|s| s.id == sid)
+    } else {
+        Some(active_index)
     }
 }
 
@@ -198,22 +236,66 @@ impl HistoryManager {
 
     /// Records the tile overlapping pixel coordinate (px, py) before it is modified
     pub fn record_pixel_before_modify(&mut self, layer: &Layer, px: u32, py: u32) {
+        self.record_pixel_before_modify_full(layer, px, py, None, None);
+    }
+
+    /// Records the tile overlapping pixel coordinate (px, py) before it is modified with UDIM metadata
+    pub fn record_pixel_before_modify_udim(
+        &mut self,
+        layer: &Layer,
+        px: u32,
+        py: u32,
+        udim_tile: Option<u32>,
+    ) {
+        self.record_pixel_before_modify_full(layer, px, py, None, udim_tile);
+    }
+
+    /// Records the tile overlapping pixel coordinate (px, py) before it is modified with full metadata
+    pub fn record_pixel_before_modify_full(
+        &mut self,
+        layer: &Layer,
+        px: u32,
+        py: u32,
+        set_id: Option<usize>,
+        udim_tile: Option<u32>,
+    ) {
         if px >= layer.width || py >= layer.height {
             return;
         }
 
         let tx = px / HISTORY_TILE_SIZE;
         let ty = py / HISTORY_TILE_SIZE;
-        let key = (layer.id, tx, ty);
+        let key = (set_id, udim_tile, layer.id, tx, ty);
 
         if self.active_stroke_tiles.insert(key) {
-            let backup = LayerTileBackup::capture(layer, tx, ty);
+            let backup = LayerTileBackup::capture_full(layer, tx, ty, set_id, udim_tile);
             self.active_stroke_backups.push(backup);
         }
     }
 
     /// Records all tiles overlapping a bounding box [min_x, min_y, max_x, max_y]
     pub fn record_bbox_before_modify(&mut self, layer: &Layer, bbox: [i32; 4]) {
+        self.record_bbox_before_modify_full(layer, bbox, None, None);
+    }
+
+    /// Records all tiles overlapping a bounding box with UDIM metadata
+    pub fn record_bbox_before_modify_udim(
+        &mut self,
+        layer: &Layer,
+        bbox: [i32; 4],
+        udim_tile: Option<u32>,
+    ) {
+        self.record_bbox_before_modify_full(layer, bbox, None, udim_tile);
+    }
+
+    /// Records all tiles overlapping a bounding box with full metadata
+    pub fn record_bbox_before_modify_full(
+        &mut self,
+        layer: &Layer,
+        bbox: [i32; 4],
+        set_id: Option<usize>,
+        udim_tile: Option<u32>,
+    ) {
         if bbox[2] < bbox[0] || bbox[3] < bbox[1] {
             return;
         }
@@ -227,9 +309,9 @@ impl HistoryManager {
 
         for ty in min_y..=max_y {
             for tx in min_x..=max_x {
-                let key = (layer.id, tx, ty);
+                let key = (set_id, udim_tile, layer.id, tx, ty);
                 if self.active_stroke_tiles.insert(key) {
-                    let backup = LayerTileBackup::capture(layer, tx, ty);
+                    let backup = LayerTileBackup::capture_full(layer, tx, ty, set_id, udim_tile);
                     self.active_stroke_backups.push(backup);
                 }
             }
@@ -265,10 +347,12 @@ impl HistoryManager {
         let mut redo_tiles = Vec::with_capacity(cmd.tile_backups.len());
         for backup in &cmd.tile_backups {
             if let Some(layer) = layer_stack.layers.iter().find(|l| l.id == backup.layer_id) {
-                redo_tiles.push(LayerTileBackup::capture(
+                redo_tiles.push(LayerTileBackup::capture_full(
                     layer,
                     backup.tile_x,
                     backup.tile_y,
+                    backup.set_id,
+                    backup.udim_tile,
                 ));
             }
         }
@@ -295,6 +379,72 @@ impl HistoryManager {
         Some(desc)
     }
 
+    /// Reverts the last operation across multi-tile UDIM or multi-material Texture Sets
+    pub fn undo_texture_sets(
+        &mut self,
+        manager: &mut crate::painting::texture_set::TextureSetManager,
+    ) -> Option<(String, Vec<usize>)> {
+        let cmd = self.undo_stack.pop()?;
+
+        // Capture current state of these tiles for redo
+        let mut redo_tiles = Vec::with_capacity(cmd.tile_backups.len());
+        for backup in &cmd.tile_backups {
+            if let Some(s_idx) = find_backup_set_idx(&manager.sets, manager.active_index, backup) {
+                if let Some(set) = manager.sets.get(s_idx) {
+                    if let Some(layer) = set
+                        .layer_stack
+                        .layers
+                        .iter()
+                        .find(|l| l.id == backup.layer_id)
+                    {
+                        redo_tiles.push(LayerTileBackup::capture_full(
+                            layer,
+                            backup.tile_x,
+                            backup.tile_y,
+                            backup.set_id,
+                            backup.udim_tile,
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Restore past pixels
+        let mut touched_sets = Vec::new();
+        for backup in &cmd.tile_backups {
+            if let Some(s_idx) = find_backup_set_idx(&manager.sets, manager.active_index, backup) {
+                if let Some(set) = manager.sets.get_mut(s_idx) {
+                    if let Some(layer) = set
+                        .layer_stack
+                        .layers
+                        .iter_mut()
+                        .find(|l| l.id == backup.layer_id)
+                    {
+                        backup.restore(layer);
+                        if !touched_sets.contains(&s_idx) {
+                            touched_sets.push(s_idx);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recompute composite on all touched texture sets
+        for &s_idx in &touched_sets {
+            if let Some(set) = manager.sets.get_mut(s_idx) {
+                set.layer_stack.recompute_composite();
+            }
+        }
+
+        let desc = cmd.description.clone();
+        self.redo_stack.push(UndoCommand {
+            description: cmd.description,
+            tile_backups: redo_tiles,
+        });
+
+        Some((desc, touched_sets))
+    }
+
     /// Re-applies the last undone operation
     pub fn redo(&mut self, layer_stack: &mut LayerStack) -> Option<String> {
         let cmd = self.redo_stack.pop()?;
@@ -303,10 +453,12 @@ impl HistoryManager {
         let mut undo_tiles = Vec::with_capacity(cmd.tile_backups.len());
         for backup in &cmd.tile_backups {
             if let Some(layer) = layer_stack.layers.iter().find(|l| l.id == backup.layer_id) {
-                undo_tiles.push(LayerTileBackup::capture(
+                undo_tiles.push(LayerTileBackup::capture_full(
                     layer,
                     backup.tile_x,
                     backup.tile_y,
+                    backup.set_id,
+                    backup.udim_tile,
                 ));
             }
         }
@@ -331,6 +483,72 @@ impl HistoryManager {
         });
 
         Some(desc)
+    }
+
+    /// Re-applies the last undone operation across multi-tile UDIM or multi-material Texture Sets
+    pub fn redo_texture_sets(
+        &mut self,
+        manager: &mut crate::painting::texture_set::TextureSetManager,
+    ) -> Option<(String, Vec<usize>)> {
+        let cmd = self.redo_stack.pop()?;
+
+        // Capture current state of these tiles for undo
+        let mut undo_tiles = Vec::with_capacity(cmd.tile_backups.len());
+        for backup in &cmd.tile_backups {
+            if let Some(s_idx) = find_backup_set_idx(&manager.sets, manager.active_index, backup) {
+                if let Some(set) = manager.sets.get(s_idx) {
+                    if let Some(layer) = set
+                        .layer_stack
+                        .layers
+                        .iter()
+                        .find(|l| l.id == backup.layer_id)
+                    {
+                        undo_tiles.push(LayerTileBackup::capture_full(
+                            layer,
+                            backup.tile_x,
+                            backup.tile_y,
+                            backup.set_id,
+                            backup.udim_tile,
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Apply redone pixels
+        let mut touched_sets = Vec::new();
+        for backup in &cmd.tile_backups {
+            if let Some(s_idx) = find_backup_set_idx(&manager.sets, manager.active_index, backup) {
+                if let Some(set) = manager.sets.get_mut(s_idx) {
+                    if let Some(layer) = set
+                        .layer_stack
+                        .layers
+                        .iter_mut()
+                        .find(|l| l.id == backup.layer_id)
+                    {
+                        backup.restore(layer);
+                        if !touched_sets.contains(&s_idx) {
+                            touched_sets.push(s_idx);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recompute composite on all touched texture sets
+        for &s_idx in &touched_sets {
+            if let Some(set) = manager.sets.get_mut(s_idx) {
+                set.layer_stack.recompute_composite();
+            }
+        }
+
+        let desc = cmd.description.clone();
+        self.undo_stack.push(UndoCommand {
+            description: cmd.description,
+            tile_backups: undo_tiles,
+        });
+
+        Some((desc, touched_sets))
     }
 
     pub fn can_undo(&self) -> bool {
@@ -399,5 +617,88 @@ mod tests {
         let redone = history.redo(&mut stack);
         assert_eq!(redone, Some("Paint Red Stroke".to_string()));
         assert_eq!(stack.layers[0].color_buffer[0], [1.0, 0.0, 0.0, 1.0]); // Re-applied!
+    }
+
+    #[test]
+    fn test_history_manager_texture_sets_udim_undo_redo() {
+        use crate::painting::texture_set::{TextureSet, TextureSetManager};
+
+        let mut mgr = TextureSetManager::new(64);
+        mgr.is_udim_workflow = true;
+        mgr.sets.clear();
+
+        // Tile 1001
+        let mut set1 = TextureSet::new_udim(1, 1001, 64);
+        set1.layer_stack.layers.clear();
+        let mut l1 = Layer::new_paint(10, "Paint1", 64, 64);
+        l1.color_buffer[0] = [0.1, 0.1, 0.1, 1.0];
+        set1.layer_stack.layers.push(l1);
+        mgr.sets.push(set1);
+
+        // Tile 1002 (with identical layer id to test collision immunity)
+        let mut set2 = TextureSet::new_udim(2, 1002, 64);
+        set2.layer_stack.layers.clear();
+        let mut l2 = Layer::new_paint(10, "Paint2", 64, 64);
+        l2.color_buffer[0] = [0.2, 0.2, 0.2, 1.0];
+        set2.layer_stack.layers.push(l2);
+        mgr.sets.push(set2);
+
+        let mut history = HistoryManager::new(10);
+        history.begin_stroke();
+
+        // Record tile on 1001 and tile on 1002 (both share layer_id: 10, tx: 0, ty: 0)
+        history.record_bbox_before_modify_udim(
+            &mgr.sets[0].layer_stack.layers[0],
+            [0, 0, 10, 10],
+            Some(1001),
+        );
+        history.record_bbox_before_modify_udim(
+            &mgr.sets[1].layer_stack.layers[0],
+            [0, 0, 10, 10],
+            Some(1002),
+        );
+
+        // Both backups must be captured without collision
+        assert_eq!(history.active_stroke_backups.len(), 2);
+
+        // Mutate both
+        mgr.sets[0].layer_stack.layers[0].color_buffer[0] = [1.0, 0.0, 0.0, 1.0];
+        mgr.sets[1].layer_stack.layers[0].color_buffer[0] = [0.0, 1.0, 0.0, 1.0];
+
+        history.commit_stroke("Paint Cross-UDIM Seam");
+        assert!(history.can_undo());
+
+        // Undo
+        let (desc, touched) = history
+            .undo_texture_sets(&mut mgr)
+            .expect("Undo must succeed");
+        assert_eq!(desc, "Paint Cross-UDIM Seam");
+        assert_eq!(touched.len(), 2);
+
+        assert_eq!(
+            mgr.sets[0].layer_stack.layers[0].color_buffer[0],
+            [0.1, 0.1, 0.1, 1.0]
+        );
+        assert_eq!(
+            mgr.sets[1].layer_stack.layers[0].color_buffer[0],
+            [0.2, 0.2, 0.2, 1.0]
+        );
+        assert!(history.can_redo());
+
+        // Redo
+        let (desc_redo, touched_redo) = history
+            .redo_texture_sets(&mut mgr)
+            .expect("Redo must succeed");
+        assert_eq!(desc_redo, "Paint Cross-UDIM Seam");
+        assert_eq!(touched_redo.len(), 2);
+
+        assert_eq!(
+            mgr.sets[0].layer_stack.layers[0].color_buffer[0],
+            [1.0, 0.0, 0.0, 1.0]
+        );
+        assert_eq!(
+            mgr.sets[1].layer_stack.layers[0].color_buffer[0],
+            [0.0, 1.0, 0.0, 1.0]
+        );
     }
 }

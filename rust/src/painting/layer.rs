@@ -1845,7 +1845,11 @@ impl Layer {
             let denom = det;
 
             if let Some(ref mut hist) = history {
-                hist.record_bbox_before_modify(self, [px_min, py_min, px_max, py_max]);
+                hist.record_bbox_before_modify_udim(
+                    self,
+                    [px_min, py_min, px_max, py_max],
+                    udim_tile,
+                );
             }
 
             for py in py_min..=py_max {
@@ -2920,7 +2924,7 @@ impl LayerStack {
         }
 
         if let Some(ref mut hist) = history {
-            hist.record_bbox_before_modify(&self.layers[li], bbox);
+            hist.record_bbox_before_modify_udim(&self.layers[li], bbox, udim_tile);
         }
 
         let layer = &mut self.layers[li];
