@@ -451,6 +451,8 @@ pub struct AdvancedBakeOptions {
     pub match_by_shell: bool,
     /// Target UDIM UV tile (e.g. Some(1001), Some(1002)).
     pub udim_tile: Option<u32>,
+    /// Optional progress range (base, span) in percent for multi-tile/batch progress mapping.
+    pub progress_range: Option<(usize, usize)>,
 }
 
 /// Calculates the normalized (u, v) tile coordinate offset for a UDIM tile ID.
@@ -860,6 +862,7 @@ impl BakerEngine {
             ray_offset_map: None,
             match_by_shell: options.match_by_shell,
             udim_tile: options.udim_tile,
+            progress_range: None,
         };
         Self::bake_all_advanced(
             vertices, normals, uvs, indices, submeshes, options, &advanced, progress, cancel,
@@ -896,26 +899,33 @@ impl BakerEngine {
             let mut tile_options = options.clone();
             tile_options.udim_tile = Some(tile);
 
-            let tile_prog = progress.as_ref().map(|p| {
-                let base = (i * 100) / total_tiles;
-                let _ = base;
-                Arc::clone(p)
-            });
+            let base = (i * 100) / total_tiles;
+            let next_base = ((i + 1) * 100) / total_tiles;
+            let span = next_base.saturating_sub(base).max(1);
 
-            let maps = Self::bake_all(
+            let advanced = AdvancedBakeOptions {
+                map_format: options.map_format,
+                ray_offset_map: None,
+                match_by_shell: options.match_by_shell,
+                udim_tile: Some(tile),
+                progress_range: Some((base, span)),
+            };
+
+            let maps = Self::bake_all_advanced(
                 vertices,
                 normals,
                 uvs,
                 indices,
                 submeshes,
                 &tile_options,
-                tile_prog,
+                &advanced,
+                progress.clone(),
                 cancel.clone(),
                 high_poly,
             );
 
             if let Some(ref p) = progress {
-                p.store(((i + 1) * 100) / total_tiles, Ordering::Relaxed);
+                p.store(next_base, Ordering::Relaxed);
             }
 
             results.insert(tile, maps);
@@ -968,6 +978,7 @@ impl BakerEngine {
     ) -> BakedMaps {
         let res = options.resolution as usize;
         let total = res * res;
+        let (prog_base, prog_span) = advanced.progress_range.unwrap_or((0, 100));
 
         let mut ao_buf = vec![1.0f32; total];
         let mut curv_buf = vec![0.5f32; total];
@@ -1270,7 +1281,7 @@ impl BakerEngine {
                     }
                 }
                 if let Some(ref p) = progress {
-                    p.store((t * 100) / num_tris, Ordering::Relaxed);
+                    p.store(prog_base + ((t * prog_span) / num_tris), Ordering::Relaxed);
                 }
             }
 
@@ -1773,7 +1784,7 @@ impl BakerEngine {
         }
 
         if let Some(p) = progress {
-            p.store(100, Ordering::Relaxed);
+            p.store(prog_base + prog_span, Ordering::Relaxed);
         }
 
         BakedMaps {

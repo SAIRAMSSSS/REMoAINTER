@@ -320,6 +320,7 @@ fn test_core_texturing_workflow_end_to_end() {
         padding_radius: 2,
         file_format_override: Some(OutputFormat::Png),
         bit_depth_override: Some(BitDepth::U8),
+        udim_tile: None,
     };
 
     let export_res = execute_export(ctx).expect("Export should execute cleanly");

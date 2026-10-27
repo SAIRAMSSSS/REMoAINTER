@@ -43,7 +43,7 @@ When launching REMoAINTER from outside the project directory (e.g. `~`), the She
 | **Baking Engine** | Dual-Engine: Multithreaded CPU Rayon BVH (`baker/engine.rs`) + GPU Compute Shader (`baker/compute.rs`) | **WORKING** | CPU BVH raycaster and native `wgpu` compute shader (`GpuBakerCompute`). Computes AO, Curvature, Normals, WSN, Position, Thickness, and Color ID. Multi-tile batch baking (`bake_all_udim`) supported. | Accurately documented dual-engine baking architecture; verified with 100% passing tests. |
 | **UDIM Multi-Tile Workflow** | Hardware 2D Texture Array Viewport & Multi-Tile Texture Set Manager (`graphics/viewport_wgpu.rs`, `painting/texture_set.rs`, `painting/history.rs`) | **WORKING** | Concurrently binds and renders up to 16 UDIM tiles using `texture_2d_array<f32>` and dynamic WGSL tile resolution (`resolve_udim_coords`). Seamless 3D surface painting across tile seams. Multi-tile undo/redo restoration via `HistoryManager::undo_texture_sets`/`redo_texture_sets` using 5-tuple `TileHistoryKey` isolation. | Fully implemented and verified with automated test suite. |
 | **Texture Export** | Channel packing engine in `painting/export.rs` | **WORKING** | None. Presets for Unreal ORM, Unity HDRP/URP, glTF 2.0 with UV gutter dilation. | Retained and verified with unit tests. |
-| **Project Persistence** | ZIP-based `.rmp` archive container in `project/mod.rs` | **WORKING** | Full roundtrip serialization of manifests, layer channels, folder hierarchies, adjustment/generator layers, smart materials, UDIM tile manifests, and baked maps verified. | Retained and verified with unit tests. |
+| **Project Persistence** | ZIP-based `.rmp` archive container in `project/mod.rs` | **WORKING** | Full roundtrip serialization of manifests, layer channels, folder hierarchies, adjustment/generator layers, smart materials, UDIM multi-texture sets (`save_project_with_texture_sets`/`load_project_with_texture_sets`), and baked maps verified. | Retained and verified with automated test suite. |
 | **Procedural Texture Graph** | Node-based graph evaluator in `painting/graph.rs` | **PARTIAL** | Functional for noise/gradient/tile evaluation, but node canvas UI is secondary. | Documented honestly as PARTIAL in status matrix. |
 | **SBSAR / SPSM Import** | `painting/sbsar.rs` metadata & preset parser | **PARTIAL** | Full procedural SBSAR evaluation requires Substance `sbsrender` CLI tool. | Documented delegation to `tools/export_sbsar.py`. |
 | **Dependencies** | Cargo dependencies in `rust/Cargo.toml` | **WORKING** | Unused `ash = "0.38"` dependency remained after hardware raytrace probe removal. | Excised `ash` from `Cargo.toml`. |
@@ -80,7 +80,7 @@ cargo clippy --manifest-path rust/Cargo.toml --all-targets --all-features -- -D 
 
 # 3. Unit and Integration Test Suite
 cargo test --manifest-path rust/Cargo.toml --all-targets --release
-# Result: PASS (144 passed, 0 failed, 1 ignored across 145 total defined tests)
+# Result: PASS (145 passed, 0 failed, 1 ignored across 146 total defined tests)
 
 # 4. Release Binary Compilation
 cargo build --manifest-path rust/Cargo.toml --release

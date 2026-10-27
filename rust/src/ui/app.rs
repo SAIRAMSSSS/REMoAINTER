@@ -104,6 +104,7 @@ pub struct RemoainterApp {
     pub baker_relative_to_bbox: bool,
     pub baker_average_normals: bool,
     pub baker_ignore_backfaces: bool,
+    pub baker_use_gpu: bool,
 
     // Viewport & Lighting
     pub display_channel: usize, // 0: Material, 1: Base Color, 2: Roughness, 3: Metallic, 4: Normal, 5: AO, 6: Curvature
@@ -759,6 +760,7 @@ impl Default for RemoainterApp {
             baker_relative_to_bbox: false,
             baker_average_normals: true,
             baker_ignore_backfaces: false,
+            baker_use_gpu: true,
 
             display_channel: 0,
             uv_zoom: 1.0,
@@ -1232,15 +1234,24 @@ impl RemoainterApp {
                             }
                         }
                     }
-                } else if let Ok(img) = image::open(&asset.thumb_path) {
-                    let gray = img.to_luma8();
-                    let (w, h) = gray.dimensions();
-                    self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
-                        width: w,
-                        height: h,
-                        data: gray.into_raw(),
-                    }));
-                    applied = true;
+                } else {
+                    match image::open(&asset.thumb_path) {
+                        Ok(img) => {
+                            let gray = img.to_luma8();
+                            let (w, h) = gray.dimensions();
+                            self.brush.custom_alpha = Some(Arc::new(AlphaMaskData {
+                                width: w,
+                                height: h,
+                                data: gray.into_raw(),
+                            }));
+                            applied = true;
+                        }
+                        Err(e) => {
+                            let msg = format!("Failed to load alpha thumbnail '{}': {}", name, e);
+                            self.status_message = msg.clone();
+                            self.log_line("WARN", &msg);
+                        }
+                    }
                 }
                 if applied {
                     self.brush.alpha_name = name.clone();
@@ -1406,7 +1417,7 @@ impl RemoainterApp {
     }
 
     pub fn perform_undo(&mut self) {
-        if self.texture_set_manager.is_udim_workflow {
+        if self.texture_set_manager.is_udim_workflow || self.texture_set_manager.sets.len() > 1 {
             let cur_idx = self.texture_set_manager.active_index;
             if cur_idx < self.texture_set_manager.sets.len() {
                 self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
@@ -1465,7 +1476,7 @@ impl RemoainterApp {
     }
 
     pub fn perform_redo(&mut self) {
-        if self.texture_set_manager.is_udim_workflow {
+        if self.texture_set_manager.is_udim_workflow || self.texture_set_manager.sets.len() > 1 {
             let cur_idx = self.texture_set_manager.active_index;
             if cur_idx < self.texture_set_manager.sets.len() {
                 self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
@@ -1589,6 +1600,65 @@ impl RemoainterApp {
 
         let (tx, rx) = std::sync::mpsc::channel();
         self.baking_receiver = Some(rx);
+
+        if self.baker_use_gpu && (self.baker_use_low_as_high || self.baker_high_poly_mesh.is_none())
+        {
+            if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
+                let gpu_baker = crate::baker::GpuBakerCompute::new(device);
+                let d = Arc::clone(device);
+                let q = Arc::clone(queue);
+                let m = self.mesh.clone();
+                let o = self.baker_options.clone();
+                let c = cancel.clone();
+                let p = progress.clone();
+                let verts_fb = verts.clone();
+                let norms_fb = norms.clone();
+                let uvs_fb = uvs.clone();
+                let inds_fb = inds.clone();
+                let subms_fb = subms.clone();
+                let opts_fb = opts.clone();
+                let tx_gpu = tx.clone();
+
+                std::thread::spawn(move || {
+                    let res = gpu_baker.bake_all(&d, &q, &m, &o, Some(p.clone()), Some(c));
+                    match res {
+                        Ok(baked) => {
+                            let _ = tx_gpu.send(baked);
+                        }
+                        Err(_) => {
+                            let fallback = BakerEngine::bake_all(
+                                &verts_fb,
+                                &norms_fb,
+                                &uvs_fb,
+                                &inds_fb,
+                                &subms_fb,
+                                &opts_fb,
+                                Some(p),
+                                Some(cancel),
+                                None,
+                            );
+                            let _ = tx_gpu.send(fallback);
+                        }
+                    }
+                });
+
+                self.status_message = format!(
+                    "Baking mesh maps (GPU Compute, {}x{})...",
+                    self.baker_options.resolution, self.baker_options.resolution
+                );
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    format!(
+                        "Started background GPU Compute bake (res={}, AA={}x) for {}",
+                        self.baker_options.resolution,
+                        self.baker_options.anti_aliasing,
+                        self.mesh.name
+                    ),
+                ));
+                return;
+            }
+        }
 
         std::thread::spawn(move || {
             let result = BakerEngine::bake_all(
@@ -1976,7 +2046,13 @@ impl RemoainterApp {
     /// Saves the active project to current path or prompts for path
     pub fn save_project(&mut self) {
         if let Some(ref path) = self.current_project_path.clone() {
-            let res = crate::project::ProjectManager::save_project(
+            let cur_idx = self.texture_set_manager.active_index;
+            if cur_idx < self.texture_set_manager.sets.len() {
+                self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+                self.texture_set_manager.sets[cur_idx].baked_maps = self.baked_maps.clone();
+            }
+
+            let res = crate::project::ProjectManager::save_project_with_texture_sets(
                 path,
                 &self.project_name,
                 &self.mesh,
@@ -1991,6 +2067,7 @@ impl RemoainterApp {
                     self.env_rotation,
                     self.selected_env_idx,
                 ),
+                Some(&self.texture_set_manager),
             );
             match res {
                 Ok(_) => {
@@ -2037,8 +2114,8 @@ impl RemoainterApp {
 
     /// Opens a `.rmp` project file from path
     pub fn open_project_file(&mut self, path: &std::path::Path) {
-        match crate::project::ProjectManager::load_project(path) {
-            Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) => {
+        match crate::project::ProjectManager::load_project_with_texture_sets(path) {
+            Ok((manifest, mesh, layer_stack, baked_maps, baker_options, maybe_tsm)) => {
                 self.project_name = manifest.project_name;
                 self.current_project_path = Some(path.to_path_buf());
                 self.mesh = mesh;
@@ -2055,6 +2132,21 @@ impl RemoainterApp {
                 self.selected_env_idx = manifest.selected_env_idx;
                 self.project_is_dirty = false;
                 self.texture_needs_update = true;
+
+                // Synchronize texture set manager with loaded sets or fallback to configure from mesh
+                if let Some(tsm) = maybe_tsm {
+                    self.texture_set_manager = tsm;
+                } else {
+                    let mut tsm = crate::painting::texture_set::TextureSetManager::new(
+                        self.layer_stack.width,
+                    );
+                    tsm.configure_from_mesh(&self.mesh, self.layer_stack.width);
+                    if !tsm.sets.is_empty() {
+                        tsm.sets[0].layer_stack = self.layer_stack.clone();
+                        tsm.sets[0].baked_maps = self.baked_maps.clone();
+                    }
+                    self.texture_set_manager = tsm;
+                }
 
                 // Update GPU mesh in Viewport
                 if let Some(ref vp_mutex) = self.viewport_wgpu {
@@ -2170,7 +2262,12 @@ impl RemoainterApp {
     /// Automatically saves the project in the background
     pub fn trigger_autosave(&mut self) {
         let autosave_path = crate::project::ProjectManager::autosave_path();
-        if let Err(e) = crate::project::ProjectManager::save_project(
+        let cur_idx = self.texture_set_manager.active_index;
+        if cur_idx < self.texture_set_manager.sets.len() {
+            self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            self.texture_set_manager.sets[cur_idx].baked_maps = self.baked_maps.clone();
+        }
+        if let Err(e) = crate::project::ProjectManager::save_project_with_texture_sets(
             &autosave_path,
             &format!("{} (Autosave)", self.project_name),
             &self.mesh,
@@ -2185,6 +2282,7 @@ impl RemoainterApp {
                 self.env_rotation,
                 self.selected_env_idx,
             ),
+            Some(&self.texture_set_manager),
         ) {
             eprintln!("[AUTOSAVE ERROR] {}", e);
         } else {
@@ -2204,7 +2302,13 @@ impl RemoainterApp {
         let id = self.snapshots.len() + 1;
         let snap_path = snap_dir.join(format!("snapshot_{}_{}.rmp", id, name.replace(' ', "_")));
 
-        if crate::project::ProjectManager::save_project(
+        let cur_idx = self.texture_set_manager.active_index;
+        if cur_idx < self.texture_set_manager.sets.len() {
+            self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            self.texture_set_manager.sets[cur_idx].baked_maps = self.baked_maps.clone();
+        }
+
+        if crate::project::ProjectManager::save_project_with_texture_sets(
             &snap_path,
             name,
             &self.mesh,
@@ -2219,6 +2323,7 @@ impl RemoainterApp {
                 self.env_rotation,
                 self.selected_env_idx,
             ),
+            Some(&self.texture_set_manager),
         )
         .is_ok()
         {
@@ -2241,14 +2346,18 @@ impl RemoainterApp {
     /// Restores a project snapshot
     pub fn restore_snapshot(&mut self, idx: usize) {
         if let Some(snap) = self.snapshots.get(idx).cloned() {
-            if let Ok((_, mesh, layer_stack, baked_maps, baker_options)) =
-                crate::project::ProjectManager::load_project(&snap.path)
+            if let Ok((_, mesh, layer_stack, baked_maps, baker_options, maybe_tsm)) =
+                crate::project::ProjectManager::load_project_with_texture_sets(&snap.path)
             {
                 self.mesh = mesh;
                 self.layer_stack = layer_stack;
                 self.baked_maps = baked_maps;
                 self.baker_options = baker_options;
                 self.texture_needs_update = true;
+
+                if let Some(tsm) = maybe_tsm {
+                    self.texture_set_manager = tsm;
+                }
 
                 if let Some(ref vp_mutex) = self.viewport_wgpu {
                     if let (Some(ref device), Some(ref queue)) =
@@ -2275,7 +2384,7 @@ impl RemoainterApp {
         if let Some(ref path_str) = self.mesh_source_path.clone() {
             let path = PathBuf::from(path_str);
             if path.exists() {
-                match Mesh::load_obj(&path) {
+                match Mesh::load_file(&path) {
                     Ok(reloaded_mesh) => {
                         self.mesh = reloaded_mesh;
                         self.baked_maps = BakerEngine::bake_all(
@@ -2403,49 +2512,105 @@ impl RemoainterApp {
                 None
             };
 
-        let ctx = TextureExportContext {
-            layer_stack: &self.layer_stack,
-            baked_maps: &self.baked_maps,
-            mesh: &self.mesh,
-            output_dir: &self.export_output_dir,
-            preset: &preset,
-            resolution_override: res_override,
-            padding_radius: self.export_padding as usize,
-            file_format_override: format_override,
-            bit_depth_override: depth_override,
-        };
+        let cur_idx = self.texture_set_manager.active_index;
+        if cur_idx < self.texture_set_manager.sets.len() {
+            self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+            self.texture_set_manager.sets[cur_idx].baked_maps = self.baked_maps.clone();
+        }
 
-        match crate::painting::export::execute_export(ctx) {
-            Ok(result) => {
-                let count = result.exported_files.len();
-                self.export_status = format!(
-                    "Exported {} maps to {}",
-                    count,
-                    self.export_output_dir.display()
-                );
-                self.status_message = format!("Exported {} textures successfully!", count);
-                let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
-                for log in result.logs {
-                    self.logs.push((time_str.clone(), "INFO".into(), log));
+        let is_multi_set = self.texture_set_manager.sets.len() > 1;
+
+        let sets_to_export: Vec<(Option<String>, Option<u32>, LayerStack, BakedMaps)> =
+            if is_multi_set {
+                self.texture_set_manager
+                    .sets
+                    .iter()
+                    .map(|set| {
+                        (
+                            Some(set.name.clone()),
+                            set.udim_tile,
+                            set.layer_stack.clone(),
+                            set.baked_maps.clone(),
+                        )
+                    })
+                    .collect()
+            } else {
+                vec![(
+                    self.texture_set_manager
+                        .sets
+                        .first()
+                        .map(|s| s.name.clone()),
+                    self.texture_set_manager
+                        .sets
+                        .first()
+                        .and_then(|s| s.udim_tile),
+                    self.layer_stack.clone(),
+                    self.baked_maps.clone(),
+                )]
+            };
+
+        let mut total_exported_files = Vec::new();
+        let mut all_logs = Vec::new();
+        let mut export_error = None;
+
+        for (set_name, udim_tile, layer_stack, baked_maps) in sets_to_export {
+            let mut preset_clone = preset.clone();
+            if set_name.is_some() {
+                preset_clone.texture_set_name = set_name;
+            }
+            let ctx = TextureExportContext {
+                layer_stack: &layer_stack,
+                baked_maps: &baked_maps,
+                mesh: &self.mesh,
+                output_dir: &self.export_output_dir,
+                preset: &preset_clone,
+                resolution_override: res_override,
+                padding_radius: self.export_padding as usize,
+                file_format_override: format_override,
+                bit_depth_override: depth_override,
+                udim_tile,
+            };
+
+            match crate::painting::export::execute_export(ctx) {
+                Ok(mut result) => {
+                    total_exported_files.append(&mut result.exported_files);
+                    all_logs.append(&mut result.logs);
                 }
-                self.logs.push((
-                    time_str,
-                    "SUCCESS".into(),
-                    format!(
-                        "Export complete: {} textures with {}px seam dilation",
-                        count, self.export_padding
-                    ),
-                ));
+                Err(e) => {
+                    export_error = Some(e);
+                    break;
+                }
             }
-            Err(e) => {
-                self.export_status = format!("Export failed: {}", e);
-                self.status_message = format!("Export error: {}", e);
-                self.logs.push((
-                    chrono::Local::now().format("%H:%M:%S").to_string(),
-                    "ERROR".into(),
-                    format!("Texture export failed: {}", e),
-                ));
+        }
+
+        if let Some(e) = export_error {
+            self.export_status = format!("Export failed: {}", e);
+            self.status_message = format!("Export error: {}", e);
+            self.logs.push((
+                chrono::Local::now().format("%H:%M:%S").to_string(),
+                "ERROR".into(),
+                format!("Texture export failed: {}", e),
+            ));
+        } else {
+            let count = total_exported_files.len();
+            self.export_status = format!(
+                "Exported {} maps to {}",
+                count,
+                self.export_output_dir.display()
+            );
+            self.status_message = format!("Exported {} textures successfully!", count);
+            let time_str = chrono::Local::now().format("%H:%M:%S").to_string();
+            for log in all_logs {
+                self.logs.push((time_str.clone(), "INFO".into(), log));
             }
+            self.logs.push((
+                time_str,
+                "SUCCESS".into(),
+                format!(
+                    "Export complete: {} textures with {}px seam dilation",
+                    count, self.export_padding
+                ),
+            ));
         }
     }
 
@@ -2950,80 +3115,108 @@ impl eframe::App for RemoainterApp {
         if self.is_baking {
             ctx.request_repaint();
             if let Some(ref rx) = self.baking_receiver {
-                if let Ok(baked) = rx.try_recv() {
-                    self.is_baking = false;
-                    self.baking_receiver = None;
-                    if baked.is_cancelled {
-                        self.status_message = "Mesh map baking cancelled by user".to_string();
-                        self.logs.push((
-                            chrono::Local::now().format("%H:%M:%S").to_string(),
-                            "WARN".into(),
-                            "Mesh map baking cancelled by user".into(),
-                        ));
-                    } else {
-                        self.baked_maps = baked.clone();
-                        let cur_idx = self.texture_set_manager.active_index;
-                        if cur_idx < self.texture_set_manager.sets.len() {
-                            self.texture_set_manager.sets[cur_idx].baked_maps = baked;
+                match rx.try_recv() {
+                    Ok(baked) => {
+                        self.is_baking = false;
+                        self.baking_receiver = None;
+                        if baked.is_cancelled {
+                            self.status_message = "Mesh map baking cancelled by user".to_string();
+                            self.logs.push((
+                                chrono::Local::now().format("%H:%M:%S").to_string(),
+                                "WARN".into(),
+                                "Mesh map baking cancelled by user".into(),
+                            ));
+                        } else {
+                            self.baked_maps = baked.clone();
+                            let cur_idx = self.texture_set_manager.active_index;
+                            if cur_idx < self.texture_set_manager.sets.len() {
+                                self.texture_set_manager.sets[cur_idx].baked_maps = baked;
+                            }
+                            self.status_message = format!(
+                                "Successfully baked mesh maps at {}×{}",
+                                self.baker_options.resolution, self.baker_options.resolution
+                            );
+                            self.logs.push((
+                                chrono::Local::now().format("%H:%M:%S").to_string(),
+                                "INFO".into(),
+                                format!(
+                                    "Completed mesh map bake (AO, Curvature, Normals, Position, Thickness) for {}",
+                                    self.mesh.name
+                                ),
+                            ));
+                            self.recompute_composite();
                         }
-                        self.status_message = format!(
-                            "Successfully baked mesh maps at {}×{}",
-                            self.baker_options.resolution, self.baker_options.resolution
-                        );
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        self.is_baking = false;
+                        self.baking_receiver = None;
+                        self.status_message = "Baking thread terminated unexpectedly".to_string();
                         self.logs.push((
                             chrono::Local::now().format("%H:%M:%S").to_string(),
-                            "INFO".into(),
-                            format!(
-                                "Completed mesh map bake (AO, Curvature, Normals, Position, Thickness) for {}",
-                                self.mesh.name
-                            ),
+                            "ERROR".into(),
+                            "Baking thread terminated unexpectedly without returning maps".into(),
                         ));
-                        self.recompute_composite();
                     }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {}
                 }
             }
 
             if let Some(ref rx) = self.udim_baking_receiver {
-                if let Ok(tile_maps) = rx.try_recv() {
-                    self.is_baking = false;
-                    self.udim_baking_receiver = None;
-                    let was_cancelled = tile_maps.values().any(|m| m.is_cancelled);
-                    if was_cancelled {
-                        self.status_message = "Multi-tile UDIM bake cancelled by user".to_string();
-                        self.logs.push((
-                            chrono::Local::now().format("%H:%M:%S").to_string(),
-                            "WARN".into(),
-                            "Multi-tile UDIM bake cancelled by user".into(),
-                        ));
-                    } else {
-                        for set in &mut self.texture_set_manager.sets {
-                            if let Some(tile_id) = set.udim_tile {
-                                if let Some(maps) = tile_maps.get(&tile_id) {
-                                    set.baked_maps = maps.clone();
+                match rx.try_recv() {
+                    Ok(tile_maps) => {
+                        self.is_baking = false;
+                        self.udim_baking_receiver = None;
+                        let was_cancelled = tile_maps.values().any(|m| m.is_cancelled);
+                        if was_cancelled {
+                            self.status_message =
+                                "Multi-tile UDIM bake cancelled by user".to_string();
+                            self.logs.push((
+                                chrono::Local::now().format("%H:%M:%S").to_string(),
+                                "WARN".into(),
+                                "Multi-tile UDIM bake cancelled by user".into(),
+                            ));
+                        } else {
+                            for set in &mut self.texture_set_manager.sets {
+                                if let Some(tile_id) = set.udim_tile {
+                                    if let Some(maps) = tile_maps.get(&tile_id) {
+                                        set.baked_maps = maps.clone();
+                                    }
                                 }
                             }
+                            let cur_idx = self.texture_set_manager.active_index;
+                            if let Some(active_set) = self.texture_set_manager.sets.get(cur_idx) {
+                                self.baked_maps = active_set.baked_maps.clone();
+                            }
+                            self.status_message = format!(
+                                "Successfully baked all UDIM tiles ({} tiles) at {}×{}",
+                                tile_maps.len(),
+                                self.baker_options.resolution,
+                                self.baker_options.resolution
+                            );
+                            self.logs.push((
+                                chrono::Local::now().format("%H:%M:%S").to_string(),
+                                "INFO".into(),
+                                format!(
+                                    "Completed UDIM multi-tile bake ({} tiles) for {}",
+                                    tile_maps.len(),
+                                    self.mesh.name
+                                ),
+                            ));
+                            self.recompute_composite();
                         }
-                        let cur_idx = self.texture_set_manager.active_index;
-                        if let Some(active_set) = self.texture_set_manager.sets.get(cur_idx) {
-                            self.baked_maps = active_set.baked_maps.clone();
-                        }
-                        self.status_message = format!(
-                            "Successfully baked all UDIM tiles ({} tiles) at {}×{}",
-                            tile_maps.len(),
-                            self.baker_options.resolution,
-                            self.baker_options.resolution
-                        );
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        self.is_baking = false;
+                        self.udim_baking_receiver = None;
+                        self.status_message =
+                            "UDIM baking thread terminated unexpectedly".to_string();
                         self.logs.push((
                             chrono::Local::now().format("%H:%M:%S").to_string(),
-                            "INFO".into(),
-                            format!(
-                                "Completed UDIM multi-tile bake ({} tiles) for {}",
-                                tile_maps.len(),
-                                self.mesh.name
-                            ),
+                            "ERROR".into(),
+                            "UDIM baking worker thread disconnected unexpectedly".into(),
                         ));
-                        self.recompute_composite();
                     }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {}
                 }
             }
         }
@@ -3227,28 +3420,34 @@ impl eframe::App for RemoainterApp {
         } else {
             let is_typing = ctx.memory(|m| m.focused().is_some()) && ctx.wants_keyboard_input();
             if !is_typing {
-                if ctx.input(|i| i.key_pressed(egui::Key::Num1)) {
+                if ctx.input(|i| i.key_pressed(egui::Key::Num1) || i.key_pressed(egui::Key::P)) {
                     self.active_tool = ToolMode::Paint;
-                    self.status_message = "Tool: Paint Brush (1)".into();
-                } else if ctx.input(|i| i.key_pressed(egui::Key::Num2)) {
+                    self.status_message = "Tool: Paint Brush (1 / P)".into();
+                } else if ctx
+                    .input(|i| i.key_pressed(egui::Key::Num2) || i.key_pressed(egui::Key::E))
+                {
                     self.active_tool = ToolMode::Eraser;
-                    self.status_message = "Tool: Eraser (2)".into();
+                    self.status_message = "Tool: Eraser (2 / E)".into();
                 } else if ctx.input(|i| i.key_pressed(egui::Key::Num3)) {
                     self.active_tool = ToolMode::Projection;
                     self.status_message = "Tool: Projection (3)".into();
-                } else if ctx.input(|i| i.key_pressed(egui::Key::Num4)) {
+                } else if ctx
+                    .input(|i| i.key_pressed(egui::Key::Num4) || i.key_pressed(egui::Key::G))
+                {
                     self.active_tool = ToolMode::PolygonFill;
                     self.status_message = format!(
-                        "Tool: Polygon Fill (4) [{}]",
+                        "Tool: Polygon Fill (4 / G) [{}]",
                         match self.poly_fill_mode {
                             0 => "Triangle",
                             1 => "UV Island",
                             _ => "Mesh",
                         }
                     );
-                } else if ctx.input(|i| i.key_pressed(egui::Key::Num5)) {
+                } else if ctx
+                    .input(|i| i.key_pressed(egui::Key::Num5) || i.key_pressed(egui::Key::S))
+                {
                     self.active_tool = ToolMode::Smudge;
-                    self.status_message = "Tool: Smudge (5)".into();
+                    self.status_message = "Tool: Smudge (5 / S)".into();
                 } else if ctx.input(|i| i.key_pressed(egui::Key::Num6)) {
                     self.active_tool = ToolMode::Clone;
                     self.status_message = "Tool: Clone Stamp (6) [Alt+Click to set source]".into();
@@ -3259,6 +3458,19 @@ impl eframe::App for RemoainterApp {
                 } else if ctx.input(|i| i.key_pressed(egui::Key::I)) {
                     self.active_tool = ToolMode::Eyedropper;
                     self.status_message = "Tool: Color Eyedropper (I)".into();
+                } else if ctx.input(|i| i.key_pressed(egui::Key::X))
+                    && !ctx.input(|i| i.modifiers.command)
+                {
+                    self.brush.color = [
+                        1.0 - self.brush.color[0],
+                        1.0 - self.brush.color[1],
+                        1.0 - self.brush.color[2],
+                        self.brush.color[3],
+                    ];
+                    self.status_message = format!(
+                        "Inverted Brush Color: [{:.2}, {:.2}, {:.2}] (X)",
+                        self.brush.color[0], self.brush.color[1], self.brush.color[2]
+                    );
                 }
             }
         }
@@ -4848,9 +5060,27 @@ impl eframe::App for RemoainterApp {
 impl RemoainterApp {
     #[inline]
     fn uv_to_2d_screen(&self, uv: [f32; 2], canvas_rect: Rect) -> egui::Pos2 {
+        let (u_off, v_off) = if self.texture_set_manager.is_udim_workflow {
+            if let Some(set) = self
+                .texture_set_manager
+                .sets
+                .get(self.texture_set_manager.active_index)
+            {
+                if let Some(tile) = set.udim_tile {
+                    let off = crate::baker::engine::udim_tile_uv_offset(tile);
+                    (off[0], off[1])
+                } else {
+                    (0.0, 0.0)
+                }
+            } else {
+                (0.0, 0.0)
+            }
+        } else {
+            (0.0, 0.0)
+        };
         pos2(
-            canvas_rect.left() + uv[0] * canvas_rect.width(),
-            canvas_rect.top() + uv[1] * canvas_rect.height(),
+            canvas_rect.left() + (uv[0] - u_off) * canvas_rect.width(),
+            canvas_rect.top() + (uv[1] - v_off) * canvas_rect.height(),
         )
     }
 
@@ -4896,8 +5126,11 @@ impl RemoainterApp {
             }
         }
 
-        // Middle-mouse-drag pan
-        if response.dragged() && ctx.input(|i| i.pointer.middle_down()) {
+        // Middle-mouse-drag or Space+drag pan
+        if response.dragged()
+            && (ctx.input(|i| i.pointer.middle_down())
+                || ctx.input(|i| i.key_down(egui::Key::Space)))
+        {
             let d = response.drag_delta();
             self.uv_pan[0] += d.x;
             self.uv_pan[1] += d.y;
@@ -4991,22 +5224,69 @@ impl RemoainterApp {
             }
             let outline_color = Color32::from_rgba_unmultiplied(65, 175, 245, 190);
             let outline_stroke = Stroke::new(1.4_f32, outline_color);
+            let (u_off, v_off) = if self.texture_set_manager.is_udim_workflow {
+                if let Some(set) = self
+                    .texture_set_manager
+                    .sets
+                    .get(self.texture_set_manager.active_index)
+                {
+                    if let Some(tile) = set.udim_tile {
+                        let off = crate::baker::engine::udim_tile_uv_offset(tile);
+                        (off[0], off[1])
+                    } else {
+                        (0.0, 0.0)
+                    }
+                } else {
+                    (0.0, 0.0)
+                }
+            } else {
+                (0.0, 0.0)
+            };
             for ((a0, a1, b0, b1), count) in edge_counts {
                 if count != 1 {
                     continue; // interior (shared) edge — not an island outline
                 }
-                let pa =
-                    self.uv_to_2d_screen([a0 as f32 / 8192.0, a1 as f32 / 8192.0], canvas_rect);
-                let pb =
-                    self.uv_to_2d_screen([b0 as f32 / 8192.0, b1 as f32 / 8192.0], canvas_rect);
+                let u0 = a0 as f32 / 8192.0;
+                let v0 = a1 as f32 / 8192.0;
+                let u1 = b0 as f32 / 8192.0;
+                let v1 = b1 as f32 / 8192.0;
+                if self.texture_set_manager.is_udim_workflow {
+                    // Cull edges not on active tile
+                    if (u0 < u_off && u1 < u_off)
+                        || (u0 > u_off + 1.0 && u1 > u_off + 1.0)
+                        || (v0 < v_off && v1 < v_off)
+                        || (v0 > v_off + 1.0 && v1 > v_off + 1.0)
+                    {
+                        continue;
+                    }
+                }
+                let pa = self.uv_to_2d_screen([u0, v0], canvas_rect);
+                let pb = self.uv_to_2d_screen([u1, v1], canvas_rect);
                 painter.line_segment([pa, pb], outline_stroke);
             }
         }
 
         // Texture border & UV grid indicator
-        painter.text(
-            pos2(canvas_rect.left() + 8.0, canvas_rect.top() + 8.0),
-            Align2::LEFT_TOP,
+        let title_label = if self.texture_set_manager.is_udim_workflow {
+            let tile_num = self
+                .texture_set_manager
+                .sets
+                .get(self.texture_set_manager.active_index)
+                .and_then(|s| s.udim_tile)
+                .unwrap_or(1001);
+            format!(
+                "UDIM {} | UV Layout ({}x{}) | Wire: {} | Zoom {:.0}%",
+                tile_num,
+                self.layer_stack.width,
+                self.layer_stack.height,
+                if self.show_uv_wireframe {
+                    "ON (F4)"
+                } else {
+                    "OFF"
+                },
+                self.uv_zoom * 100.0
+            )
+        } else {
             format!(
                 "UV Layout ({}x{}) | Wire: {} | Zoom {:.0}%",
                 self.layer_stack.width,
@@ -5017,7 +5297,12 @@ impl RemoainterApp {
                     "OFF"
                 },
                 self.uv_zoom * 100.0
-            ),
+            )
+        };
+        painter.text(
+            pos2(canvas_rect.left() + 8.0, canvas_rect.top() + 8.0),
+            Align2::LEFT_TOP,
+            title_label,
             egui::FontId::monospace(10.5),
             TEXT_DIMMED,
         );
@@ -5044,8 +5329,32 @@ impl RemoainterApp {
             }
         }
 
-        // Paint handling inside 2D Canvas
-        if response.dragged() {
+        // Alt+Click in 2D view sets the clone stamp source
+        if (response.clicked() || response.dragged())
+            && ctx.input(|i| i.modifiers.alt)
+            && self.active_tool == ToolMode::Clone
+            && canvas_rect.contains(
+                response
+                    .interact_pointer_pos()
+                    .unwrap_or(egui::pos2(f32::INFINITY, f32::INFINITY)),
+            )
+        {
+            if let Some(pos) = response.interact_pointer_pos() {
+                let u = ((pos.x - canvas_rect.left()) / canvas_rect.width()).clamp(0.0, 1.0);
+                let v = ((pos.y - canvas_rect.top()) / canvas_rect.height()).clamp(0.0, 1.0);
+                self.clone_source_uv = Some([u, v]);
+                self.clone_offset_uv = None;
+                self.status_message = format!("Clone Source Set: [{:.2}, {:.2}]", u, v);
+                self.logs.push((
+                    chrono::Local::now().format("%H:%M:%S").to_string(),
+                    "INFO".into(),
+                    format!("Set 2D clone source at UV [{:.3}, {:.3}]", u, v),
+                ));
+            }
+        }
+
+        // Paint handling inside 2D Canvas (supports both dragging and stationary click)
+        if response.dragged() || response.clicked() {
             if let Some(pos) = response.interact_pointer_pos() {
                 if canvas_rect.contains(pos)
                     && !ctx.input(|i| i.modifiers.alt)
@@ -5441,6 +5750,10 @@ impl RemoainterApp {
                     format!("Committed stroke: {}", tool_name),
                 ));
                 self.is_in_stroke = false;
+                let cur_idx = self.texture_set_manager.active_index;
+                if cur_idx < self.texture_set_manager.sets.len() {
+                    self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+                }
                 self.clone_offset_uv = None;
                 self.lazy_mouse_tracker.reset();
             }
@@ -5599,7 +5912,7 @@ impl RemoainterApp {
 
         // Camera Orbit (Alt+LMB/MMB) / Zoom (Alt+RMB) / Environment Rotate (Shift+RMB) & 3D Surface Painting
         // (drag contained to this viewport pane so it cannot leak into the 2D pane in split layout)
-        if response.dragged()
+        if (response.dragged() || response.clicked())
             && view_bounds.contains(
                 response
                     .interact_pointer_pos()
@@ -6208,6 +6521,10 @@ impl RemoainterApp {
                     format!("Committed stroke: {}", tool_name),
                 ));
                 self.is_in_stroke = false;
+                let cur_idx = self.texture_set_manager.active_index;
+                if cur_idx < self.texture_set_manager.sets.len() {
+                    self.texture_set_manager.sets[cur_idx].layer_stack = self.layer_stack.clone();
+                }
                 self.clone_offset_uv = None;
                 self.lazy_mouse_tracker.reset();
             }
@@ -6579,27 +6896,21 @@ impl RemoainterApp {
         ui.collapsing("NORMAL MAP SETTINGS", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Normal mixing:");
-                egui::ComboBox::from_id_salt("normal_mix_mode")
-                    .selected_text("Combine")
-                    .show_ui(ui, |ui| {
-                        let _ = ui.selectable_label(true, "Combine");
-                        let _ = ui.selectable_label(false, "Replace");
-                    });
+                ui.colored_label(Color32::from_rgb(100, 200, 240), "Combine (RNM)");
             });
             ui.horizontal(|ui| {
                 ui.label("Height to Normal:");
-                egui::ComboBox::from_id_salt("height_to_normal_method")
-                    .selected_text("Smooth Sobel")
-                    .show_ui(ui, |ui| {
-                        let _ = ui.selectable_label(true, "Smooth Sobel");
-                        let _ = ui.selectable_label(false, "Sharp Sobel");
-                        let _ = ui.selectable_label(false, "Prewitt");
-                    });
+                ui.colored_label(Color32::from_rgb(100, 200, 240), "3×3 Sobel");
             });
-            ui.checkbox(
-                &mut self.baker_options.invert_normal_y,
-                "Invert Green Channel (DirectX)",
-            );
+            if ui
+                .checkbox(
+                    &mut self.baker_options.invert_normal_y,
+                    "Invert Green Channel (DirectX)",
+                )
+                .changed()
+            {
+                self.recompute_composite();
+            }
         });
 
         // ── UV UNWRAP SETTINGS ───────────────────────────────────────────
@@ -6607,13 +6918,11 @@ impl RemoainterApp {
             ui.horizontal(|ui| {
                 ui.label("UV padding:");
                 egui::ComboBox::from_id_salt("uv_padding")
-                    .selected_text("16px")
+                    .selected_text(format!("{}px", self.export_padding))
                     .show_ui(ui, |ui| {
-                        let _ = ui.selectable_label(false, "2px");
-                        let _ = ui.selectable_label(false, "4px");
-                        let _ = ui.selectable_label(false, "8px");
-                        let _ = ui.selectable_label(true, "16px");
-                        let _ = ui.selectable_label(false, "32px");
+                        for p in [2u32, 4, 8, 16, 32, 64] {
+                            ui.selectable_value(&mut self.export_padding, p, format!("{p}px"));
+                        }
                     });
             });
         });
@@ -7170,6 +7479,10 @@ impl RemoainterApp {
             Duplicate(usize),
             ClearLayer(usize),
             Delete(usize),
+            MoveUp(usize),
+            MoveDown(usize),
+            Group(usize),
+            Ungroup(usize),
             AddPaintLayer,
             AddFillLayer,
             AddFolder,
@@ -7187,8 +7500,9 @@ impl RemoainterApp {
         let mut list_action: Option<LayerListAction> = None;
 
         // Layer Stack Items (Top to Bottom)
+        let total_layers = self.layer_stack.layers.len();
         egui::ScrollArea::vertical().show(ui, |ui| {
-            for i in (0..self.layer_stack.layers.len()).rev() {
+            for i in (0..total_layers).rev() {
                 let layer_id = self.layer_stack.layers[i].id;
                 let is_folder = self.layer_stack.layers[i].layer_type == LayerType::Folder;
                 let parent_id = self.layer_stack.layers[i].parent_folder_id;
@@ -7408,10 +7722,6 @@ impl RemoainterApp {
 
                         // ── 1. Mask Operations ──────────────────────────────
                         if has_mask {
-                            if ui.button("Toggle mask").clicked() {
-                                list_action = Some(LayerListAction::InvertMask(i));
-                                ui.close_menu();
-                            }
                             if ui.button("Invert mask").clicked() {
                                 list_action = Some(LayerListAction::InvertMask(i));
                                 ui.close_menu();
@@ -7447,14 +7757,16 @@ impl RemoainterApp {
                                 ui.close_menu();
                             }
                             if ui.button("Add mask with color selection").clicked() {
-                                list_action =
-                                    Some(LayerListAction::AddGenerator(i, "Cavity Dirt".into()));
+                                list_action = Some(LayerListAction::AddGenerator(
+                                    i,
+                                    "Color ID Selection".into(),
+                                ));
                                 ui.close_menu();
                             }
                             if ui.button("Add mask with height combination").clicked() {
                                 list_action = Some(LayerListAction::AddGenerator(
                                     i,
-                                    "Metal Edge Wear".into(),
+                                    "Position Gradient".into(),
                                 ));
                                 ui.close_menu();
                             }
@@ -7489,8 +7801,20 @@ impl RemoainterApp {
                             list_action = Some(LayerListAction::Duplicate(i));
                             ui.close_menu();
                         }
+                        if i + 1 < total_layers && ui.button("Move layer up").clicked() {
+                            list_action = Some(LayerListAction::MoveUp(i));
+                            ui.close_menu();
+                        }
+                        if i > 0 && ui.button("Move layer down").clicked() {
+                            list_action = Some(LayerListAction::MoveDown(i));
+                            ui.close_menu();
+                        }
+                        if parent_id.is_some() && ui.button("Ungroup layer").clicked() {
+                            list_action = Some(LayerListAction::Ungroup(i));
+                            ui.close_menu();
+                        }
                         if ui.button("Group layer(s)\tCtrl+G").clicked() {
-                            list_action = Some(LayerListAction::AddFolder);
+                            list_action = Some(LayerListAction::Group(i));
                             ui.close_menu();
                         }
                         if ui
@@ -7694,6 +8018,10 @@ impl RemoainterApp {
                         }
                         if ui.button("🎨 Add fill").clicked() {
                             list_action = Some(LayerListAction::AddFillLayer);
+                            ui.close_menu();
+                        }
+                        if ui.button("📁 Add folder").clicked() {
+                            list_action = Some(LayerListAction::AddFolder);
                             ui.close_menu();
                         }
                         ui.menu_button("✨ Add adjustment layer", |ui| {
@@ -8380,15 +8708,64 @@ impl RemoainterApp {
                         self.status_message = format!("Cleared Content of {}", l.name);
                     }
                 }
+                LayerListAction::MoveUp(i) => {
+                    if i + 1 < self.layer_stack.layers.len() {
+                        self.layer_stack.layers.swap(i, i + 1);
+                        self.layer_stack.active_layer_index = i + 1;
+                        recomposite_needed = true;
+                        self.status_message = "Moved layer up".into();
+                    }
+                }
+                LayerListAction::MoveDown(i) => {
+                    if i > 0 {
+                        self.layer_stack.layers.swap(i, i - 1);
+                        self.layer_stack.active_layer_index = i - 1;
+                        recomposite_needed = true;
+                        self.status_message = "Moved layer down".into();
+                    }
+                }
+                LayerListAction::Group(i) => {
+                    let w = self.layer_stack.width;
+                    let h = self.layer_stack.height;
+                    let new_id = self.layer_stack.next_id();
+                    let folder = Layer::new_folder(new_id, "Folder Group", w, h);
+                    let folder_id = folder.id;
+                    let insert_pos = (i + 1).min(self.layer_stack.layers.len());
+                    self.layer_stack.layers.insert(insert_pos, folder);
+                    let target_idx = if insert_pos <= i { i + 1 } else { i };
+                    if let Some(target) = self.layer_stack.layers.get_mut(target_idx) {
+                        target.parent_folder_id = Some(folder_id);
+                    }
+                    self.layer_stack.active_layer_index = insert_pos;
+                    recomposite_needed = true;
+                    self.status_message = "Grouped layer into folder".into();
+                }
+                LayerListAction::Ungroup(i) => {
+                    if let Some(l) = self.layer_stack.layers.get_mut(i) {
+                        l.parent_folder_id = None;
+                        recomposite_needed = true;
+                        self.status_message = format!("Ungrouped {}", l.name);
+                    }
+                }
                 LayerListAction::Delete(i) => {
                     if self.layer_stack.layers.len() > 1 {
-                        self.layer_stack.layers.remove(i);
+                        let removed = self.layer_stack.layers.remove(i);
+                        if removed.layer_type == LayerType::Folder {
+                            let folder_id = removed.id;
+                            for layer in &mut self.layer_stack.layers {
+                                if layer.parent_folder_id == Some(folder_id) {
+                                    layer.parent_folder_id = None;
+                                }
+                            }
+                        }
                         self.layer_stack.active_layer_index = self
                             .layer_stack
                             .active_layer_index
                             .min(self.layer_stack.layers.len() - 1);
                         recomposite_needed = true;
-                        self.status_message = "Deleted Layer".into();
+                        self.status_message = format!("Deleted {}", removed.name);
+                    } else {
+                        self.status_message = "Cannot delete the only remaining layer".into();
                     }
                 }
             }
@@ -9764,17 +10141,21 @@ impl RemoainterApp {
                             self.render_options.width, self.render_options.height
                         ))
                         .show_ui(ui, |ui| {
-                            for (w, h) in [(512u32, 512u32), (1024, 1024), (2048, 2048), (4096, 4096)] {
-                                let _ = ui.selectable_value(
-                                    &mut self.render_options.width,
-                                    w,
-                                    format!("{w}×{h}"),
-                                );
-                                let _ = ui.selectable_value(
-                                    &mut self.render_options.height,
-                                    h,
-                                    format!("{w}×{h}"),
-                                );
+                            for (w, h) in [
+                                (512u32, 512u32),
+                                (1024, 1024),
+                                (2048, 2048),
+                                (4096, 4096),
+                            ] {
+                                let is_selected = self.render_options.width == w
+                                    && self.render_options.height == h;
+                                if ui
+                                    .selectable_label(is_selected, format!("{w}×{h}"))
+                                    .clicked()
+                                {
+                                    self.render_options.width = w;
+                                    self.render_options.height = h;
+                                }
                             }
                         });
 
@@ -10514,6 +10895,23 @@ Res: {}×{}",
                         });
                         ui.end_row();
 
+                        ui.label("Baking Engine");
+                        ui.horizontal(|ui| {
+                            if ui
+                                .selectable_label(!self.baker_use_gpu, "🖥 CPU Rayon")
+                                .clicked()
+                            {
+                                self.baker_use_gpu = false;
+                            }
+                            if ui
+                                .selectable_label(self.baker_use_gpu, "⚡ GPU Compute (WGSL)")
+                                .clicked()
+                            {
+                                self.baker_use_gpu = true;
+                            }
+                        });
+                        ui.end_row();
+
                         ui.label("Dilation width");
                         ui.add(egui::Slider::new(&mut self.baker_frontal_dist, 0.0..=0.50).show_value(true));
                         ui.end_row();
@@ -10576,8 +10974,7 @@ Res: {}×{}",
                                 .pick_file()
                             {
                                 match Mesh::load_file(&p) {
-                                    Ok(mut hp) => {
-                                        hp.normalize_to_unit();
+                                    Ok(hp) => {
                                         self.baker_high_poly_path = p.display().to_string();
                                         self.baker_high_poly_mesh = Some(hp);
                                         self.baker_use_low_as_high = false;
@@ -10594,12 +10991,7 @@ Res: {}×{}",
                     ui.add_space(6.0);
                     egui::Grid::new("baker_hp_params_grid").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
                         ui.label("Cage");
-                        egui::ComboBox::from_id_salt("baker_cage_combo")
-                            .selected_text("Distance based")
-                            .show_ui(ui, |ui| {
-                                let _ = ui.selectable_label(true, "Distance based");
-                                let _ = ui.selectable_label(false, "Cage mesh");
-                            });
+                        ui.colored_label(Color32::from_rgb(100, 200, 240), "Distance based");
                         ui.end_row();
 
                         ui.label("Max frontal distance");
@@ -10786,12 +11178,7 @@ Res: {}×{}",
                                 ui.end_row();
 
                                 ui.label("Self-Occlusion");
-                                egui::ComboBox::from_id_salt("ao_self_occ")
-                                    .selected_text("Always")
-                                    .show_ui(ui, |ui| {
-                                        let _ = ui.selectable_label(true, "Always");
-                                        let _ = ui.selectable_label(false, "Only Same Mesh Name");
-                                    });
+                                ui.colored_label(Color32::from_rgb(100, 200, 240), "Always (Full Scene)");
                                 ui.end_row();
                             });
                         }
@@ -11684,14 +12071,22 @@ Res: {}×{}",
         if do_create {
             // Load selected mesh or default sphere
             let loaded_mesh = if !self.new_proj_mesh_path.is_empty() {
-                match Mesh::load_obj(&self.new_proj_mesh_path) {
+                match Mesh::load_file(&self.new_proj_mesh_path) {
                     Ok(mut m) => {
                         m.normalize_to_unit();
                         m
                     }
                     Err(e) => {
                         self.status_message = format!("Failed to load mesh: {}", e);
-                        Mesh::create_material_sphere(64, 64)
+                        self.logs.push((
+                            chrono::Local::now().format("%H:%M:%S").to_string(),
+                            "ERROR".into(),
+                            format!(
+                                "Failed to load mesh from '{}': {}",
+                                self.new_proj_mesh_path, e
+                            ),
+                        ));
+                        return;
                     }
                 }
             } else {
@@ -11759,6 +12154,16 @@ Res: {}×{}",
                 );
             }
 
+            // Sync texture set manager
+            let mut tsm =
+                crate::painting::texture_set::TextureSetManager::new(self.layer_stack.width);
+            tsm.configure_from_mesh(&self.mesh, self.layer_stack.width);
+            if !tsm.sets.is_empty() {
+                tsm.sets[0].layer_stack = self.layer_stack.clone();
+                tsm.sets[0].baked_maps = self.baked_maps.clone();
+            }
+            self.texture_set_manager = tsm;
+
             // Sync Vulkan Viewport mesh
             if let Some(ref vp_mutex) = self.viewport_wgpu {
                 if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
@@ -11816,13 +12221,16 @@ Res: {}×{}",
                                 ui.colored_label(Color32::from_rgb(100, 240, 150), "● Autosave File Detected");
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                     if ui.button("Restore Autosave").clicked() {
-                                        if let Ok((manifest, mesh, layer_stack, baked_maps, baker_options)) = crate::project::ProjectManager::load_project(&autosave_path) {
+                                        if let Ok((manifest, mesh, layer_stack, baked_maps, baker_options, maybe_tsm)) = crate::project::ProjectManager::load_project_with_texture_sets(&autosave_path) {
                                             self.project_name = manifest.project_name;
                                             self.mesh = mesh;
                                             self.layer_stack = layer_stack;
                                             self.baked_maps = baked_maps;
                                             self.baker_options = baker_options;
                                             self.texture_needs_update = true;
+                                            if let Some(tsm) = maybe_tsm {
+                                                self.texture_set_manager = tsm;
+                                            }
                                             if let Some(ref vp_mutex) = self.viewport_wgpu {
                                                 if let (Some(ref device), Some(ref queue)) = (&self.wgpu_device, &self.wgpu_queue) {
                                                     if let Ok(mut vp) = vp_mutex.lock() {

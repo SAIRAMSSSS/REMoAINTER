@@ -984,6 +984,9 @@ fn uses_naming_tokens(template: &str) -> bool {
         || template.contains("{-resolution}")
         || template.contains("{resolution}")
         || template.contains("{lod}")
+        || template.contains("{udim}")
+        || template.contains("<UDIM>")
+        || template.contains("<udim>")
 }
 
 /// Resolves reference-Painter-style naming tokens in a filename template
@@ -1002,6 +1005,7 @@ fn resolve_naming_tokens(
     template: &str,
     mesh_name: &str,
     texture_set_name: Option<&str>,
+    udim_tile: Option<u32>,
     width: usize,
     height: usize,
     lod: u32,
@@ -1011,6 +1015,9 @@ fn resolve_naming_tokens(
         .filter(|s| !s.is_empty())
         .map(|s| s.replace(' ', "_"))
         .unwrap_or_else(|| mesh_name.to_string());
+    let udim_str = udim_tile
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| "1001".to_string());
     let square_edge = width.max(height).to_string();
     let dash_resolution = format!("_{square_edge}");
 
@@ -1020,6 +1027,10 @@ fn resolve_naming_tokens(
         .replace("$set_name$", &set_name)
         .replace("$texture_set$", &set_name)
         .replace("$textureset$", &set_name)
+        .replace("$udim$", &udim_str)
+        .replace("{udim}", &udim_str)
+        .replace("<UDIM>", &udim_str)
+        .replace("<udim>", &udim_str)
         .replace("$width$", &width.to_string())
         .replace("$height$", &height.to_string())
         .replace("$resolution$", &square_edge)
@@ -1044,6 +1055,7 @@ pub struct TextureExportContext<'a> {
     pub padding_radius: usize,
     pub file_format_override: Option<OutputFormat>,
     pub bit_depth_override: Option<BitDepth>,
+    pub udim_tile: Option<u32>,
 }
 
 pub struct ExportResult {
@@ -1229,18 +1241,20 @@ pub fn execute_export(ctx: TextureExportContext) -> Result<ExportResult, String>
         let bit_depth = ctx.bit_depth_override.unwrap_or(output.bit_depth);
 
         // Naming: tokenized templates ($mesh$, $set_name$, $-resolution$, ...)
-        // or the legacy "<mesh><suffix>" concatenation.
+        // or the legacy "<mesh><suffix>" concatenation with UDIM disambiguation.
         let file_stem = if uses_naming_tokens(&output.filename_suffix) {
             resolve_naming_tokens(
                 &output.filename_suffix,
                 &mesh_clean_name,
                 ctx.preset.texture_set_name.as_deref(),
+                ctx.udim_tile,
                 dst_w,
                 dst_h,
                 0,
             )
         } else {
-            format!("{}{}", mesh_clean_name, output.filename_suffix)
+            let udim_tag = ctx.udim_tile.map(|t| format!("_{}", t)).unwrap_or_default();
+            format!("{}{}{}", mesh_clean_name, udim_tag, output.filename_suffix)
         };
         let file_name = format!("{}.{}", file_stem, format.extension());
         let file_path = ctx.output_dir.join(&file_name);
@@ -1608,11 +1622,11 @@ mod tests {
         // No tokens: legacy concatenation still applies at the call site;
         // the resolver itself just substitutes.
         assert_eq!(
-            resolve_naming_tokens("_BaseColor", "Cube", None, 2048, 1024, 0),
+            resolve_naming_tokens("_BaseColor", "Cube", None, None, 2048, 1024, 0),
             "_BaseColor"
         );
         assert_eq!(
-            resolve_naming_tokens("$mesh$_BaseColor", "Cube", None, 2048, 1024, 0),
+            resolve_naming_tokens("$mesh$_BaseColor", "Cube", None, None, 2048, 1024, 0),
             "Cube_BaseColor"
         );
         assert_eq!(
@@ -1620,6 +1634,7 @@ mod tests {
                 "$set_name$_$-resolution$",
                 "Cube",
                 Some("My Material Set"),
+                None,
                 2048,
                 1024,
                 0
@@ -1627,20 +1642,32 @@ mod tests {
             "My_Material_Set__2048"
         );
         assert_eq!(
-            resolve_naming_tokens("$mesh${-resolution}", "Cube", None, 2048, 2048, 0),
+            resolve_naming_tokens("$mesh${-resolution}", "Cube", None, None, 2048, 2048, 0),
             "Cube_2048"
         );
         assert_eq!(
-            resolve_naming_tokens("$mesh$_{lod}", "Cube", None, 2048, 2048, 0),
+            resolve_naming_tokens("$mesh$_{lod}", "Cube", None, None, 2048, 2048, 0),
             "Cube_0"
         );
         assert_eq!(
-            resolve_naming_tokens("$width$x$height$", "Cube", None, 1024, 512, 0),
+            resolve_naming_tokens("$mesh$_$udim$", "Cube", None, Some(1002), 2048, 2048, 0),
+            "Cube_1002"
+        );
+        assert_eq!(
+            resolve_naming_tokens("$mesh$_<UDIM>", "Cube", None, Some(1003), 2048, 2048, 0),
+            "Cube_1003"
+        );
+        assert!(uses_naming_tokens("<UDIM>_BaseColor"));
+        assert!(uses_naming_tokens("{udim}_Normal"));
+        assert!(uses_naming_tokens("<udim>_Roughness"));
+        assert!(!uses_naming_tokens("_BaseColor"));
+        assert_eq!(
+            resolve_naming_tokens("$width$x$height$", "Cube", None, None, 1024, 512, 0),
             "1024x512"
         );
         // Texture set fallback = mesh name when unset.
         assert_eq!(
-            resolve_naming_tokens("$textureset$", "", Option::<&str>::None, 512, 512, 0),
+            resolve_naming_tokens("$textureset$", "", Option::<&str>::None, None, 512, 512, 0),
             ""
         );
     }
@@ -1784,6 +1811,7 @@ mod tests {
             padding_radius: 2,
             file_format_override: Some(OutputFormat::Png),
             bit_depth_override: Some(BitDepth::U8),
+            udim_tile: None,
         };
 
         let result = execute_export(ctx).expect("Export should succeed");

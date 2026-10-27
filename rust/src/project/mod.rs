@@ -16,6 +16,7 @@ use crate::painting::filter::FilterEffect;
 use crate::painting::generator::GeneratorConfig;
 use crate::painting::layer::{BlendMode, Layer, LayerStack, LayerType};
 use crate::painting::mask::{LayerMask, MaskEffect, MaskType};
+use crate::painting::texture_set::{TextureChannelDef, TextureSet, TextureSetManager};
 
 pub mod config;
 pub use config::AppConfig;
@@ -62,6 +63,27 @@ pub struct ProjectManifest {
     #[serde(default = "default_height_to_normal_scale")]
     pub height_to_normal_scale: f32,
 
+    pub layers: Vec<LayerManifest>,
+
+    #[serde(default)]
+    pub texture_sets: Vec<TextureSetManifest>,
+    #[serde(default)]
+    pub active_texture_set_index: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TextureSetManifest {
+    pub id: usize,
+    pub name: String,
+    #[serde(default)]
+    pub udim_tile: Option<u32>,
+    pub resolution: u32,
+    #[serde(default)]
+    pub channels: Vec<TextureChannelDef>,
+    pub visible: bool,
+    pub solo: bool,
+    #[serde(default = "default_height_to_normal_scale")]
+    pub height_to_normal_scale: f32,
     pub layers: Vec<LayerManifest>,
 }
 
@@ -183,6 +205,16 @@ pub struct LayerManifest {
 
 pub struct ProjectManager;
 
+/// Return type for loading a project with multi-texture sets restored
+pub type LoadedProjectWithSets = (
+    ProjectManifest,
+    Mesh,
+    LayerStack,
+    BakedMaps,
+    BakerOptions,
+    Option<TextureSetManager>,
+);
+
 impl ProjectManager {
     /// Saves the current project state to a versioned `.rmp` ZIP archive
     pub fn save_project(
@@ -195,6 +227,500 @@ impl ProjectManager {
         baker_options: &BakerOptions,
         camera: (f32, f32, f32),          // yaw, pitch, dist
         lighting: (f32, f32, f32, usize), // exposure, intensity, env_rot, env_idx
+    ) -> Result<(), String> {
+        Self::save_project_with_texture_sets(
+            path,
+            project_name,
+            mesh,
+            mesh_file_path,
+            layer_stack,
+            baked_maps,
+            baker_options,
+            camera,
+            lighting,
+            None,
+        )
+    }
+
+    /// Converts a Layer to its serializable LayerManifest
+    pub fn layer_to_manifest(layer: &Layer) -> LayerManifest {
+        let l_type_str = match layer.layer_type {
+            LayerType::Paint => "Paint",
+            LayerType::Fill => "Fill",
+            LayerType::Folder => "Folder",
+            LayerType::Adjustment => "Adjustment",
+            LayerType::Generator => "Generator",
+        };
+        let blend_str = match layer.blend_mode {
+            BlendMode::Normal => "Normal",
+            BlendMode::Multiply => "Multiply",
+            BlendMode::Screen => "Screen",
+            BlendMode::Overlay => "Overlay",
+            BlendMode::PassThrough => "PassThrough",
+            BlendMode::Add => "Add",
+            BlendMode::Subtract => "Subtract",
+            BlendMode::Darken => "Darken",
+            BlendMode::Lighten => "Lighten",
+            BlendMode::ColorDodge => "ColorDodge",
+            BlendMode::ColorBurn => "ColorBurn",
+            BlendMode::LinearBurn => "LinearBurn",
+            BlendMode::HardLight => "HardLight",
+            BlendMode::SoftLight => "SoftLight",
+            BlendMode::Difference => "Difference",
+            BlendMode::Exclusion => "Exclusion",
+            BlendMode::Color => "Color",
+            BlendMode::Luminosity => "Luminosity",
+            BlendMode::Hue => "Hue",
+            BlendMode::Saturation => "Saturation",
+            BlendMode::VividLight => "VividLight",
+            BlendMode::LinearLight => "LinearLight",
+            BlendMode::PinLight => "PinLight",
+            BlendMode::HardMix => "HardMix",
+            BlendMode::DarkerColor => "DarkerColor",
+            BlendMode::LighterColor => "LighterColor",
+            BlendMode::Divide => "Divide",
+            BlendMode::RNM => "RNM",
+            BlendMode::Whiteout => "Whiteout",
+        };
+
+        let (has_mask, mask_type_str, mask_effects) = if let Some(ref m) = layer.mask {
+            let m_type = match m.mask_type {
+                MaskType::White => "White",
+                MaskType::Black => "Black",
+            };
+            (true, Some(m_type.to_string()), m.effects.clone())
+        } else {
+            (false, None, Vec::new())
+        };
+
+        LayerManifest {
+            id: layer.id,
+            name: layer.name.clone(),
+            layer_type: l_type_str.to_string(),
+            visible: layer.visible,
+            opacity: layer.opacity,
+            blend_mode: blend_str.to_string(),
+            folder_expanded: layer.folder_expanded,
+            parent_folder_id: layer.parent_folder_id,
+            effects: layer.effects.clone(),
+            color_tag: layer.color_tag,
+            fill_color: layer.fill_color,
+            fill_metallic: layer.fill_metallic,
+            fill_roughness: layer.fill_roughness,
+            fill_height: layer.fill_height,
+            has_mask,
+            mask_type: mask_type_str,
+            mask_effects,
+            anchor_point: layer.anchor_point.clone(),
+            generator: layer.generator.clone(),
+        }
+    }
+
+    /// Converts a LayerManifest back to a runtime Layer
+    pub fn manifest_to_layer(lm: &LayerManifest, w: u32, h: u32) -> Layer {
+        let layer_type = match lm.layer_type.as_str() {
+            "Fill" => LayerType::Fill,
+            "Folder" => LayerType::Folder,
+            "Adjustment" => LayerType::Adjustment,
+            "Generator" => LayerType::Generator,
+            _ => LayerType::Paint,
+        };
+        let blend_mode = match lm.blend_mode.as_str() {
+            "Multiply" => BlendMode::Multiply,
+            "Screen" => BlendMode::Screen,
+            "Overlay" => BlendMode::Overlay,
+            "PassThrough" => BlendMode::PassThrough,
+            "Add" => BlendMode::Add,
+            "Subtract" => BlendMode::Subtract,
+            "Darken" => BlendMode::Darken,
+            "Lighten" => BlendMode::Lighten,
+            "ColorDodge" => BlendMode::ColorDodge,
+            "ColorBurn" => BlendMode::ColorBurn,
+            "LinearBurn" => BlendMode::LinearBurn,
+            "HardLight" => BlendMode::HardLight,
+            "SoftLight" => BlendMode::SoftLight,
+            "Difference" => BlendMode::Difference,
+            "Exclusion" => BlendMode::Exclusion,
+            "Color" => BlendMode::Color,
+            "Luminosity" => BlendMode::Luminosity,
+            "Hue" => BlendMode::Hue,
+            "Saturation" => BlendMode::Saturation,
+            "VividLight" => BlendMode::VividLight,
+            "LinearLight" => BlendMode::LinearLight,
+            "PinLight" => BlendMode::PinLight,
+            "HardMix" => BlendMode::HardMix,
+            "DarkerColor" => BlendMode::DarkerColor,
+            "LighterColor" => BlendMode::LighterColor,
+            "Divide" => BlendMode::Divide,
+            "RNM" => BlendMode::RNM,
+            "Whiteout" => BlendMode::Whiteout,
+            _ => BlendMode::Normal,
+        };
+
+        let total_pixels = (w * h) as usize;
+        let mut layer = Layer {
+            id: lm.id,
+            name: lm.name.clone(),
+            layer_type,
+            visible: lm.visible,
+            opacity: lm.opacity,
+            blend_mode,
+            folder_expanded: lm.folder_expanded,
+            parent_folder_id: lm.parent_folder_id,
+            effects: lm.effects.clone(),
+
+            channel_color_enabled: true,
+            channel_metallic_enabled: true,
+            channel_roughness_enabled: true,
+            channel_normal_enabled: true,
+            channel_height_enabled: true,
+
+            channel_color_blend: BlendMode::Normal,
+            channel_metallic_blend: BlendMode::Normal,
+            channel_roughness_blend: BlendMode::Normal,
+            channel_normal_blend: BlendMode::Normal,
+            channel_height_blend: if layer_type == LayerType::Adjustment {
+                BlendMode::Normal
+            } else {
+                BlendMode::Add
+            },
+
+            channel_color_opacity: 1.0,
+            channel_metallic_opacity: 1.0,
+            channel_roughness_opacity: 1.0,
+            channel_normal_opacity: 1.0,
+            channel_height_opacity: 1.0,
+
+            mask: None,
+            anchor_point: lm.anchor_point.clone(),
+            color_tag: lm.color_tag,
+            generator: lm.generator.clone(),
+            fill_color: lm.fill_color,
+            fill_metallic: lm.fill_metallic,
+            fill_roughness: lm.fill_roughness,
+            fill_height: lm.fill_height,
+            color_buffer: vec![[0.0, 0.0, 0.0, 0.0]; total_pixels],
+            metallic_buffer: vec![0.0; total_pixels],
+            roughness_buffer: vec![0.5; total_pixels],
+            normal_buffer: vec![[0.5, 0.5, 1.0]; total_pixels],
+            height_buffer: vec![0.0; total_pixels],
+            width: w,
+            height: h,
+        };
+
+        if lm.has_mask {
+            let m_type = match lm.mask_type.as_deref() {
+                Some("White") => MaskType::White,
+                _ => MaskType::Black,
+            };
+            layer.mask = Some(LayerMask {
+                mask_type: m_type,
+                buffer: vec![if m_type == MaskType::White { 1.0 } else { 0.0 }; total_pixels],
+                effects: lm.mask_effects.clone(),
+                width: w,
+                height: h,
+            });
+        }
+
+        layer
+    }
+
+    /// Writes raw layer channel buffers into the zip archive with optional prefix
+    fn write_layer_buffers(
+        zip: &mut ZipWriter<File>,
+        options: SimpleFileOptions,
+        prefix: &str,
+        layer_stack: &LayerStack,
+    ) -> Result<(), String> {
+        for (i, layer) in layer_stack.layers.iter().enumerate() {
+            if !layer.color_buffer.is_empty() {
+                zip.start_file(format!("{}layers/{}_color.raw", prefix, i), options)
+                    .map_err(|e| format!("Zip error: {}", e))?;
+                let slice: &[u8] = bytemuck::cast_slice(&layer.color_buffer);
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
+            }
+            if !layer.metallic_buffer.is_empty() {
+                zip.start_file(format!("{}layers/{}_metallic.raw", prefix, i), options)
+                    .map_err(|e| format!("Zip error: {}", e))?;
+                let slice: &[u8] = bytemuck::cast_slice(&layer.metallic_buffer);
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
+            }
+            if !layer.roughness_buffer.is_empty() {
+                zip.start_file(format!("{}layers/{}_roughness.raw", prefix, i), options)
+                    .map_err(|e| format!("Zip error: {}", e))?;
+                let slice: &[u8] = bytemuck::cast_slice(&layer.roughness_buffer);
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
+            }
+            if !layer.normal_buffer.is_empty() {
+                zip.start_file(format!("{}layers/{}_normal.raw", prefix, i), options)
+                    .map_err(|e| format!("Zip error: {}", e))?;
+                let slice: &[u8] = bytemuck::cast_slice(&layer.normal_buffer);
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
+            }
+            if !layer.height_buffer.is_empty() {
+                zip.start_file(format!("{}layers/{}_height.raw", prefix, i), options)
+                    .map_err(|e| format!("Zip error: {}", e))?;
+                let slice: &[u8] = bytemuck::cast_slice(&layer.height_buffer);
+                zip.write_all(slice)
+                    .map_err(|e| format!("Zip write error: {}", e))?;
+            }
+            if let Some(ref m) = layer.mask {
+                if !m.buffer.is_empty() {
+                    zip.start_file(format!("{}layers/{}_mask.raw", prefix, i), options)
+                        .map_err(|e| format!("Zip error: {}", e))?;
+                    let slice: &[u8] = bytemuck::cast_slice(&m.buffer);
+                    zip.write_all(slice)
+                        .map_err(|e| format!("Zip write error: {}", e))?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Reads raw layer channel buffers from the zip archive with optional prefix
+    fn read_layer_buffers(
+        zip: &mut ZipArchive<File>,
+        prefix: &str,
+        layer_stack: &mut LayerStack,
+    ) -> Result<(), String> {
+        let total_pixels = (layer_stack.width * layer_stack.height) as usize;
+        for (i, layer) in layer_stack.layers.iter_mut().enumerate() {
+            if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_color.raw", prefix, i)) {
+                let mut bytes = Vec::new();
+                zf.read_to_end(&mut bytes)
+                    .map_err(|e| format!("Failed to read layer {i} color buffer: {e}"))?;
+                if bytes.len() == total_pixels * 16 {
+                    let slice: &[[f32; 4]] = bytemuck::cast_slice(&bytes);
+                    layer.color_buffer.copy_from_slice(slice);
+                } else {
+                    return Err(format!(
+                        "Corrupted color buffer for layer {i}: expected {} bytes, found {}",
+                        total_pixels * 16,
+                        bytes.len()
+                    ));
+                }
+            }
+            if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_metallic.raw", prefix, i)) {
+                let mut bytes = Vec::new();
+                zf.read_to_end(&mut bytes)
+                    .map_err(|e| format!("Failed to read layer {i} metallic buffer: {e}"))?;
+                if bytes.len() == total_pixels * 4 {
+                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
+                    layer.metallic_buffer.copy_from_slice(slice);
+                } else {
+                    return Err(format!(
+                        "Corrupted metallic buffer for layer {i}: expected {} bytes, found {}",
+                        total_pixels * 4,
+                        bytes.len()
+                    ));
+                }
+            }
+            if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_roughness.raw", prefix, i)) {
+                let mut bytes = Vec::new();
+                zf.read_to_end(&mut bytes)
+                    .map_err(|e| format!("Failed to read layer {i} roughness buffer: {e}"))?;
+                if bytes.len() == total_pixels * 4 {
+                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
+                    layer.roughness_buffer.copy_from_slice(slice);
+                } else {
+                    return Err(format!(
+                        "Corrupted roughness buffer for layer {i}: expected {} bytes, found {}",
+                        total_pixels * 4,
+                        bytes.len()
+                    ));
+                }
+            }
+            if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_normal.raw", prefix, i)) {
+                let mut bytes = Vec::new();
+                zf.read_to_end(&mut bytes)
+                    .map_err(|e| format!("Failed to read layer {i} normal buffer: {e}"))?;
+                if bytes.len() == total_pixels * 12 {
+                    let slice: &[[f32; 3]] = bytemuck::cast_slice(&bytes);
+                    layer.normal_buffer.copy_from_slice(slice);
+                } else {
+                    return Err(format!(
+                        "Corrupted normal buffer for layer {i}: expected {} bytes, found {}",
+                        total_pixels * 12,
+                        bytes.len()
+                    ));
+                }
+            }
+            if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_height.raw", prefix, i)) {
+                let mut bytes = Vec::new();
+                zf.read_to_end(&mut bytes)
+                    .map_err(|e| format!("Failed to read layer {i} height buffer: {e}"))?;
+                if bytes.len() == total_pixels * 4 {
+                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
+                    layer.height_buffer.copy_from_slice(slice);
+                } else {
+                    return Err(format!(
+                        "Corrupted height buffer for layer {i}: expected {} bytes, found {}",
+                        total_pixels * 4,
+                        bytes.len()
+                    ));
+                }
+            }
+            if let Some(ref mut m) = layer.mask {
+                if let Ok(mut zf) = zip.by_name(&format!("{}layers/{}_mask.raw", prefix, i)) {
+                    let mut bytes = Vec::new();
+                    zf.read_to_end(&mut bytes)
+                        .map_err(|e| format!("Failed to read layer {i} mask buffer: {e}"))?;
+                    if bytes.len() == total_pixels * 4 {
+                        let slice: &[f32] = bytemuck::cast_slice(&bytes);
+                        m.buffer.copy_from_slice(slice);
+                    } else {
+                        return Err(format!(
+                            "Corrupted mask buffer for layer {i}: expected {} bytes, found {}",
+                            total_pixels * 4,
+                            bytes.len()
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Writes baked mesh maps into the zip archive with optional prefix
+    fn write_baked_maps(
+        zip: &mut ZipWriter<File>,
+        options: SimpleFileOptions,
+        prefix: &str,
+        baked_maps: &BakedMaps,
+        baked_fmt: BakedMapFormat,
+    ) -> Result<(), String> {
+        let mut write_plane = |name: &str, bytes: &[u8]| -> Result<(), String> {
+            if bytes.is_empty() {
+                return Ok(());
+            }
+            zip.start_file(format!("{}{}", prefix, name), options)
+                .map_err(|e| e.to_string())?;
+            zip.write_all(bytes).map_err(|e| e.to_string())
+        };
+        if let Some(ref ao) = baked_maps.ambient_occlusion {
+            write_plane(
+                &baked_plane_file("ao", baked_fmt),
+                &encode_scalar_plane(ao, baked_fmt),
+            )?;
+        }
+        if let Some(ref curv) = baked_maps.curvature {
+            write_plane(
+                &baked_plane_file("curvature", baked_fmt),
+                &encode_scalar_plane(curv, baked_fmt),
+            )?;
+        }
+        if let Some(ref norm) = baked_maps.normal {
+            write_plane(
+                &baked_plane_file("normal", baked_fmt),
+                &encode_vec3_plane(norm, baked_fmt),
+            )?;
+        }
+        if let Some(ref wsn) = baked_maps.world_space_normal {
+            write_plane(
+                &baked_plane_file("world_space_normal", baked_fmt),
+                &encode_vec3_plane(wsn, baked_fmt),
+            )?;
+        }
+        if let Some(ref pos) = baked_maps.position {
+            write_plane(
+                &baked_plane_file("position", baked_fmt),
+                &encode_vec3_plane(pos, baked_fmt),
+            )?;
+        }
+        if let Some(ref thick) = baked_maps.thickness {
+            write_plane(
+                &baked_plane_file("thickness", baked_fmt),
+                &encode_scalar_plane(thick, baked_fmt),
+            )?;
+        }
+        if let Some(ref id_map) = baked_maps.id {
+            write_plane(
+                &baked_plane_file("id", baked_fmt),
+                &encode_vec4_plane(id_map, baked_fmt),
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Reads baked mesh maps from the zip archive with optional prefix
+    fn read_baked_maps(
+        zip: &mut ZipArchive<File>,
+        prefix: &str,
+        resolution: u32,
+        baked_fmt: BakedMapFormat,
+    ) -> BakedMaps {
+        let mut baked_maps = BakedMaps {
+            resolution,
+            ambient_occlusion: None,
+            curvature: None,
+            normal: None,
+            world_space_normal: None,
+            position: None,
+            thickness: None,
+            id: None,
+            is_cancelled: false,
+        };
+        let read_plane = |zip: &mut ZipArchive<File>, base: &str| -> Vec<u8> {
+            for name in [
+                format!("{}{}", prefix, baked_plane_file(base, baked_fmt)),
+                format!("{}baked/{}.raw", prefix, base),
+            ] {
+                if let Ok(mut zf) = zip.by_name(&name) {
+                    let mut bytes = Vec::new();
+                    let _ = zf.read_to_end(&mut bytes);
+                    return bytes;
+                }
+            }
+            Vec::new()
+        };
+
+        let bytes = read_plane(zip, "ao");
+        if !bytes.is_empty() {
+            baked_maps.ambient_occlusion = Some(decode_scalar_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "curvature");
+        if !bytes.is_empty() {
+            baked_maps.curvature = Some(decode_scalar_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "normal");
+        if !bytes.is_empty() {
+            baked_maps.normal = Some(decode_vec3_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "world_space_normal");
+        if !bytes.is_empty() {
+            baked_maps.world_space_normal = Some(decode_vec3_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "position");
+        if !bytes.is_empty() {
+            baked_maps.position = Some(decode_vec3_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "thickness");
+        if !bytes.is_empty() {
+            baked_maps.thickness = Some(decode_scalar_plane(&bytes, baked_fmt));
+        }
+        let bytes = read_plane(zip, "id");
+        if !bytes.is_empty() {
+            baked_maps.id = Some(decode_vec4_plane(&bytes, baked_fmt));
+        }
+        baked_maps
+    }
+
+    /// Saves the current project state, persisting all texture sets (e.g. UDIM or multi-material)
+    pub fn save_project_with_texture_sets(
+        path: &Path,
+        project_name: &str,
+        mesh: &Mesh,
+        mesh_file_path: Option<&str>,
+        layer_stack: &LayerStack,
+        baked_maps: &BakedMaps,
+        baker_options: &BakerOptions,
+        camera: (f32, f32, f32),          // yaw, pitch, dist
+        lighting: (f32, f32, f32, usize), // exposure, intensity, env_rot, env_idx
+        texture_set_manager: Option<&TextureSetManager>,
     ) -> Result<(), String> {
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
@@ -211,80 +737,62 @@ impl ProjectManager {
 
         // 1. Build Manifest
         let now = chrono::Local::now().to_rfc3339();
-        let mut layer_manifests = Vec::with_capacity(layer_stack.layers.len());
 
-        for layer in &layer_stack.layers {
-            let l_type_str = match layer.layer_type {
-                LayerType::Paint => "Paint",
-                LayerType::Fill => "Fill",
-                LayerType::Folder => "Folder",
-                LayerType::Adjustment => "Adjustment",
-                LayerType::Generator => "Generator",
-            };
-            let blend_str = match layer.blend_mode {
-                BlendMode::Normal => "Normal",
-                BlendMode::Multiply => "Multiply",
-                BlendMode::Screen => "Screen",
-                BlendMode::Overlay => "Overlay",
-                BlendMode::PassThrough => "PassThrough",
-                BlendMode::Add => "Add",
-                BlendMode::Subtract => "Subtract",
-                BlendMode::Darken => "Darken",
-                BlendMode::Lighten => "Lighten",
-                BlendMode::ColorDodge => "ColorDodge",
-                BlendMode::ColorBurn => "ColorBurn",
-                BlendMode::LinearBurn => "LinearBurn",
-                BlendMode::HardLight => "HardLight",
-                BlendMode::SoftLight => "SoftLight",
-                BlendMode::Difference => "Difference",
-                BlendMode::Exclusion => "Exclusion",
-                BlendMode::Color => "Color",
-                BlendMode::Luminosity => "Luminosity",
-                BlendMode::Hue => "Hue",
-                BlendMode::Saturation => "Saturation",
-                BlendMode::VividLight => "VividLight",
-                BlendMode::LinearLight => "LinearLight",
-                BlendMode::PinLight => "PinLight",
-                BlendMode::HardMix => "HardMix",
-                BlendMode::DarkerColor => "DarkerColor",
-                BlendMode::LighterColor => "LighterColor",
-                BlendMode::Divide => "Divide",
-                BlendMode::RNM => "RNM",
-                BlendMode::Whiteout => "Whiteout",
-            };
-
-            let (has_mask, mask_type_str, mask_effects) = if let Some(ref m) = layer.mask {
-                let m_type = match m.mask_type {
-                    MaskType::White => "White",
-                    MaskType::Black => "Black",
-                };
-                (true, Some(m_type.to_string()), m.effects.clone())
+        let (texture_sets_manifest, active_idx, primary_layers, proj_w, proj_h, proj_scale) =
+            if let Some(tsm) = texture_set_manager {
+                if !tsm.sets.is_empty() {
+                    let a_idx = tsm.active_index.min(tsm.sets.len().saturating_sub(1));
+                    let mut ts_list = Vec::with_capacity(tsm.sets.len());
+                    for set in &tsm.sets {
+                        let mut set_lm = Vec::with_capacity(set.layer_stack.layers.len());
+                        for layer in &set.layer_stack.layers {
+                            set_lm.push(Self::layer_to_manifest(layer));
+                        }
+                        ts_list.push(TextureSetManifest {
+                            id: set.id,
+                            name: set.name.clone(),
+                            udim_tile: set.udim_tile,
+                            resolution: set.resolution,
+                            channels: set.channels.clone(),
+                            visible: set.visible,
+                            solo: set.solo,
+                            height_to_normal_scale: set.layer_stack.height_to_normal_scale,
+                            layers: set_lm,
+                        });
+                    }
+                    let prim = ts_list[a_idx].layers.clone();
+                    let w = tsm.sets[a_idx].layer_stack.width;
+                    let h = tsm.sets[a_idx].layer_stack.height;
+                    let s = tsm.sets[a_idx].layer_stack.height_to_normal_scale;
+                    (ts_list, a_idx, prim, w, h, s)
+                } else {
+                    let mut set_lm = Vec::with_capacity(layer_stack.layers.len());
+                    for layer in &layer_stack.layers {
+                        set_lm.push(Self::layer_to_manifest(layer));
+                    }
+                    (
+                        Vec::new(),
+                        0,
+                        set_lm,
+                        layer_stack.width,
+                        layer_stack.height,
+                        layer_stack.height_to_normal_scale,
+                    )
+                }
             } else {
-                (false, None, Vec::new())
+                let mut set_lm = Vec::with_capacity(layer_stack.layers.len());
+                for layer in &layer_stack.layers {
+                    set_lm.push(Self::layer_to_manifest(layer));
+                }
+                (
+                    Vec::new(),
+                    0,
+                    set_lm,
+                    layer_stack.width,
+                    layer_stack.height,
+                    layer_stack.height_to_normal_scale,
+                )
             };
-
-            layer_manifests.push(LayerManifest {
-                id: layer.id,
-                name: layer.name.clone(),
-                layer_type: l_type_str.to_string(),
-                visible: layer.visible,
-                opacity: layer.opacity,
-                blend_mode: blend_str.to_string(),
-                folder_expanded: layer.folder_expanded,
-                parent_folder_id: layer.parent_folder_id,
-                effects: layer.effects.clone(),
-                color_tag: layer.color_tag,
-                fill_color: layer.fill_color,
-                fill_metallic: layer.fill_metallic,
-                fill_roughness: layer.fill_roughness,
-                fill_height: layer.fill_height,
-                has_mask,
-                mask_type: mask_type_str,
-                mask_effects,
-                anchor_point: layer.anchor_point.clone(),
-                generator: layer.generator.clone(),
-            });
-        }
 
         let manifest = ProjectManifest {
             magic: RMP_MAGIC.to_string(),
@@ -295,8 +803,8 @@ impl ProjectManager {
             modified_at: now,
             mesh_name: mesh.name.clone(),
             mesh_file_path: mesh_file_path.map(|s| s.to_string()),
-            width: layer_stack.width,
-            height: layer_stack.height,
+            width: proj_w,
+            height: proj_h,
             baker_options: BakerOptionsManifest {
                 resolution: baker_options.resolution,
                 ao_samples: baker_options.ao_samples,
@@ -334,8 +842,10 @@ impl ProjectManager {
             light_intensity: lighting.1,
             env_rotation: lighting.2,
             selected_env_idx: lighting.3,
-            height_to_normal_scale: layer_stack.height_to_normal_scale,
-            layers: layer_manifests,
+            height_to_normal_scale: proj_scale,
+            layers: primary_layers,
+            texture_sets: texture_sets_manifest,
+            active_texture_set_index: active_idx,
         };
 
         // Write project.json
@@ -353,121 +863,38 @@ impl ProjectManager {
         zip.write_all(obj_content.as_bytes())
             .map_err(|e| format!("Zip write error: {}", e))?;
 
-        // 3. Write Layer Channel Buffers
-        for (i, layer) in layer_stack.layers.iter().enumerate() {
-            // Color buffer
-            if !layer.color_buffer.is_empty() {
-                zip.start_file(format!("layers/{}_color.raw", i), options)
-                    .map_err(|e| format!("Zip error: {}", e))?;
-                let slice: &[u8] = bytemuck::cast_slice(&layer.color_buffer);
-                zip.write_all(slice)
-                    .map_err(|e| format!("Zip write error: {}", e))?;
-            }
-            // Metallic buffer
-            if !layer.metallic_buffer.is_empty() {
-                zip.start_file(format!("layers/{}_metallic.raw", i), options)
-                    .map_err(|e| format!("Zip error: {}", e))?;
-                let slice: &[u8] = bytemuck::cast_slice(&layer.metallic_buffer);
-                zip.write_all(slice)
-                    .map_err(|e| format!("Zip write error: {}", e))?;
-            }
-            // Roughness buffer
-            if !layer.roughness_buffer.is_empty() {
-                zip.start_file(format!("layers/{}_roughness.raw", i), options)
-                    .map_err(|e| format!("Zip error: {}", e))?;
-                let slice: &[u8] = bytemuck::cast_slice(&layer.roughness_buffer);
-                zip.write_all(slice)
-                    .map_err(|e| format!("Zip write error: {}", e))?;
-            }
-            // Normal buffer
-            if !layer.normal_buffer.is_empty() {
-                zip.start_file(format!("layers/{}_normal.raw", i), options)
-                    .map_err(|e| format!("Zip error: {}", e))?;
-                let slice: &[u8] = bytemuck::cast_slice(&layer.normal_buffer);
-                zip.write_all(slice)
-                    .map_err(|e| format!("Zip write error: {}", e))?;
-            }
-            // Height buffer
-            if !layer.height_buffer.is_empty() {
-                zip.start_file(format!("layers/{}_height.raw", i), options)
-                    .map_err(|e| format!("Zip error: {}", e))?;
-                let slice: &[u8] = bytemuck::cast_slice(&layer.height_buffer);
-                zip.write_all(slice)
-                    .map_err(|e| format!("Zip write error: {}", e))?;
-            }
-            // Mask buffer
-            if let Some(ref m) = layer.mask {
-                if !m.buffer.is_empty() {
-                    zip.start_file(format!("layers/{}_mask.raw", i), options)
-                        .map_err(|e| format!("Zip error: {}", e))?;
-                    let slice: &[u8] = bytemuck::cast_slice(&m.buffer);
-                    zip.write_all(slice)
-                        .map_err(|e| format!("Zip write error: {}", e))?;
-                }
-            }
-        }
-
-        // 4. Write Baked Mesh Maps — encoded at the project's bake output depth
-        // (`baked/<map>.raw` = f32 legacy, `.u8` = 8-bit, `.f16` = half float).
         let baked_fmt = baker_options.map_format;
-        let write_plane = |zip: &mut zip::ZipWriter<std::fs::File>,
-                           name: &str,
-                           bytes: &[u8]|
-         -> Result<(), String> {
-            if bytes.is_empty() {
-                return Ok(());
+
+        // 3. Write Root Layers & Baked Maps (for legacy backward compatibility)
+        if let Some(tsm) = texture_set_manager {
+            if !tsm.sets.is_empty() {
+                Self::write_layer_buffers(
+                    &mut zip,
+                    options,
+                    "",
+                    &tsm.sets[active_idx].layer_stack,
+                )?;
+                Self::write_baked_maps(
+                    &mut zip,
+                    options,
+                    "",
+                    &tsm.sets[active_idx].baked_maps,
+                    baked_fmt,
+                )?;
+
+                // 4. Write Per-Set Layers & Baked Maps
+                for (s_idx, set) in tsm.sets.iter().enumerate() {
+                    let prefix = format!("sets/{}/", s_idx);
+                    Self::write_layer_buffers(&mut zip, options, &prefix, &set.layer_stack)?;
+                    Self::write_baked_maps(&mut zip, options, &prefix, &set.baked_maps, baked_fmt)?;
+                }
+            } else {
+                Self::write_layer_buffers(&mut zip, options, "", layer_stack)?;
+                Self::write_baked_maps(&mut zip, options, "", baked_maps, baked_fmt)?;
             }
-            zip.start_file(name, options).map_err(|e| e.to_string())?;
-            zip.write_all(bytes).map_err(|e| e.to_string())
-        };
-        if let Some(ref ao) = baked_maps.ambient_occlusion {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("ao", baked_fmt),
-                &encode_scalar_plane(ao, baked_fmt),
-            )?;
-        }
-        if let Some(ref curv) = baked_maps.curvature {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("curvature", baked_fmt),
-                &encode_scalar_plane(curv, baked_fmt),
-            )?;
-        }
-        if let Some(ref norm) = baked_maps.normal {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("normal", baked_fmt),
-                &encode_vec3_plane(norm, baked_fmt),
-            )?;
-        }
-        if let Some(ref wsn) = baked_maps.world_space_normal {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("world_space_normal", baked_fmt),
-                &encode_vec3_plane(wsn, baked_fmt),
-            )?;
-        }
-        if let Some(ref pos) = baked_maps.position {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("position", baked_fmt),
-                &encode_vec3_plane(pos, baked_fmt),
-            )?;
-        }
-        if let Some(ref thick) = baked_maps.thickness {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("thickness", baked_fmt),
-                &encode_scalar_plane(thick, baked_fmt),
-            )?;
-        }
-        if let Some(ref id_map) = baked_maps.id {
-            write_plane(
-                &mut zip,
-                &baked_plane_file("id", baked_fmt),
-                &encode_vec4_plane(id_map, baked_fmt),
-            )?;
+        } else {
+            Self::write_layer_buffers(&mut zip, options, "", layer_stack)?;
+            Self::write_baked_maps(&mut zip, options, "", baked_maps, baked_fmt)?;
         }
 
         zip.finish()
@@ -484,6 +911,13 @@ impl ProjectManager {
     pub fn load_project(
         path: &Path,
     ) -> Result<(ProjectManifest, Mesh, LayerStack, BakedMaps, BakerOptions), String> {
+        let (manifest, mesh, layer_stack, baked_maps, baker_options, _) =
+            Self::load_project_with_texture_sets(path)?;
+        Ok((manifest, mesh, layer_stack, baked_maps, baker_options))
+    }
+
+    /// Loads a project from a `.rmp` archive, restoring all texture sets if present
+    pub fn load_project_with_texture_sets(path: &Path) -> Result<LoadedProjectWithSets, String> {
         let file = File::open(path).map_err(|e| format!("Failed to open project file: {}", e))?;
         let mut zip =
             ZipArchive::new(file).map_err(|e| format!("Invalid project archive: {}", e))?;
@@ -516,264 +950,114 @@ impl ProjectManager {
                 .read_to_string(&mut obj_str)
                 .map_err(|e| format!("Failed to read embedded mesh: {}", e))?;
             Mesh::from_obj_string(&obj_str, &manifest.mesh_name)
-                .unwrap_or_else(|_| Mesh::create_material_sphere(64, 64))
+                .map_err(|e| format!("Corrupted embedded mesh in project: {e}"))?
         } else if let Some(ref mesh_path) = manifest.mesh_file_path {
-            Mesh::load_obj(mesh_path).unwrap_or_else(|_| Mesh::create_material_sphere(64, 64))
+            Mesh::load_file(mesh_path)
+                .map_err(|e| format!("Failed to load linked mesh file at '{mesh_path}': {e}"))?
         } else {
             Mesh::create_material_sphere(64, 64)
         };
 
-        // 3. Reconstruct LayerStack
-        let w = manifest.width;
-        let h = manifest.height;
-        let total_pixels = (w * h) as usize;
-        let mut layer_stack = LayerStack::new(w, h);
-        layer_stack.height_to_normal_scale = manifest.height_to_normal_scale;
-        layer_stack.layers.clear();
-
-        for (i, lm) in manifest.layers.iter().enumerate() {
-            let layer_type = match lm.layer_type.as_str() {
-                "Fill" => LayerType::Fill,
-                "Folder" => LayerType::Folder,
-                "Adjustment" => LayerType::Adjustment,
-                "Generator" => LayerType::Generator,
-                _ => LayerType::Paint,
-            };
-            let blend_mode = match lm.blend_mode.as_str() {
-                "Multiply" => BlendMode::Multiply,
-                "Screen" => BlendMode::Screen,
-                "Overlay" => BlendMode::Overlay,
-                "PassThrough" => BlendMode::PassThrough,
-                "Add" => BlendMode::Add,
-                "Subtract" => BlendMode::Subtract,
-                "Darken" => BlendMode::Darken,
-                "Lighten" => BlendMode::Lighten,
-                "ColorDodge" => BlendMode::ColorDodge,
-                "ColorBurn" => BlendMode::ColorBurn,
-                "LinearBurn" => BlendMode::LinearBurn,
-                "HardLight" => BlendMode::HardLight,
-                "SoftLight" => BlendMode::SoftLight,
-                "Difference" => BlendMode::Difference,
-                "Exclusion" => BlendMode::Exclusion,
-                "Color" => BlendMode::Color,
-                "Luminosity" => BlendMode::Luminosity,
-                "Hue" => BlendMode::Hue,
-                "Saturation" => BlendMode::Saturation,
-                "VividLight" => BlendMode::VividLight,
-                "LinearLight" => BlendMode::LinearLight,
-                "PinLight" => BlendMode::PinLight,
-                "HardMix" => BlendMode::HardMix,
-                "DarkerColor" => BlendMode::DarkerColor,
-                "LighterColor" => BlendMode::LighterColor,
-                "Divide" => BlendMode::Divide,
-                "RNM" => BlendMode::RNM,
-                "Whiteout" => BlendMode::Whiteout,
-                _ => BlendMode::Normal,
-            };
-
-            let mut layer = Layer {
-                id: lm.id,
-                name: lm.name.clone(),
-                layer_type,
-                visible: lm.visible,
-                opacity: lm.opacity,
-                blend_mode,
-                folder_expanded: lm.folder_expanded,
-                parent_folder_id: lm.parent_folder_id,
-                effects: lm.effects.clone(),
-
-                channel_color_enabled: true,
-                channel_metallic_enabled: true,
-                channel_roughness_enabled: true,
-                channel_normal_enabled: true,
-                channel_height_enabled: true,
-
-                channel_color_blend: BlendMode::Normal,
-                channel_metallic_blend: BlendMode::Normal,
-                channel_roughness_blend: BlendMode::Normal,
-                channel_normal_blend: BlendMode::Normal,
-                channel_height_blend: if layer_type == LayerType::Adjustment {
-                    BlendMode::Normal
-                } else {
-                    BlendMode::Add
-                },
-
-                channel_color_opacity: 1.0,
-                channel_metallic_opacity: 1.0,
-                channel_roughness_opacity: 1.0,
-                channel_normal_opacity: 1.0,
-                channel_height_opacity: 1.0,
-
-                mask: None,
-                anchor_point: lm.anchor_point.clone(),
-                color_tag: lm.color_tag,
-                generator: lm.generator.clone(),
-                fill_color: lm.fill_color,
-                fill_metallic: lm.fill_metallic,
-                fill_roughness: lm.fill_roughness,
-                fill_height: lm.fill_height,
-                color_buffer: vec![[0.0, 0.0, 0.0, 0.0]; total_pixels],
-                metallic_buffer: vec![0.0; total_pixels],
-                roughness_buffer: vec![0.5; total_pixels],
-                normal_buffer: vec![[0.5, 0.5, 1.0]; total_pixels],
-                height_buffer: vec![0.0; total_pixels],
-                width: w,
-                height: h,
-            };
-
-            // Read color buffer
-            if let Ok(mut zf) = zip.by_name(&format!("layers/{}_color.raw", i)) {
-                let mut bytes = Vec::new();
-                let _ = zf.read_to_end(&mut bytes);
-                if bytes.len() == total_pixels * 16 {
-                    let slice: &[[f32; 4]] = bytemuck::cast_slice(&bytes);
-                    layer.color_buffer.copy_from_slice(slice);
-                }
-            }
-
-            // Read metallic buffer
-            if let Ok(mut zf) = zip.by_name(&format!("layers/{}_metallic.raw", i)) {
-                let mut bytes = Vec::new();
-                let _ = zf.read_to_end(&mut bytes);
-                if bytes.len() == total_pixels * 4 {
-                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
-                    layer.metallic_buffer.copy_from_slice(slice);
-                }
-            }
-
-            // Read roughness buffer
-            if let Ok(mut zf) = zip.by_name(&format!("layers/{}_roughness.raw", i)) {
-                let mut bytes = Vec::new();
-                let _ = zf.read_to_end(&mut bytes);
-                if bytes.len() == total_pixels * 4 {
-                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
-                    layer.roughness_buffer.copy_from_slice(slice);
-                }
-            }
-
-            // Read normal buffer
-            if let Ok(mut zf) = zip.by_name(&format!("layers/{}_normal.raw", i)) {
-                let mut bytes = Vec::new();
-                let _ = zf.read_to_end(&mut bytes);
-                if bytes.len() == total_pixels * 12 {
-                    let slice: &[[f32; 3]] = bytemuck::cast_slice(&bytes);
-                    layer.normal_buffer.copy_from_slice(slice);
-                }
-            }
-
-            // Read height buffer
-            if let Ok(mut zf) = zip.by_name(&format!("layers/{}_height.raw", i)) {
-                let mut bytes = Vec::new();
-                let _ = zf.read_to_end(&mut bytes);
-                if bytes.len() == total_pixels * 4 {
-                    let slice: &[f32] = bytemuck::cast_slice(&bytes);
-                    layer.height_buffer.copy_from_slice(slice);
-                }
-            }
-
-            // Read mask if present
-            if lm.has_mask {
-                let m_type = match lm.mask_type.as_deref() {
-                    Some("White") => MaskType::White,
-                    _ => MaskType::Black,
-                };
-                let mut mask = LayerMask {
-                    mask_type: m_type,
-                    buffer: vec![if m_type == MaskType::White { 1.0 } else { 0.0 }; total_pixels],
-                    effects: lm.mask_effects.clone(),
-                    width: w,
-                    height: h,
-                };
-
-                if let Ok(mut zf) = zip.by_name(&format!("layers/{}_mask.raw", i)) {
-                    let mut bytes = Vec::new();
-                    let _ = zf.read_to_end(&mut bytes);
-                    if bytes.len() == total_pixels * 4 {
-                        let slice: &[f32] = bytemuck::cast_slice(&bytes);
-                        mask.buffer.copy_from_slice(slice);
-                    }
-                }
-                layer.mask = Some(mask);
-            }
-
-            layer_stack.layers.push(layer);
-        }
-
-        layer_stack.recompute_composite();
-
-        // 4. Read Baked Maps
-        let mut baked_maps = BakedMaps {
-            resolution: manifest.baker_options.resolution,
-            ambient_occlusion: None,
-            curvature: None,
-            normal: None,
-            world_space_normal: None,
-            position: None,
-            thickness: None,
-            id: None,
-            is_cancelled: false,
-        };
-
-        // Read Baked Mesh Maps — decode from the depth the project was saved
-        // with; legacy archives (plain `.raw`, pre-depth-bake) decode as f32.
         let baked_fmt = manifest.baker_options.map_format;
-        let read_plane = |zip: &mut zip::ZipArchive<std::fs::File>, base: &str| -> Vec<u8> {
-            // Depth-tagged name first, then the legacy `.raw` name.
-            for name in [
-                baked_plane_file(base, baked_fmt),
-                format!("baked/{}.raw", base),
-            ] {
-                if let Ok(mut zf) = zip.by_name(&name) {
-                    let mut bytes = Vec::new();
-                    let _ = zf.read_to_end(&mut bytes);
-                    return bytes;
-                }
-            }
-            Vec::new()
-        };
-        {
-            let bytes = read_plane(&mut zip, "ao");
-            if !bytes.is_empty() {
-                baked_maps.ambient_occlusion = Some(decode_scalar_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "curvature");
-            if !bytes.is_empty() {
-                baked_maps.curvature = Some(decode_scalar_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "normal");
-            if !bytes.is_empty() {
-                baked_maps.normal = Some(decode_vec3_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "world_space_normal");
-            if !bytes.is_empty() {
-                baked_maps.world_space_normal = Some(decode_vec3_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "position");
-            if !bytes.is_empty() {
-                baked_maps.position = Some(decode_vec3_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "thickness");
-            if !bytes.is_empty() {
-                baked_maps.thickness = Some(decode_scalar_plane(&bytes, baked_fmt));
-            }
-        }
-        {
-            let bytes = read_plane(&mut zip, "id");
-            if !bytes.is_empty() {
-                baked_maps.id = Some(decode_vec4_plane(&bytes, baked_fmt));
-            }
-        }
 
+        // 3. Reconstruct LayerStack(s) and TextureSetManager
+        let (primary_layer_stack, primary_baked_maps, tsm_opt) = if !manifest
+            .texture_sets
+            .is_empty()
+        {
+            let active_idx = manifest
+                .active_texture_set_index
+                .min(manifest.texture_sets.len().saturating_sub(1));
+            let mut tsm = TextureSetManager {
+                sets: Vec::with_capacity(manifest.texture_sets.len()),
+                active_index: active_idx,
+                next_id: 1,
+                is_udim_workflow: manifest.texture_sets.iter().any(|s| s.udim_tile.is_some()),
+            };
+
+            for (s_idx, sm) in manifest.texture_sets.iter().enumerate() {
+                let w = sm.resolution.max(1);
+                let h = sm.resolution.max(1);
+                let mut set_stack = LayerStack::new(w, h);
+                set_stack.height_to_normal_scale = sm.height_to_normal_scale;
+                set_stack.layers.clear();
+
+                for lm in &sm.layers {
+                    set_stack.layers.push(Self::manifest_to_layer(lm, w, h));
+                }
+
+                let prefix = format!("sets/{}/", s_idx);
+                let read_prefix = if s_idx == 0
+                    && zip
+                        .by_name(&format!("{}layers/0_color.raw", prefix))
+                        .is_err()
+                    && zip.by_name("layers/0_color.raw").is_ok()
+                {
+                    ""
+                } else {
+                    &prefix
+                };
+                Self::read_layer_buffers(&mut zip, read_prefix, &mut set_stack)?;
+                set_stack.recompute_composite();
+
+                let baked_prefix = read_prefix;
+                let set_baked_maps =
+                    Self::read_baked_maps(&mut zip, baked_prefix, sm.resolution, baked_fmt);
+
+                let channels = if sm.channels.is_empty() {
+                    TextureChannelDef::standard_channels()
+                } else {
+                    sm.channels.clone()
+                };
+
+                if sm.id >= tsm.next_id {
+                    tsm.next_id = sm.id + 1;
+                }
+
+                tsm.sets.push(TextureSet {
+                    id: sm.id,
+                    name: sm.name.clone(),
+                    udim_tile: sm.udim_tile,
+                    resolution: sm.resolution,
+                    channels,
+                    layer_stack: set_stack,
+                    baked_maps: set_baked_maps,
+                    visible: sm.visible,
+                    solo: sm.solo,
+                });
+            }
+
+            let prim_stack = tsm.sets[active_idx].layer_stack.clone();
+            let prim_baked = tsm.sets[active_idx].baked_maps.clone();
+            (prim_stack, prim_baked, Some(tsm))
+        } else {
+            let w = manifest.width;
+            let h = manifest.height;
+            let mut layer_stack = LayerStack::new(w, h);
+            layer_stack.height_to_normal_scale = manifest.height_to_normal_scale;
+            layer_stack.layers.clear();
+
+            for lm in &manifest.layers {
+                layer_stack.layers.push(Self::manifest_to_layer(lm, w, h));
+            }
+
+            Self::read_layer_buffers(&mut zip, "", &mut layer_stack)?;
+            layer_stack.recompute_composite();
+
+            let baked_maps =
+                Self::read_baked_maps(&mut zip, "", manifest.baker_options.resolution, baked_fmt);
+
+            let mut tsm = TextureSetManager::new(layer_stack.width);
+            tsm.configure_from_mesh(&mesh, layer_stack.width);
+            if !tsm.sets.is_empty() {
+                tsm.sets[0].layer_stack = layer_stack.clone();
+                tsm.sets[0].baked_maps = baked_maps.clone();
+            }
+
+            (layer_stack, baked_maps, Some(tsm))
+        };
+
+        // 4. Baker Options
         let baker_options = BakerOptions {
             resolution: manifest.baker_options.resolution,
             ao_samples: manifest.baker_options.ao_samples,
@@ -806,7 +1090,14 @@ impl ProjectManager {
             udim_tile: manifest.baker_options.udim_tile,
         };
 
-        Ok((manifest, mesh, layer_stack, baked_maps, baker_options))
+        Ok((
+            manifest,
+            mesh,
+            primary_layer_stack,
+            primary_baked_maps,
+            baker_options,
+            tsm_opt,
+        ))
     }
 
     /// Autosave location directory
@@ -889,6 +1180,8 @@ mod tests {
             selected_env_idx: 0,
             height_to_normal_scale: 2.0,
             layers: vec![],
+            texture_sets: vec![],
+            active_texture_set_index: 0,
         };
 
         let json = serde_json::to_string(&manifest).expect("Serialize failed");
@@ -1190,6 +1483,97 @@ mod tests {
             child_count >= 3,
             "Must have at least 3 children parented to folder"
         );
+
+        let _ = fs::remove_file(project_path);
+        let _ = fs::remove_dir(temp_dir);
+    }
+
+    #[test]
+    fn test_multi_texture_set_project_save_load_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("remoainter_test_multi_ts");
+        let _ = fs::create_dir_all(&temp_dir);
+        let project_path = temp_dir.join("test_multi_ts.rmp");
+
+        let mesh = Mesh::create_material_sphere(16, 16);
+        let mut tsm = TextureSetManager::new(64);
+        tsm.is_udim_workflow = true;
+        tsm.sets.clear();
+
+        // Tile 1001
+        let mut set1 = TextureSet::new_udim(1, 1001, 64);
+        set1.layer_stack.layers.clear();
+        let mut l1 = Layer::new_paint(1, "Tile 1001 Base", 64, 64);
+        l1.color_buffer[0] = [1.0, 0.2, 0.3, 1.0];
+        set1.layer_stack.layers.push(l1);
+        set1.layer_stack.recompute_composite();
+        tsm.sets.push(set1);
+
+        // Tile 1002
+        let mut set2 = TextureSet::new_udim(2, 1002, 64);
+        set2.layer_stack.layers.clear();
+        let mut l2 = Layer::new_paint(1, "Tile 1002 Base", 64, 64);
+        l2.color_buffer[0] = [0.1, 0.8, 0.4, 1.0];
+        set2.layer_stack.layers.push(l2);
+        set2.layer_stack.recompute_composite();
+        tsm.sets.push(set2);
+
+        tsm.active_index = 1;
+
+        let baked_maps = BakedMaps::default();
+        let baker_options = BakerOptions::default();
+
+        let save_res = ProjectManager::save_project_with_texture_sets(
+            &project_path,
+            "MultiSetProject",
+            &mesh,
+            None,
+            &tsm.active().layer_stack,
+            &baked_maps,
+            &baker_options,
+            (45.0, 15.0, 2.5),
+            (0.0, 1.0, 0.0, 0),
+            Some(&tsm),
+        );
+        assert!(save_res.is_ok(), "Save failed: {:?}", save_res.err());
+
+        // Load using load_project_with_texture_sets
+        let load_res = ProjectManager::load_project_with_texture_sets(&project_path);
+        assert!(load_res.is_ok(), "Load failed: {:?}", load_res.err());
+
+        let (manifest, _, primary_stack, _, _, loaded_tsm) = load_res.unwrap();
+        assert_eq!(manifest.project_name, "MultiSetProject");
+        assert_eq!(manifest.texture_sets.len(), 2);
+        assert_eq!(manifest.active_texture_set_index, 1);
+
+        let tsm_loaded = loaded_tsm.expect("Expected TextureSetManager to be restored");
+        assert_eq!(tsm_loaded.sets.len(), 2);
+        assert_eq!(tsm_loaded.active_index, 1);
+        assert_eq!(tsm_loaded.sets[0].udim_tile, Some(1001));
+        assert_eq!(tsm_loaded.sets[1].udim_tile, Some(1002));
+        assert_eq!(
+            tsm_loaded.sets[0].layer_stack.layers[0].color_buffer[0],
+            [1.0, 0.2, 0.3, 1.0]
+        );
+        assert_eq!(
+            tsm_loaded.sets[1].layer_stack.layers[0].color_buffer[0],
+            [0.1, 0.8, 0.4, 1.0]
+        );
+
+        // Primary stack should match active set (set 1)
+        assert_eq!(
+            primary_stack.layers[0].color_buffer[0],
+            [0.1, 0.8, 0.4, 1.0]
+        );
+
+        // Also test legacy load_project backward compatibility
+        let legacy_load = ProjectManager::load_project(&project_path);
+        assert!(
+            legacy_load.is_ok(),
+            "Legacy load failed: {:?}",
+            legacy_load.err()
+        );
+        let (_, _, legacy_stack, _, _) = legacy_load.unwrap();
+        assert_eq!(legacy_stack.layers[0].color_buffer[0], [0.1, 0.8, 0.4, 1.0]);
 
         let _ = fs::remove_file(project_path);
         let _ = fs::remove_dir(temp_dir);

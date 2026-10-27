@@ -527,8 +527,8 @@ impl Mesh {
 
             if !m.texcoords.is_empty() {
                 for i in (0..m.texcoords.len()).step_by(2) {
-                    let u = m.texcoords[i].rem_euclid(1.0);
-                    let v = m.texcoords[i + 1].rem_euclid(1.0);
+                    let u = m.texcoords[i];
+                    let v = m.texcoords[i + 1];
                     uvs.push([u, v]);
                 }
             } else {
@@ -636,8 +636,8 @@ impl Mesh {
             }
             if !m.texcoords.is_empty() {
                 for i in (0..m.texcoords.len()).step_by(2) {
-                    let u = m.texcoords[i].rem_euclid(1.0);
-                    let v = m.texcoords[i + 1].rem_euclid(1.0);
+                    let u = m.texcoords[i];
+                    let v = m.texcoords[i + 1];
                     uvs.push([u, v]);
                 }
             } else {
@@ -1050,6 +1050,28 @@ mod tests {
             Mesh::from_obj_string(&obj_str, "ReloadedCube").expect("OBJ roundtrip should parse");
         assert_eq!(reloaded.indices.len(), 36);
         assert_eq!(reloaded.name, "ReloadedCube");
+    }
+
+    #[test]
+    fn test_obj_preserves_udim_uv_coordinates() {
+        let obj_udim = r#"
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 1.0 1.0 0.0
+vt 1.5 0.5
+vt 2.5 0.5
+vt 2.5 1.5
+vn 0.0 0.0 1.0
+vn 0.0 0.0 1.0
+vn 0.0 0.0 1.0
+f 1/1/1 2/2/2 3/3/3
+"#;
+        let mesh = Mesh::from_obj_string(obj_udim, "UDIM_Test").expect("parse udim obj");
+        assert_eq!(mesh.uvs.len(), 3);
+        assert!((mesh.uvs[0][0] - 1.5).abs() < 1e-4);
+        assert!((mesh.uvs[1][0] - 2.5).abs() < 1e-4);
+        assert!((mesh.uvs[2][0] - 2.5).abs() < 1e-4);
+        assert!((mesh.uvs[2][1] - 1.5).abs() < 1e-4);
     }
 
     #[test]
