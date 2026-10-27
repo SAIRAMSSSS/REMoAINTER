@@ -32,18 +32,35 @@ Version `v0.2` introduces a high-performance **Rust Engine** designed from the g
   - **Layer Stack**: Multi-layer compositing, blend modes, opacity, mask thumbnails, and anchor indicators.
   - **Properties Panel**: Direct control over active tool dynamics and PBR channels (Base Color, Roughness, Metallic, Normal).
 
-### 2. Multi-Threaded Mesh Maps Baking Engine
-Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
-- **Ambient Occlusion (AO)**: Cosine-weighted hemispherical ray casting (8–128 rays/pixel) with ray-triangle occlusion testing.
-- **Curvature Map**: Laplacian neighbor normal variance detecting surface edges and cavities.
-- **World Space Normals**: Surface orientation mapped to vector color space.
-- **Tangent Space Normals**: Base surface tangent space mapping.
-- **Position Map**: Normalized object bounding box coordinates for vertical dirt gradients.
-- **Thickness Map**: Inverted normal raycasting for subsurface scattering.
-- **ID Map**: Polygon / material group color ID generation.
-- **Selective & Batch Baking**: Bake all maps with one click or re-bake individual maps on demand.
+### 2. Dual-Engine Mesh Maps Baking (CPU Rayon + GPU Compute)
+Dual-engine baking architecture supporting high-throughput hardware compute and multithreaded CPU raytracing:
+- **GPU Compute Baker (`GpuBakerCompute`)**: Native `wgpu` compute shader pipeline (`@compute @workgroup_size(8, 8, 1)`) in pure WGSL with STD140-aligned uniforms and storage buffer triangle packing.
+- **CPU Rayon Baker**: Multi-threaded CPU raytracing via BVH acceleration.
+- **Baked Map Types**: Ambient Occlusion (cosine hemisphere raycasting), Curvature (Laplacian normal variance), World Space Normals, Tangent Space Normals, Position (normalized object bounding box), Thickness (inverted raycasting), and Submesh Color ID.
+- **High-to-Low Cage Projection**: Max frontal and rear ray distances, match by mesh name (`_low`/`_high`), shell fallback matching, skew map shearing, and painted ray offsets.
+- **UDIM Multi-Tile Batch Baking**: Concurrently bakes all detected UDIM tiles via `BakerEngine::bake_all_udim` and the asynchronous Baking Studio interface.
 
-### 3. Black Masks & Layer Sub-Stack
+### 3. Dynamic Height-to-Normal Relief & Layer Stack Architecture
+- **Dynamic 3×3 Sobel Relief**: Painted or generated height displacements dynamically composite into tangent-space normal perturbations via a 3×3 Sobel gradient operator.
+- **Reoriented Normal Mapping (RNM)**: Blends dynamic height-normal relief onto underlying surface normals without flattening or angular distortion.
+- **Layer Types**: First-class support for `Paint`, `Fill`, `Folder`, `Adjustment`, and `Generator` layers.
+- **28 Reference Blend Modes**: Normal, PassThrough, Multiply, Screen, Overlay, Add, Subtract, Darken, Lighten, Color Dodge, Linear Dodge, Vivid Light, Linear Light, Pin Light, Hard Mix, Difference, Exclusion, etc.
+- **Non-Destructive Adjustment Layers**: Real-time non-destructive grading across 6 point/spatial filters (`Levels`, `HSL`, `Invert`, `GradientMap`, `Blur`, `Sharpen`).
+- **Procedural Generator Layers**: 7 industrial presets (`MetalEdgeWear`, `DirtCrevices`, `DustAccumulation`, `PositionGradient`, `WorldNormal`, `Thickness`, `ColorIDSelection`) sampling baked maps, FBM noise, and anchor points.
+
+### 4. Smart Materials, Smart Masks & Shelf Library
+- **9 Authentic Industrial Smart Materials**: `SteelPaintedWorn`, `MachineryHeavyDuty`, `BrassAntique`, `BronzeArmor`, `AluminiumAnodizedRed`, `IronRoughRust`, `PlasticScratchedRough`, `GoldAntiqueWorn`, and `WoodVarnishedVintage`.
+- **7 Procedural Smart Masks**: `MetalEdgeWear`, `DirtCrevices`, `DustAccumulation`, `PaintChipping`, `CavityRust`, `GroundDirtGradient`, and `SubsurfaceThickness`.
+- **Non-Destructive Stack Splicing**: Inserts complete multi-layer folder hierarchies above the active layer without clearing existing work.
+- **Shelf Asset Browser**: Interactive discovery and preview of materials, smart materials, smart masks, procedural generators, brush alphas, and HDR environment probes.
+
+### 5. Multi-Tile UDIM Workflow & Continuous 3D Painting
+- **Hardware 2D Texture Array Viewport**: Native WGSL shader pipeline binding 2D texture arrays (`texture_2d_array<f32>`) with dynamic tile resolution (`resolve_udim_coords`) supporting up to 16 concurrent UDIM tiles (1001, 1002, 1003...).
+- **Continuous 3D Surface Painting**: Marches across connected surface triangles within brush radius $R$; `paint_3d_surface_multi_tile` seamlessly bridges adjacent UDIM tile seams in a single continuous stroke.
+- **3D Stroke Chord Interpolation**: Distance-based step spacing eliminates dotted trails during fast drags, while distance accumulation prevents over-stamping during slow drags.
+- **Multi-Tile UDIM Undo/Redo History**: Granular 64×64 tile backups with unique `(set_id, udim_tile, layer_id, tile_x, tile_y)` keys provide collision-free undo/redo across multi-tile meshes with instant GPU synchronization.
+
+### 6. Black Masks & Layer Sub-Stack
 - **Mask Types**: Full White Mask and Black Mask.
 - **Procedural Effect Sub-Stack**:
   - **Fill Effect**: Procedural noise and patterns.
@@ -52,14 +69,14 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
   - **Levels Effect**: Black in, white in, midtone gamma, black out, and white out adjustments.
   - **Invert Effect**: Fast one-click mask inversion.
 
-### 4. Anchor Points System
+### 7. Anchor Points System
 - Define named anchor points (`AnchorPoint`) on any layer or mask.
 - Reference anchor points in higher-level layers or generators to create dynamic, interconnected wear patterns.
 
-### 5. Toroidal UV Seam Wrapping
+### 8. Toroidal UV Seam Wrapping
 - Eliminates unsightly seams when painting across 0.0–1.0 UV boundary edges by dynamically wrapping brush kernels toroidally.
 
-### 6. Native Rust / Vulkan Hardware PBR Viewport (`wgpu`)
+### 9. Native Rust / Vulkan Hardware PBR Viewport (`wgpu`)
 - **24-bit Hardware Depth Buffer**: Full Vulkan `Depth24Plus` with `LessEqual` depth sorting—eliminating triangle flickering and ordering artifacts on complex overlapping geometry (lantern glass, burner, frame bars).
 - **Cook-Torrance Microfacet GGX BRDF**:
   - Specular distribution: Trowbridge-Reitz $D_{GGX}$
@@ -69,13 +86,13 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
 - **Real-Time Dynamic Lighting**: Per-fragment specular and Fresnel reflections calculated every frame that respond interactively to camera orbit and light rotation.
 - **Display Channels**: Instant GPU shader uniform solo switching between Lit Material, Base Color, Roughness, Metallic, Normal, AO, and Curvature.
 
-### 7. Real HDR Image-Based Lighting (IBL) & Studio Probes
+### 10. Real HDR Image-Based Lighting (IBL) & Studio Probes
 - **OpenEXR High Dynamic Range Probes**: Directly loads authentic 32-bit floating-point panoramic `.exr` environments (`Studio Tomoco.exr`, `Soft 1Front.exr`, etc.) from `Studio/`.
 - **Numerical Split-Sum Integration LUT**: Precomputes a 512x512 RG16F BRDF integration LUT via Hammersley importance sampling for accurate ambient specular response.
 - **Panoramic Skybox**: Interactive background rendering with blur filter and intensity multiplier.
 - **ACES Filmic Tone Mapping**: Industry-standard Academy Color Encoding System (ACES) filmic S-curve with gamma 2.2 correction into linear sRGB display space.
 
-### 8. Real Material Pipeline & Texture Set Importer
+### 11. Real Material Pipeline & Texture Set Importer
 - **SBSAR & SPSM Batch Exporter (`tools/export_sbsar.py`)**:
   - Utilizes the `sbsrender` CLI to batch-render `.sbsar` procedural graphs into 2048x2048 PBR texture maps (BaseColor, Normal, Roughness, Metallic, Height, AO) with `material.json` manifests.
   - Graceful fallback with clear instructions when `sbsrender` is not installed; extracts bundled textures from `.spsm` smart materials.
@@ -85,7 +102,7 @@ Rayon-accelerated CPU raytracing for fast, GPU-agnostic map generation:
   - Automatic DirectX to OpenGL normal map Y-inversion.
   - Dedicated interactive modal dialog for manual channel assignments and unmatched fallback maps.
 
-### 9. Bundled Test Assets & Starter Materials
+### 12. Bundled Test Assets & Starter Materials
 - **Antique Lantern** (`assets/test_models/lantern.obj`): High-detail multi-part mesh for testing metal, glass, and curvature wear.
 - **Retro Radio** (`assets/test_models/radio.obj`): Complex mesh with knobs, grilles, and antennas for ambient occlusion and crevice testing.
 - **PBR Material Sphere**: Standard sphere for look-dev.
@@ -111,8 +128,8 @@ REMoAINTER is implemented in **100% safe Rust** using the `wgpu` ecosystem for n
 | **Project Persistence** | **WORKING** | Complete save/load of `.rmp` project archives containing JSON manifests, layer channel PNGs, and baked maps. |
 | **Procedural Texture Graph** | **PARTIAL** | Core node graph engine (`painting/graph.rs`) with noise, gradients, and blend math; integrated in procedural material dialog. |
 | **SBSAR / SPSM Import** | **PARTIAL** | Package archive parsing and preset extraction via `sbsar.rs` and `sevenz-rust`; batch procedural graph rendering delegates to `tools/export_sbsar.py`. |
-| **UDIM Multi-Tile Workflow** | **EXPERIMENTAL** | UDIM tile coordinate math and detection implemented; active editing currently operates on primary tile. |
-| **GPU Compute Baking** | **PLANNED** | Hardware compute shader baking pipeline planned for future milestone. |
+| **UDIM Multi-Tile Workflow** | **WORKING** | Hardware 2D texture array viewport (up to 16 tiles) in WGSL, real-time 3D surface painting across tile seams, tile culling, batch UDIM baking, and multi-tile UDIM undo/redo history. |
+| **GPU Compute Baking** | **WORKING** | Hardware-accelerated Vulkan/wgpu compute shader baking pipeline in WGSL (`@compute @workgroup_size(8, 8, 1)`) generating AO, Curvature, Normals, WSN, Position, Thickness, and Color ID. |
 
 ---
 
@@ -134,7 +151,7 @@ REMoAINTER/
 ├── rust/                   # Rust implementation (authoritative codebase)
 │   ├── Cargo.toml          # Rust dependencies and configuration
 │   └── src/
-│       ├── baker/          # Multithreaded CPU raytracing baking engine
+│       ├── baker/          # Dual-engine baker: Rayon CPU raytracing + wgpu compute shaders
 │       ├── graphics/       # Native Vulkan/wgpu viewport, WGSL shaders, mesh geometry
 │       ├── painting/       # Layer stack, black masks, brush engine, PBR texture sets
 │       ├── paths/          # Machine-independent asset discovery
@@ -145,7 +162,8 @@ REMoAINTER/
 │       └── main.rs         # Desktop application entry point
 └── tools/
     ├── export_sbsar.py     # SBSAR & SPSM batch exporter CLI
-    └── generate_core_pbr_materials.py # Starter PBR material generator
+    ├── generate_core_pbr_materials.py # Starter PBR material generator
+    └── package_release.sh  # Standalone self-contained release packager
 ```
 
 ---
